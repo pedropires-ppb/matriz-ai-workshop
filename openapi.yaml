@@ -1,0 +1,644 @@
+openapi: 3.1.0
+info:
+  title: Matriz API — draft contract (pending validation)
+  version: 0.1.0-draft
+  summary: Draft contract for two proposed MVP task operations; not approved (OQ-016).
+  description: |
+    **Status: DRAFT — pending validation; not an approved contract.** The
+    client has not approved the proposed MVP scope
+    ([OQ-016](docs/constraints.md#open-questions)). Only the needs F01–F03 are
+    confirmed; every other rule here rests on proposed requirements and on
+    unvalidated assumptions in the
+    [assumption register](docs/constraints.md#assumptions). No implementation
+    starts before the MVP scope is approved. If this contract conflicts with
+    the specification in `docs/`, the specification prevails and the conflict
+    must be flagged.
+
+    **Scope.** Two operations of the proposed MVP, both on tasks (F02):
+
+    | Operation | Requirement | User story |
+    |---|---|---|
+    | `createTask` | [FR-008](docs/requirements.md#functional-requirements) | [US-003](docs/user-stories.md#stories) |
+    | `changeTaskState` | [FR-011](docs/requirements.md#functional-requirements) | [US-005](docs/user-stories.md#stories) |
+
+    No other requirement is covered, and nothing
+    [outside the initial scope](docs/requirements.md#outside-the-initial-scope)
+    is specified.
+
+    **Not decided by this draft.** REST is the scope of this documentation
+    exercise, not an approved implementation decision; the JSON
+    representations and the error format are proposals of this draft. No
+    technology, framework, storage, hosting, or base URL is chosen, so no
+    `servers` are declared ([OQ-020](docs/constraints.md#open-questions)). How
+    the User interface is delivered is not decided either
+    ([architecture](docs/architecture.md#decision-and-rationale)). Identifiers
+    and attributes correspond to the
+    [proposed data model](docs/database.md#entities), itself pending
+    validation.
+
+    **Identity.** Every operation requires the person's identity to be
+    established first
+    ([NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+    [Assumption A-014](docs/constraints.md#assumptions)). How identity is
+    established is undecided ([OQ-018](docs/constraints.md#open-questions)), so
+    no security scheme is declared; this absence does not mean that the
+    operations are public. `401` means that identity has not been
+    established; nothing is disclosed or changed
+    ([EX-012](docs/user-stories.md#edge-cases-and-exceptions)).
+
+    **Access.** Project membership and role permissions apply to every request
+    ([NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+    [Assumption A-001](docs/constraints.md#assumptions),
+    [Assumption A-002](docs/constraints.md#assumptions)). A person who is not a
+    member of the project receives `404`, exactly as if the project did not
+    exist, so neither the project nor its tasks are disclosed
+    ([EX-003](docs/user-stories.md#edge-cases-and-exceptions)). A member whose
+    role or assignment does not permit the change receives `403`. Whether the
+    roles and permissions are correct
+    ([OQ-002](docs/constraints.md#open-questions)) and how they are enforced
+    consistently ([OQ-019](docs/constraints.md#open-questions)) are open.
+
+    **Errors.** Errors are problem details (RFC 9457) in
+    `application/problem+json`. `type` is omitted (meaning `about:blank`), so
+    `title` is the HTTP status phrase and `detail` explains the occurrence. If
+    a request fails several checks, the first applicable status in this order
+    is returned: `401`, `404`, `403`, `400`, `422`, `409`. A refused request
+    changes nothing. Texts in the examples are English illustrations; the
+    user-facing language is open ([OQ-013](docs/constraints.md#open-questions)),
+    and [Assumption A-013](docs/constraints.md#assumptions) proposes
+    Portuguese.
+
+    **Other open questions reflected, not answered:**
+    - naming rules beyond "nonempty"
+      ([OQ-003](docs/constraints.md#open-questions));
+    - task states and transitions
+      ([OQ-004](docs/constraints.md#open-questions));
+    - reopening a Completed project and access after completion
+      ([OQ-006](docs/constraints.md#open-questions),
+      [OQ-008](docs/constraints.md#open-questions));
+    - simultaneous changes: no concurrency control is defined, and the
+      responses may change once [OQ-017](docs/constraints.md#open-questions)
+      is answered;
+    - personal data: people appear only as opaque identifiers; which data
+      identify or display a person is open
+      ([OQ-011](docs/constraints.md#open-questions),
+      [OQ-018](docs/constraints.md#open-questions)).
+tags:
+  - name: Tasks
+    description: Tasks of a project (F02). Only two task operations are drafted.
+paths:
+  /projects/{projectId}/tasks:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    post:
+      tags: [Tasks]
+      operationId: createTask
+      summary: Create a task in a project
+      description: |
+        Creates a task with a nonempty title in an Active project. The task
+        starts in To do with no assignee.
+
+        **Traceability:**
+        [FR-008](docs/requirements.md#functional-requirements);
+        [US-003](docs/user-stories.md#stories), acceptance criterion
+        [1](docs/user-stories.md#us-003--create-task);
+        [EX-002](docs/user-stories.md#edge-cases-and-exceptions); access rules
+        from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may create tasks
+          ([FR-008](docs/requirements.md#functional-requirements);
+          [Assumption A-001](docs/constraints.md#assumptions)); any other
+          member receives `403`.
+        - The project must be Active; if it is Completed, no task is created
+          and `409` is returned
+          ([FR-008](docs/requirements.md#functional-requirements);
+          [Assumption A-011](docs/constraints.md#assumptions)).
+        - The title is required and nonempty; an empty title creates no task
+          and returns `422` with an error for `/title`
+          ([EX-002](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-004](docs/constraints.md#assumptions)). Other naming
+          rules are open ([OQ-003](docs/constraints.md#open-questions)) and
+          are not enforced.
+        - The task belongs to this project only, and its initial state is To
+          do and cannot be chosen
+          ([Assumption A-004](docs/constraints.md#assumptions),
+          [Assumption A-010](docs/constraints.md#assumptions)).
+        - No assignee is accepted. FR-008 and US-003 do not state whether a
+          task can be assigned when it is created; assignment is
+          [FR-010](docs/requirements.md#functional-requirements), which this
+          draft does not cover.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+            examples:
+              prepareProposal:
+                summary: US-003 — create an unassigned task
+                value:
+                  title: Prepare proposal
+      responses:
+        '201':
+          description: |
+            The task was created in To do with no assignee
+            ([US-003](docs/user-stories.md#us-003--create-task)).
+          headers:
+            Location:
+              description: |
+                URI reference of the created task. This draft defines no
+                operation on that URI itself; `changeTaskState` uses its
+                `state` sub-resource.
+              required: true
+              schema:
+                type: string
+                format: uri-reference
+              example: /projects/7f3a9c1e/tasks/41b2d8e0
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              examples:
+                prepareProposal:
+                  summary: US-003 — created task, To do, no assignee
+                  value:
+                    taskId: '41b2d8e0'
+                    projectId: '7f3a9c1e'
+                    title: Prepare proposal
+                    state: TO_DO
+                    assignee: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            The person is a member of the project but not its Project Owner;
+            no task is created
+            ([FR-008](docs/requirements.md#functional-requirements);
+            [Assumption A-001](docs/constraints.md#assumptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notProjectOwner:
+                  summary: FR-008 — a Project Participant tries to create a task
+                  value:
+                    title: Forbidden
+                    status: 403
+                    detail: Only the Project Owner can create tasks in this project.
+        '404':
+          description: |
+            The project does not exist, or the person is not a member of it.
+            Both cases receive the same response, so nothing about the project
+            is disclosed; no task is created
+            ([EX-003](docs/user-stories.md#edge-cases-and-exceptions);
+            [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+            [Assumption A-002](docs/constraints.md#assumptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                projectNotAccessible:
+                  summary: EX-003 — not a member, or no such project
+                  value:
+                    title: Not Found
+                    status: 404
+                    detail: The project does not exist or is not accessible.
+        '409':
+          description: |
+            The project is not Active (it is Completed); no task is created
+            ([FR-008](docs/requirements.md#functional-requirements);
+            [Assumption A-011](docs/constraints.md#assumptions)). Whether a
+            Completed project can be reopened is open
+            ([OQ-006](docs/constraints.md#open-questions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                projectCompleted:
+                  summary: FR-008 — the project is Completed
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The project is Completed; tasks cannot be created in it.
+        '422':
+          description: |
+            The content does not satisfy `CreateTaskRequest`: it is not a JSON
+            object, `title` is missing, empty, or not a string, or another
+            property is present. No task is created, and `errors` identifies
+            each invalid member
+            ([EX-002](docs/user-stories.md#edge-cases-and-exceptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                emptyTitle:
+                  summary: 'EX-002 — response to {"title": ""}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: A task title is required.
+                    errors:
+                      - pointer: /title
+                        detail: A title is required.
+  /projects/{projectId}/tasks/{taskId}/state:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TaskId'
+    put:
+      tags: [Tasks]
+      operationId: changeTaskState
+      summary: Change the state of a task
+      description: |
+        Sets the state of a task in an Active project to To do, In progress,
+        or Done, and returns the updated task.
+
+        **Traceability:**
+        [FR-011](docs/requirements.md#functional-requirements);
+        [US-005](docs/user-stories.md#stories), acceptance criteria
+        [1 and 2](docs/user-stories.md#us-005--change-task-state);
+        [EX-004](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-008](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-013](docs/user-stories.md#edge-cases-and-exceptions); access rules
+        from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Allowed for the project's Project Owner, whether or not they are
+          the assignee ([EX-013](docs/user-stories.md#edge-cases-and-exceptions)),
+          and for the task's assignee
+          ([FR-011](docs/requirements.md#functional-requirements);
+          [Assumption A-001](docs/constraints.md#assumptions)). Any other
+          member receives `403` and the state is unchanged
+          ([EX-004](docs/user-stories.md#edge-cases-and-exceptions)).
+        - Besides non-members, `404` also covers a `taskId` that does not
+          belong to the project in the path.
+        - Any of the three states can be set from any state, including
+          reopening a Done task
+          ([Assumption A-005](docs/constraints.md#assumptions);
+          [OQ-004](docs/constraints.md#open-questions)). Requesting the state
+          the task already has succeeds and leaves it unchanged, because `PUT`
+          is idempotent.
+        - If the project is Completed, the state is unchanged and `409` is
+          returned ([EX-008](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-011](docs/constraints.md#assumptions)).
+        - No reopening marker is recorded: the “(reopened)” of US-005 is read
+          as describing the change, as flagged in the
+          [data model](docs/database.md#findings)
+          ([OQ-004](docs/constraints.md#open-questions)).
+
+        A dedicated `state` sub-resource keeps this change, which the assignee
+        may make, separate from changing a task's title
+        ([FR-009](docs/requirements.md#functional-requirements)) or assignee
+        ([FR-010](docs/requirements.md#functional-requirements)), which only
+        the Project Owner may do and which this draft does not cover.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeTaskStateRequest'
+            examples:
+              assigneeMarksDone:
+                summary: US-005 AC1 — the assignee changes To do to Done
+                value:
+                  state: DONE
+              assigneeReopens:
+                summary: US-005 AC2 — the assignee reopens a Done task
+                value:
+                  state: IN_PROGRESS
+              ownerMarksUnassignedDone:
+                summary: EX-013 — the Project Owner changes an unassigned task to Done
+                value:
+                  state: DONE
+      responses:
+        '200':
+          description: The state was set; the updated task is returned.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              examples:
+                assigneeMarksDone:
+                  summary: US-005 AC1 — the task shows Done
+                  value:
+                    taskId: '9d07c3f5'
+                    projectId: '7f3a9c1e'
+                    title: Review proposal
+                    state: DONE
+                    assignee:
+                      personId: 'c95e0a27'
+                assigneeReopens:
+                  summary: US-005 AC2 — the task shows In progress (reopened)
+                  value:
+                    taskId: '9d07c3f5'
+                    projectId: '7f3a9c1e'
+                    title: Review proposal
+                    state: IN_PROGRESS
+                    assignee:
+                      personId: 'c95e0a27'
+                ownerMarksUnassignedDone:
+                  summary: EX-013 — the unassigned task shows Done
+                  value:
+                    taskId: '41b2d8e0'
+                    projectId: '7f3a9c1e'
+                    title: Prepare proposal
+                    state: DONE
+                    assignee: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            The person is a member of the project but neither its Project
+            Owner nor the task's assignee; the state is unchanged
+            ([EX-004](docs/user-stories.md#edge-cases-and-exceptions);
+            [Assumption A-001](docs/constraints.md#assumptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notOwnerOrAssignee:
+                  summary: EX-004 — the task is assigned to someone else
+                  value:
+                    title: Forbidden
+                    status: 403
+                    detail: Only the Project Owner or the task's assignee can change its state.
+        '404':
+          description: |
+            The project does not exist or the person is not a member of it, or
+            no task with `taskId` belongs to the project. A non-member receives
+            this response whether or not the project or task exists, so
+            nothing is disclosed; the state is unchanged
+            ([EX-003](docs/user-stories.md#edge-cases-and-exceptions);
+            [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+            [Assumption A-002](docs/constraints.md#assumptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                taskNotAccessible:
+                  summary: EX-003 — not a member, or no such project or task
+                  value:
+                    title: Not Found
+                    status: 404
+                    detail: The project or task does not exist or is not accessible.
+        '409':
+          description: |
+            The project is not Active (it is Completed); the state is unchanged
+            ([EX-008](docs/user-stories.md#edge-cases-and-exceptions);
+            [Assumption A-011](docs/constraints.md#assumptions)). Whether a
+            Completed project can be reopened is open
+            ([OQ-006](docs/constraints.md#open-questions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                projectCompleted:
+                  summary: EX-008 — the task's project is Completed
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The project is Completed; its tasks cannot be changed.
+        '422':
+          description: |
+            The content does not satisfy `ChangeTaskStateRequest`: it is not a
+            JSON object, `state` is missing or is not `TO_DO`, `IN_PROGRESS`,
+            or `DONE`, or another property is present
+            ([Assumption A-005](docs/constraints.md#assumptions)). The state is
+            unchanged, and `errors` identifies each invalid member.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                labelInsteadOfCode:
+                  summary: 'Response to {"state": "Done"}, a label instead of a code'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: The state must be TO_DO, IN_PROGRESS, or DONE.
+                    errors:
+                      - pointer: /state
+                        detail: Must be TO_DO, IN_PROGRESS, or DONE.
+components:
+  parameters:
+    ProjectId:
+      name: projectId
+      in: path
+      required: true
+      description: Identifier of the project.
+      schema:
+        $ref: '#/components/schemas/Identifier'
+    TaskId:
+      name: taskId
+      in: path
+      required: true
+      description: Identifier of a task belonging to the project.
+      schema:
+        $ref: '#/components/schemas/Identifier'
+  responses:
+    BadRequest:
+      description: |
+        The request content is absent or is not well-formed JSON; nothing is
+        changed. Well-formed content that does not satisfy the request schema
+        receives `422` instead.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            malformedJson:
+              summary: The request content is not well-formed JSON
+              value:
+                title: Bad Request
+                status: 400
+                detail: The request content is not well-formed JSON.
+    Unauthorized:
+      description: |
+        The person's identity has not been established. No project or task
+        information is disclosed and nothing is changed
+        ([EX-012](docs/user-stories.md#edge-cases-and-exceptions);
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+        [Assumption A-014](docs/constraints.md#assumptions)). HTTP requires a
+        `WWW-Authenticate` challenge with this status; it is not specified
+        because how identity is established is open
+        ([OQ-018](docs/constraints.md#open-questions)).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            identityNotEstablished:
+              summary: EX-012 — identity not established
+              value:
+                title: Unauthorized
+                status: 401
+                detail: Identity has not been established.
+  schemas:
+    Identifier:
+      type: string
+      minLength: 1
+      description: |
+        Opaque identifier assigned by Matriz, with no business meaning,
+        because names and titles can change
+        ([data model](docs/database.md#entities)). Its format is not decided;
+        clients must not derive anything from it.
+    TaskTitle:
+      type: string
+      minLength: 1
+      description: |
+        Required, nonempty task title
+        ([Assumption A-004](docs/constraints.md#assumptions)). Whether
+        whitespace-only titles are accepted, any maximum length, and whether
+        titles must be unique are open
+        ([OQ-003](docs/constraints.md#open-questions)); this draft enforces
+        none of them.
+    TaskState:
+      type: string
+      enum: [TO_DO, IN_PROGRESS, DONE]
+      description: |
+        Task state ([Assumption A-005](docs/constraints.md#assumptions)). Each
+        value corresponds exactly to a [glossary](docs/requirements.md#glossary)
+        term:
+
+        - `TO_DO`: To do
+        - `IN_PROGRESS`: In progress
+        - `DONE`: Done
+
+        The values are language-neutral codes, not user-facing labels, because
+        the user-facing language is open
+        ([OQ-013](docs/constraints.md#open-questions)). Whether these states
+        are correct is open ([OQ-004](docs/constraints.md#open-questions)).
+    Assignee:
+      type: object
+      required: [personId]
+      properties:
+        personId:
+          $ref: '#/components/schemas/Identifier'
+          description: Identifier of a person who is a member of the task's project.
+      description: |
+        The single project participant responsible for the task
+        ([glossary](docs/requirements.md#glossary);
+        [Assumption A-004](docs/constraints.md#assumptions)). Only the
+        person's identifier is included: which data identify or display a
+        person is open ([OQ-011](docs/constraints.md#open-questions),
+        [OQ-018](docs/constraints.md#open-questions)).
+    Task:
+      type: object
+      required: [taskId, projectId, title, state, assignee]
+      properties:
+        taskId:
+          $ref: '#/components/schemas/Identifier'
+          description: Identifier of the task.
+        projectId:
+          $ref: '#/components/schemas/Identifier'
+          description: Identifier of the single project the task belongs to.
+        title:
+          $ref: '#/components/schemas/TaskTitle'
+        state:
+          $ref: '#/components/schemas/TaskState'
+        assignee:
+          description: The task's assignee, or `null` if it is unassigned.
+          oneOf:
+            - $ref: '#/components/schemas/Assignee'
+            - type: 'null'
+      description: |
+        A task as returned by both operations: it belongs to exactly one
+        project and has at most one assignee
+        ([Assumption A-004](docs/constraints.md#assumptions)).
+    CreateTaskRequest:
+      type: object
+      required: [title]
+      additionalProperties: false
+      properties:
+        title:
+          $ref: '#/components/schemas/TaskTitle'
+      description: |
+        Content for creating a task. Only `title` is accepted: the initial
+        state is always To do
+        ([Assumption A-010](docs/constraints.md#assumptions)), and assignment
+        ([FR-010](docs/requirements.md#functional-requirements)) is not
+        covered by this draft. Any other property receives `422`.
+    ChangeTaskStateRequest:
+      type: object
+      required: [state]
+      additionalProperties: false
+      properties:
+        state:
+          $ref: '#/components/schemas/TaskState'
+      description: The state to set. Any other property receives `422`.
+    Problem:
+      type: object
+      required: [title, status, detail]
+      properties:
+        type:
+          type: string
+          format: uri-reference
+          default: about:blank
+          description: Problem type; omitted in this draft, meaning `about:blank`.
+        title:
+          type: string
+          description: HTTP status phrase, because `type` is `about:blank`.
+        status:
+          type: integer
+          minimum: 400
+          maximum: 599
+          description: HTTP status code of this response.
+        detail:
+          type: string
+          description: Explanation of this occurrence.
+        instance:
+          type: string
+          format: uri-reference
+          description: Reference identifying this occurrence; optional.
+      description: |
+        Problem details (RFC 9457). Additional members may appear. A problem
+        never contains project or task information that the person may not
+        see
+        ([NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria)).
+    ValidationProblem:
+      allOf:
+        - $ref: '#/components/schemas/Problem'
+        - type: object
+          required: [errors]
+          properties:
+            errors:
+              type: array
+              minItems: 1
+              items:
+                type: object
+                required: [pointer, detail]
+                properties:
+                  pointer:
+                    type: string
+                    format: json-pointer
+                    description: |
+                      JSON Pointer (RFC 6901) to the invalid or unexpected
+                      member of the request content; an empty string means
+                      the whole content.
+                  detail:
+                    type: string
+                    description: What is wrong with that member.
+      description: |
+        Problem details for request content that does not satisfy the request
+        schema; `errors` identifies each invalid member, so the person can be
+        told what is required (for example, a title:
+        [EX-002](docs/user-stories.md#edge-cases-and-exceptions)).

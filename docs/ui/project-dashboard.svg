@@ -1,0 +1,336 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" width="1680" height="1320" viewBox="0 0 1680 1320" role="img" aria-labelledby="wf-title wf-desc">
+  <title id="wf-title">Matriz — Project dashboard, low-fidelity wireframe (proposal pending MVP approval, OQ-016)</title>
+  <desc id="wf-desc">Proposed MVP screen showing one project's name and state, progress, tasks, and members as seen by the Project Owner of an Active project, plus four variants: zero tasks, an empty name or title, a Completed project, and a Project Participant's view. Numbered markers refer to the annotations on the right. All wording and sample data are placeholders because the user-facing language is open (OQ-013). Text alternative and traceability: project-dashboard.md.</desc>
+  <style>
+    text { font-family: Helvetica, Arial, "Liberation Sans", Arimo, sans-serif; fill: #212529; }
+    .s12 { font-size: 12px; } .s13 { font-size: 13px; } .s14 { font-size: 14px; }
+    .s16 { font-size: 16px; } .s18 { font-size: 18px; } .s22 { font-size: 22px; }
+    .s28 { font-size: 28px; } .s30 { font-size: 30px; }
+    .b { font-weight: bold; } .i { font-style: italic; }
+    .mu { fill: #5c636a; } .dis { fill: #868e96; } .ac { fill: #1864ab; } .wt { fill: #ffffff; }
+    .mid { text-anchor: middle; } .end { text-anchor: end; }
+    .frame { fill: #ffffff; stroke: #343a40; stroke-width: 2; }
+    .vframe { fill: #ffffff; stroke: #495057; stroke-width: 1.5; }
+    .panel { fill: #ffffff; stroke: #ced4da; stroke-width: 1.5; }
+    .card { fill: #ffffff; stroke: #adb5bd; stroke-width: 1.5; }
+    .ctl { fill: #ffffff; stroke: #495057; stroke-width: 1.5; }
+    .btn { fill: #dee2e6; stroke: #495057; stroke-width: 1.5; }
+    .inp { fill: #ffffff; stroke: #868e96; stroke-width: 1.5; }
+    .badge { fill: #e9ecef; stroke: #495057; stroke-width: 1.5; }
+    .own { fill: #ffffff; stroke: #495057; stroke-width: 1.5; stroke-dasharray: 6 4; }
+    .owndis { fill: #f1f3f5; stroke: #adb5bd; stroke-width: 1.5; stroke-dasharray: 6 4; }
+    .region { fill: none; stroke: #495057; stroke-width: 1.5; stroke-dasharray: 6 4; }
+    .rule { stroke: #dee2e6; stroke-width: 1; }
+    .caret { fill: #495057; }
+    .mk circle { fill: #1864ab; }
+    .mk text { fill: #ffffff; font-size: 12px; font-weight: bold; text-anchor: middle; }
+  </style>
+
+  <rect width="1680" height="1320" fill="#f8f9fa"/>
+
+  <!-- Proposal banner (OQ-016) and placeholder-wording notice (OQ-013) -->
+  <rect x="24" y="16" width="1632" height="84" rx="6" fill="#fff3bf" stroke="#e67700" stroke-width="2"/>
+  <text x="44" y="44" class="s18 b">PROPOSAL — PENDING MVP APPROVAL (OQ-016) · NOT AN APPROVED DESIGN · NOT AN IMPLEMENTATION</text>
+  <text x="44" y="68" class="s14">Matriz v0.1 · Low-fidelity wireframe of one screen: Project dashboard (a single project) · Text alternative, traceability and open questions: docs/ui/project-dashboard.md</text>
+  <text x="44" y="89" class="s14">All UI wording and sample data are placeholders: the user-facing language is open (OQ-013; Assumption A-013).</text>
+
+  <!-- ===================== SCREEN ===================== -->
+  <text x="24" y="128" class="s14"><tspan class="b">SCREEN — Project dashboard</tspan><tspan class="mu"> · Scenario: the Project Owner viewing an Active project (sample data from US-004 and US-006)</tspan></text>
+  <rect x="24" y="140" width="1100" height="740" class="frame"/>
+
+  <!-- App bar: product name only -->
+  <rect x="25" y="141" width="1098" height="46" fill="#e9ecef"/>
+  <line x1="24" y1="187" x2="1124" y2="187" stroke="#343a40" stroke-width="1.5"/>
+  <text x="48" y="170" class="s16 b" letter-spacing="2">MATRIZ</text>
+
+  <!-- 1 Navigation back to the person's project list -->
+  <text x="48" y="218" class="s14" text-decoration="underline">‹ My projects</text>
+  <g class="mk"><circle cx="162" cy="213" r="12"/><text x="162" y="217">1</text></g>
+
+  <!-- 2 Project name, state, rename -->
+  <text x="48" y="266" class="s28 b">Project Alpha</text>
+  <rect x="274" y="244" width="76" height="28" rx="14" class="badge"/>
+  <text x="312" y="263" class="s13 b mid">Active</text>
+  <rect x="364" y="244" width="80" height="28" rx="4" class="own"/>
+  <text x="404" y="263" class="s13 mid">Rename</text>
+  <g class="mk"><circle cx="464" cy="258" r="12"/><text x="464" y="262">2</text></g>
+
+  <!-- 3 Complete project (unavailable: unfinished tasks) -->
+  <g class="mk"><circle cx="886" cy="257" r="12"/><text x="886" y="261">3</text></g>
+  <rect x="908" y="238" width="192" height="38" rx="4" class="owndis"/>
+  <text x="1004" y="262" class="s14 mid dis">Complete project</text>
+  <text x="1100" y="296" class="s12 end mu">Unavailable while tasks are To do or In progress</text>
+
+  <line x1="48" y1="312" x2="1100" y2="312" class="rule"/>
+
+  <!-- 4 Progress -->
+  <rect x="48" y="328" width="712" height="124" rx="6" class="card"/>
+  <text x="68" y="356" class="s16 b">Progress</text>
+  <g class="mk"><circle cx="164" cy="351" r="12"/><text x="164" y="355">4</text></g>
+  <text x="68" y="404" class="s30 b">50%</text>
+  <text x="134" y="404" class="s14">Done</text>
+  <rect x="200" y="389" width="260" height="16" fill="#868e96"/>
+  <rect x="200" y="389" width="520" height="16" fill="none" stroke="#495057" stroke-width="1.5"/>
+  <text x="68" y="438" class="s13">To do: <tspan class="b">1</tspan></text>
+  <text x="168" y="438" class="s13">In progress: <tspan class="b">1</tspan></text>
+  <text x="300" y="438" class="s13">Done: <tspan class="b">2</tspan></text>
+
+  <!-- 5 Tasks -->
+  <rect x="48" y="468" width="712" height="392" rx="6" class="card"/>
+  <text x="68" y="496" class="s16 b">Tasks</text>
+  <g class="mk"><circle cx="134" cy="491" r="12"/><text x="134" y="495">5</text></g>
+
+  <!-- 6 Add task (Project Owner only) -->
+  <rect x="64" y="510" width="680" height="54" rx="4" class="region"/>
+  <rect x="76" y="521" width="452" height="32" rx="4" class="inp"/>
+  <text x="88" y="542" class="s14 mu">[New task title]</text>
+  <rect x="540" y="521" width="110" height="32" rx="4" class="btn"/>
+  <text x="595" y="542" class="s14 mid">Add task</text>
+  <g class="mk"><circle cx="716" cy="537" r="12"/><text x="716" y="541">6</text></g>
+
+  <!-- Task table header; markers 7 (state), 8 (assign), 9 (rename task) -->
+  <rect x="64" y="576" width="680" height="28" fill="#f1f3f5"/>
+  <text x="76" y="595" class="s13 b">Title</text>
+  <text x="316" y="595" class="s13 b">State</text>
+  <g class="mk"><circle cx="370" cy="590" r="12"/><text x="370" y="594">7</text></g>
+  <text x="482" y="595" class="s13 b">Assignee</text>
+  <g class="mk"><circle cx="615" cy="590" r="12"/><text x="615" y="594">8</text></g>
+  <g class="mk"><circle cx="704" cy="590" r="12"/><text x="704" y="594">9</text></g>
+
+  <!-- Row 1: To do, unassigned -->
+  <text x="76" y="639" class="s14">Prepare proposal</text>
+  <rect x="308" y="618" width="150" height="32" rx="4" class="ctl"/>
+  <text x="320" y="639" class="s14">To do</text>
+  <path d="M436 631h10l-5 6z" class="caret"/>
+  <text x="482" y="639" class="s14 i mu">Unassigned</text>
+  <rect x="572" y="618" width="86" height="32" rx="4" class="own"/>
+  <text x="603" y="639" class="s13 mid">Assign</text>
+  <path d="M632 631h10l-5 6z" class="caret"/>
+  <rect x="668" y="618" width="72" height="32" rx="4" class="own"/>
+  <text x="704" y="639" class="s13 mid">Rename</text>
+  <line x1="64" y1="664" x2="744" y2="664" class="rule"/>
+
+  <!-- Row 2: In progress, Ana -->
+  <text x="76" y="699" class="s14">Review proposal</text>
+  <rect x="308" y="678" width="150" height="32" rx="4" class="ctl"/>
+  <text x="320" y="699" class="s14">In progress</text>
+  <path d="M436 691h10l-5 6z" class="caret"/>
+  <text x="482" y="699" class="s14">Ana</text>
+  <rect x="668" y="678" width="72" height="32" rx="4" class="own"/>
+  <text x="704" y="699" class="s13 mid">Rename</text>
+  <line x1="64" y1="724" x2="744" y2="724" class="rule"/>
+
+  <!-- Row 3: Done, Ana -->
+  <text x="76" y="759" class="s14">Collect requirements</text>
+  <rect x="308" y="738" width="150" height="32" rx="4" class="ctl"/>
+  <text x="320" y="759" class="s14">Done</text>
+  <path d="M436 751h10l-5 6z" class="caret"/>
+  <text x="482" y="759" class="s14">Ana</text>
+  <rect x="668" y="738" width="72" height="32" rx="4" class="own"/>
+  <text x="704" y="759" class="s13 mid">Rename</text>
+  <line x1="64" y1="784" x2="744" y2="784" class="rule"/>
+
+  <!-- Row 4: Done, unassigned -->
+  <text x="76" y="819" class="s14">Draft outline</text>
+  <rect x="308" y="798" width="150" height="32" rx="4" class="ctl"/>
+  <text x="320" y="819" class="s14">Done</text>
+  <path d="M436 811h10l-5 6z" class="caret"/>
+  <text x="482" y="819" class="s14 i mu">Unassigned</text>
+  <rect x="572" y="798" width="86" height="32" rx="4" class="own"/>
+  <text x="603" y="819" class="s13 mid">Assign</text>
+  <path d="M632 811h10l-5 6z" class="caret"/>
+  <rect x="668" y="798" width="72" height="32" rx="4" class="own"/>
+  <text x="704" y="819" class="s13 mid">Rename</text>
+
+  <!-- 10 Members, 11 Remove, 12 Add participant -->
+  <rect x="784" y="328" width="316" height="366" rx="6" class="card"/>
+  <text x="804" y="356" class="s16 b">Members</text>
+  <g class="mk"><circle cx="896" cy="351" r="12"/><text x="896" y="355">10</text></g>
+
+  <text x="804" y="392" class="s14">[Owner name]</text>
+  <text x="804" y="411" class="s12 mu">Project Owner</text>
+  <line x1="800" y1="426" x2="1084" y2="426" class="rule"/>
+
+  <text x="804" y="450" class="s14">Ana</text>
+  <text x="804" y="469" class="s12 mu">Project Participant</text>
+  <g class="mk"><circle cx="978" cy="450" r="12"/><text x="978" y="454">11</text></g>
+  <rect x="1000" y="436" width="84" height="28" rx="4" class="owndis"/>
+  <text x="1042" y="455" class="s13 mid dis">Remove</text>
+  <text x="804" y="490" class="s12 mu">Has assigned tasks: cannot be removed</text>
+  <line x1="800" y1="502" x2="1084" y2="502" class="rule"/>
+
+  <text x="804" y="526" class="s14">[Participant name]</text>
+  <text x="804" y="545" class="s12 mu">Project Participant</text>
+  <rect x="1000" y="512" width="84" height="28" rx="4" class="own"/>
+  <text x="1042" y="531" class="s13 mid">Remove</text>
+  <line x1="800" y1="558" x2="1084" y2="558" class="rule"/>
+
+  <rect x="800" y="574" width="284" height="104" rx="4" class="region"/>
+  <rect x="812" y="586" width="260" height="32" rx="4" class="inp"/>
+  <text x="824" y="607" class="s14 mu">[Person to add]</text>
+  <rect x="812" y="630" width="140" height="32" rx="4" class="btn"/>
+  <text x="882" y="651" class="s14 mid">Add participant</text>
+  <g class="mk"><circle cx="1058" cy="646" r="12"/><text x="1058" y="650">12</text></g>
+
+  <!-- ===================== VARIANTS ===================== -->
+  <text x="24" y="910" class="s14"><tspan class="b">VARIANTS</tspan><tspan class="mu"> — other states of the same screen, not separate screens</tspan></text>
+
+  <!-- A: zero tasks -->
+  <rect x="24" y="922" width="542" height="170" class="vframe"/>
+  <text x="40" y="946" class="s13 b">A · Project with zero tasks: progress (EX-005; A-006)</text>
+  <rect x="40" y="960" width="260" height="112" rx="6" class="card"/>
+  <text x="56" y="984" class="s14 b">Progress</text>
+  <text x="56" y="1020" class="s22 b">No tasks</text>
+  <text x="56" y="1052" class="s12">To do: <tspan class="b">0</tspan></text>
+  <text x="124" y="1052" class="s12">In progress: <tspan class="b">0</tspan></text>
+  <text x="222" y="1052" class="s12">Done: <tspan class="b">0</tspan></text>
+  <text x="318" y="982" class="s12 mu">No percentage is shown, neither 0%</text>
+  <text x="318" y="999" class="s12 mu">nor 100%, and no bar.</text>
+  <text x="318" y="1024" class="s12 mu">Complete project becomes available</text>
+  <text x="318" y="1041" class="s12 mu">(A-007): pending OQ-006.</text>
+
+  <!-- B: empty name or title -->
+  <rect x="582" y="922" width="542" height="170" class="vframe"/>
+  <text x="598" y="946" class="s13 b">B · Empty name or title (EX-002, EX-010, EX-011; A-003, A-004)</text>
+  <rect x="598" y="960" width="300" height="32" rx="4" fill="#ffffff" stroke="#212529" stroke-width="2.5"/>
+  <line x1="610" y1="968" x2="610" y2="984" stroke="#212529" stroke-width="1.5"/>
+  <rect x="910" y="960" width="100" height="32" rx="4" class="btn"/>
+  <text x="960" y="981" class="s14 mid">Add task</text>
+  <circle cx="607" cy="1012" r="8" fill="#212529"/>
+  <text x="607" y="1016" class="s12 b mid wt">!</text>
+  <text x="622" y="1017" class="s13 b">A title is required.</text>
+  <text x="598" y="1046" class="s12 mu">No task is created (EX-002). The same pattern applies when renaming</text>
+  <text x="598" y="1063" class="s12 mu">a project (EX-010) or a task (EX-011): the name or title stays unchanged.</text>
+
+  <!-- C: Completed project -->
+  <rect x="24" y="1108" width="542" height="170" class="vframe"/>
+  <text x="40" y="1132" class="s13 b">C · Completed project: read-only (A-011; EX-008, EX-009)</text>
+  <text x="40" y="1166" class="s18 b">Project Alpha</text>
+  <rect x="186" y="1149" width="96" height="24" rx="12" class="badge"/>
+  <text x="234" y="1166" class="s12 b mid">Completed</text>
+  <line x1="40" y1="1182" x2="330" y2="1182" class="rule"/>
+  <text x="40" y="1204" class="s13">Prepare proposal</text>
+  <text x="168" y="1204" class="s13">Done</text>
+  <text x="226" y="1204" class="s13 i mu">Unassigned</text>
+  <line x1="40" y1="1216" x2="330" y2="1216" class="rule"/>
+  <text x="40" y="1238" class="s13">Review proposal</text>
+  <text x="168" y="1238" class="s13">Done</text>
+  <text x="226" y="1238" class="s13">Ana</text>
+  <line x1="40" y1="1250" x2="330" y2="1250" class="rule"/>
+  <text x="346" y="1160" class="s12 mu">Remains viewable; every change</text>
+  <text x="346" y="1177" class="s12 mu">control is absent (rename, state,</text>
+  <text x="346" y="1194" class="s12 mu">assign, add, remove, complete).</text>
+  <text x="346" y="1219" class="s12 mu">Reopening: OQ-006.</text>
+  <text x="346" y="1236" class="s12 mu">Access after completion: OQ-008.</text>
+
+  <!-- D: Project Participant view of the task area -->
+  <rect x="582" y="1108" width="542" height="170" class="vframe"/>
+  <text x="598" y="1132" class="s13 b">D · Seen by Ana, a Project Participant (US-004, US-005, EX-004)</text>
+  <rect x="598" y="1142" width="510" height="20" fill="#f1f3f5"/>
+  <text x="606" y="1157" class="s12 b">Title</text>
+  <text x="770" y="1157" class="s12 b">State</text>
+  <text x="920" y="1157" class="s12 b">Assignee</text>
+  <text x="606" y="1182" class="s13">Prepare proposal</text>
+  <text x="770" y="1182" class="s13">To do</text>
+  <text x="920" y="1182" class="s13 i mu">Unassigned</text>
+  <line x1="598" y1="1194" x2="1108" y2="1194" class="rule"/>
+  <text x="606" y="1216" class="s13">Review proposal</text>
+  <rect x="762" y="1199" width="130" height="24" rx="4" class="ctl"/>
+  <text x="772" y="1216" class="s13">In progress</text>
+  <path d="M872 1208h10l-5 6z" class="caret"/>
+  <text x="920" y="1216" class="s13">Ana</text>
+  <line x1="598" y1="1228" x2="1108" y2="1228" class="rule"/>
+  <text x="598" y="1247" class="s12 mu">No dashed (Project Owner) controls; Ana can change only her own task's state.</text>
+  <text x="598" y="1264" class="s12 mu">Task area only; participants' view of members is open (OQ-002, OQ-011).</text>
+
+  <!-- ===================== ANNOTATIONS ===================== -->
+  <text x="1148" y="128" class="s14 b ac">ANNOTATIONS</text>
+  <rect x="1148" y="140" width="508" height="1138" class="panel"/>
+
+  <!-- Key -->
+  <rect x="1164" y="156" width="36" height="20" rx="3" class="own"/>
+  <text x="1212" y="171" class="s12">Dashed outline: available only to the Project Owner (A-001)</text>
+  <rect x="1164" y="184" width="36" height="20" rx="3" class="owndis"/>
+  <text x="1212" y="199" class="s12">Grey text: unavailable now; its reason is shown beside it</text>
+  <text x="1182" y="227" class="s13 b mid">[ ]</text>
+  <text x="1212" y="227" class="s12">Placeholder; names and titles are sample data</text>
+  <g class="mk"><circle cx="1182" cy="250" r="12"/><text x="1182" y="254">n</text></g>
+  <text x="1212" y="255" class="s12">Note n below · A-xxx: unvalidated assumption (constraints.md)</text>
+  <line x1="1164" y1="274" x2="1640" y2="274" class="rule"/>
+
+  <g class="mk"><circle cx="1170" cy="296" r="12"/><text x="1170" y="300">1</text></g>
+  <text x="1192" y="300" class="s13 b">Back to My projects</text>
+  <text x="1192" y="318" class="s12">Opens the person's own project list (FR-001, US-007), not drawn.</text>
+  <text x="1192" y="335" class="s12">Only identified members can open this screen (EX-003, EX-012; A-002, A-014).</text>
+
+  <g class="mk"><circle cx="1170" cy="361" r="12"/><text x="1170" y="365">2</text></g>
+  <text x="1192" y="365" class="s13 b">Project name, state and Rename</text>
+  <text x="1192" y="383" class="s12">State: Active or Completed (A-003). Rename: Project Owner, Active</text>
+  <text x="1192" y="400" class="s12">project, nonempty name (FR-003, US-008, EX-009, EX-010; A-011).</text>
+
+  <g class="mk"><circle cx="1170" cy="426" r="12"/><text x="1170" y="430">3</text></g>
+  <text x="1192" y="430" class="s13 b">Complete project</text>
+  <text x="1192" y="448" class="s12">Project Owner only (FR-007, US-010). Unavailable, with its reason,</text>
+  <text x="1192" y="465" class="s12">while any task is To do or In progress (EX-006; A-003, A-007, A-011).</text>
+
+  <g class="mk"><circle cx="1170" cy="491" r="12"/><text x="1170" y="495">4</text></g>
+  <text x="1192" y="495" class="s13 b">Progress</text>
+  <text x="1192" y="513" class="s12">Task counts by state and % Done = Done / all tasks × 100 (FR-012,</text>
+  <text x="1192" y="530" class="s12">US-006; A-006). Zero tasks: variant A. Rounding is open (OQ-005).</text>
+
+  <g class="mk"><circle cx="1170" cy="556" r="12"/><text x="1170" y="560">5</text></g>
+  <text x="1192" y="560" class="s13 b">Task list</text>
+  <text x="1192" y="578" class="s12">Title, state, and assignee or Unassigned (FR-006, US-004; A-002, A-004).</text>
+  <text x="1192" y="595" class="s12">Row order is illustrative only: no ordering is specified.</text>
+
+  <g class="mk"><circle cx="1170" cy="621" r="12"/><text x="1170" y="625">6</text></g>
+  <text x="1192" y="625" class="s13 b">Add task</text>
+  <text x="1192" y="643" class="s12">Project Owner only. Title only: the task starts To do, unassigned</text>
+  <text x="1192" y="660" class="s12">(FR-008, US-003; A-004, A-010). Empty title: variant B (EX-002).</text>
+
+  <g class="mk"><circle cx="1170" cy="686" r="12"/><text x="1170" y="690">7</text></g>
+  <text x="1192" y="690" class="s13 b">Task state</text>
+  <text x="1192" y="708" class="s12">To do, In progress or Done in any order; Done can be reopened</text>
+  <text x="1192" y="725" class="s12">(FR-011, US-005; A-001, A-005). Project Owner: any task (EX-013). Project</text>
+  <text x="1192" y="742" class="s12">Participant: only tasks assigned to them (EX-004; variant D).</text>
+
+  <g class="mk"><circle cx="1170" cy="768" r="12"/><text x="1170" y="772">8</text></g>
+  <text x="1192" y="772" class="s13 b">Assign</text>
+  <text x="1192" y="790" class="s12">Project Owner only, on unassigned tasks: one member of this project</text>
+  <text x="1192" y="807" class="s12">(FR-010, US-012; A-004). No reassign or unassign control (OQ-007).</text>
+
+  <g class="mk"><circle cx="1170" cy="833" r="12"/><text x="1170" y="837">9</text></g>
+  <text x="1192" y="837" class="s13 b">Rename task</text>
+  <text x="1192" y="855" class="s12">Project Owner only; nonempty title (FR-009, US-011, EX-011; A-004).</text>
+
+  <g class="mk"><circle cx="1170" cy="881" r="12"/><text x="1170" y="885">10</text></g>
+  <text x="1192" y="885" class="s13 b">Members and roles</text>
+  <text x="1192" y="903" class="s12">Each member and their role (FR-002, FR-004, FR-005; US-001, US-002,</text>
+  <text x="1192" y="920" class="s12">US-009; A-001). The creator is shown as Project Owner and member (A-008).</text>
+  <text x="1192" y="937" class="s12">How people are named on screen is open (OQ-011, OQ-018).</text>
+
+  <g class="mk"><circle cx="1170" cy="963" r="12"/><text x="1170" y="967">11</text></g>
+  <text x="1192" y="967" class="s13 b">Remove participant</text>
+  <text x="1192" y="985" class="s12">Project Owner only; a non-owner member without assigned tasks</text>
+  <text x="1192" y="1002" class="s12">(FR-005, US-009; A-002, A-009). Ana has tasks: unavailable, reason shown</text>
+  <text x="1192" y="1019" class="s12">(EX-007). No control for the Project Owner's membership (OQ-008).</text>
+
+  <g class="mk"><circle cx="1170" cy="1045" r="12"/><text x="1170" y="1049">12</text></g>
+  <text x="1192" y="1049" class="s13 b">Add participant</text>
+  <text x="1192" y="1067" class="s12">Project Owner only; grants access to this project (FR-004, US-002;</text>
+  <text x="1192" y="1084" class="s12">A-002). Finding and identifying the person is open (OQ-001, OQ-018).</text>
+
+  <line x1="1164" y1="1106" x2="1640" y2="1106" class="rule"/>
+  <text x="1164" y="1132" class="s13 b ac">Not on this screen</text>
+  <text x="1164" y="1150" class="s12">The project list and Create project (FR-001, FR-002, US-001, US-007).</text>
+  <text x="1164" y="1167" class="s12">No reassign or unassign (OQ-007), reopen project (OQ-006), or change</text>
+  <text x="1164" y="1184" class="s12">of Project Owner (OQ-008): unspecified, so not drawn.</text>
+  <text x="1164" y="1201" class="s12">Nothing from 'Outside the initial scope' in requirements.md.</text>
+
+  <text x="1164" y="1234" class="s13 b ac">Permissions</text>
+  <text x="1164" y="1252" class="s12">Hiding or disabling a control does not replace the checks of NFR-002</text>
+  <text x="1164" y="1269" class="s12">(OQ-019); every change is still subject to them.</text>
+
+  <text x="24" y="1304" class="s12 mu">Generated locally as SVG by the AI agent; no wireframing tool was used. The frame implies no device: devices and contexts of use are open (OQ-021), and how the interface is delivered is undecided (architecture.md).</text>
+</svg>
