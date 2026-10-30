@@ -28,6 +28,7 @@ Matriz is an application for work teams to organize projects (F01), manage tasks
 | `EX-xxx` | Exceptional case / edge case | [user-stories.md](docs/user-stories.md#edge-cases-and-exceptions) |
 | `A-xxx` | Assumption | [constraints.md](docs/constraints.md#assumptions) |
 | `OQ-xxx` | Open question / pending decision | [constraints.md](docs/constraints.md#open-questions) |
+| `ADR-xxx` | Architecture decision record (project team decision); *added on 2026-10-29 by team decision ([ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md), question 18)* | [docs/adr/README.md](docs/adr/README.md) |
 
 - IDs use three digits, are never reused, and are never renumbered.
 - Every user story links to at least one `FR-xxx`; every `FR-xxx` cites its origin (F01–F03) and the assumptions it relies on.
@@ -41,7 +42,7 @@ Matriz is an application for work teams to organize projects (F01), manage tasks
 
 ## Scope rules
 
-- Work only within the proposed MVP (FR-001–FR-012) described in [requirements.md](docs/requirements.md#mvp-scope).
+- Work only within the proposed MVP (FR-001–FR-025) described in [requirements.md](docs/requirements.md#mvp-scope). FR-013–FR-025 are team decisions, not client requests. *Changed on 2026-10-29 by team decision ([ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md), question 2: amend AGENTS.md to bring task comments into scope): previously FR-001–FR-012.*
 - Do not specify or implement anything listed in [Outside the initial scope](docs/requirements.md#outside-the-initial-scope).
 
 ## Agents must not
@@ -69,7 +70,9 @@ Matriz is an application for work teams to organize projects (F01), manage tasks
 
 ## Current phase and next steps
 
-- **Current phase:** Requirements specification v0.1 — draft awaiting client validation.
-- **Next:** Client validation of the open questions and assumptions; then architecture and prototyping (recorded through ADRs). No implementation starts before the MVP scope is approved (OQ-016).
+- **Current phase:** Requirements specification v0.2 — draft awaiting client validation. Implementation was provisionally authorized by the project team on 2026-10-29, at the team's risk, while the client's approval of the MVP scope stays open (OQ-016; [ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md), question 1).
+- **Next:** Increment I1 (walking skeleton) of the [implementation plan](docs/implementation-plan.md), then I2–I12 in dependency order. In parallel, client validation of the open questions, the assumptions, and the team's [interim answers](docs/constraints.md#interim-team-answers-2026-10-29). A client answer that differs from an interim answer prevails; record it in a new ADR or a register update, and re-plan the affected increments.
+
+*Changed on 2026-10-30 with the project team's approval: previously, the current phase was requirements specification v0.1, and no implementation was to start before the MVP scope was approved (OQ-016).*
 
 

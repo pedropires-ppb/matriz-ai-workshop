@@ -1,107 +1,1595 @@
 openapi: 3.1.0
 info:
   title: Matriz API — draft contract (pending validation)
-  version: 0.1.0-draft
-  summary: Draft contract for two proposed MVP task operations; not approved (OQ-016).
+  version: 0.2.0-draft
+  summary: Draft contract for the proposed MVP as extended by the team decisions of 2026-10-29; not client-approved (OQ-016).
   description: |
-    **Status: DRAFT — pending validation; not an approved contract.** The
-    client has not approved the proposed MVP scope
-    ([OQ-016](docs/constraints.md#open-questions)). Only the needs F01–F03 are
-    confirmed; every other rule here rests on proposed requirements and on
-    unvalidated assumptions in the
-    [assumption register](docs/constraints.md#assumptions). No implementation
-    starts before the MVP scope is approved. If this contract conflicts with
-    the specification in `docs/`, the specification prevails and the conflict
-    must be flagged.
+    **Status: DRAFT — pending client validation; not an approved contract.**
+    The client has not approved the proposed MVP scope
+    ([OQ-016](docs/constraints.md#open-questions)). Only the needs F01–F03
+    are confirmed. This version is aligned with the provisional decisions
+    taken by the project team on 2026-10-29
+    ([ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md);
+    [interim team answers](docs/constraints.md#interim-team-answers-2026-10-29)),
+    which extend the proposed MVP to FR-001–FR-025. They are team decisions,
+    not client approvals: every rule here still rests on proposed
+    requirements and on unvalidated assumptions in the
+    [assumption register](docs/constraints.md#assumptions). If this contract
+    conflicts with the specification in `docs/`, the specification prevails
+    and the conflict must be flagged.
 
-    **Scope.** Two operations of the proposed MVP, both on tasks (F02):
+    Behaviour that no cited requirement, assumption, or ADR states is a
+    proposal of this draft by the AI assistant, pending the team's review,
+    even where it is not marked as such.
 
-    | Operation | Requirement | User story |
-    |---|---|---|
-    | `createTask` | [FR-008](docs/requirements.md#functional-requirements) | [US-003](docs/user-stories.md#stories) |
-    | `changeTaskState` | [FR-011](docs/requirements.md#functional-requirements) | [US-005](docs/user-stories.md#stories) |
+    **Scope.** Every operation of the proposed MVP. Paths are relative to the
+    base path `/api` (see `servers`).
 
-    No other requirement is covered, and nothing
-    [outside the initial scope](docs/requirements.md#outside-the-initial-scope)
-    is specified.
+    | Operation | Request | Requirements | User stories |
+    |---|---|---|---|
+    | `signIn` | `POST /session` | [FR-013](docs/requirements.md#functional-requirements) | [US-013](docs/user-stories.md#stories) |
+    | `signOut` | `DELETE /session` | [FR-014](docs/requirements.md#functional-requirements) | [US-014](docs/user-stories.md#stories) |
+    | `getCurrentPerson` | `GET /me` | [FR-015](docs/requirements.md#functional-requirements) | [US-015](docs/user-stories.md#stories) |
+    | `listProjects` | `GET /projects` | [FR-001](docs/requirements.md#functional-requirements), [FR-022](docs/requirements.md#functional-requirements), [FR-024](docs/requirements.md#functional-requirements) | [US-007](docs/user-stories.md#stories), [US-023](docs/user-stories.md#stories), [US-025](docs/user-stories.md#stories) |
+    | `createProject` | `POST /projects` | [FR-002](docs/requirements.md#functional-requirements) | [US-001](docs/user-stories.md#stories) |
+    | `getProject` | `GET /projects/{projectId}` | [FR-001](docs/requirements.md#functional-requirements), [FR-012](docs/requirements.md#functional-requirements) | [US-006](docs/user-stories.md#stories), [US-007](docs/user-stories.md#stories) |
+    | `renameProject` | `PATCH /projects/{projectId}` | [FR-003](docs/requirements.md#functional-requirements) | [US-008](docs/user-stories.md#stories) |
+    | `deleteProject` | `DELETE /projects/{projectId}` | [FR-016](docs/requirements.md#functional-requirements) | [US-016](docs/user-stories.md#stories) |
+    | `completeProject` | `PUT /projects/{projectId}/state` | [FR-007](docs/requirements.md#functional-requirements) | [US-010](docs/user-stories.md#stories) |
+    | `listProjectMembers` | `GET /projects/{projectId}/members` | [FR-025](docs/requirements.md#functional-requirements) | [US-026](docs/user-stories.md#stories) |
+    | `listEligibleParticipants` | `GET /projects/{projectId}/eligible-participants` | [FR-004](docs/requirements.md#functional-requirements) | [US-002](docs/user-stories.md#stories) |
+    | `addParticipant` | `POST /projects/{projectId}/members` | [FR-004](docs/requirements.md#functional-requirements) | [US-002](docs/user-stories.md#stories) |
+    | `removeParticipant` | `DELETE /projects/{projectId}/members/{personId}` | [FR-005](docs/requirements.md#functional-requirements) | [US-009](docs/user-stories.md#stories) |
+    | `listTasks` | `GET /projects/{projectId}/tasks` | [FR-006](docs/requirements.md#functional-requirements), [FR-023](docs/requirements.md#functional-requirements) | [US-004](docs/user-stories.md#stories), [US-024](docs/user-stories.md#stories) |
+    | `createTask` | `POST /projects/{projectId}/tasks` | [FR-008](docs/requirements.md#functional-requirements), [FR-018](docs/requirements.md#functional-requirements) | [US-003](docs/user-stories.md#stories), [US-018](docs/user-stories.md#stories) |
+    | `getTask` | `GET /projects/{projectId}/tasks/{taskId}` | [FR-006](docs/requirements.md#functional-requirements) | [US-004](docs/user-stories.md#stories) |
+    | `updateTask` | `PATCH /projects/{projectId}/tasks/{taskId}` | [FR-009](docs/requirements.md#functional-requirements), [FR-018](docs/requirements.md#functional-requirements) | [US-011](docs/user-stories.md#stories), [US-018](docs/user-stories.md#stories) |
+    | `deleteTask` | `DELETE /projects/{projectId}/tasks/{taskId}` | [FR-017](docs/requirements.md#functional-requirements) | [US-017](docs/user-stories.md#stories) |
+    | `changeTaskState` | `PUT /projects/{projectId}/tasks/{taskId}/state` | [FR-011](docs/requirements.md#functional-requirements) | [US-005](docs/user-stories.md#stories) |
+    | `assignTask` | `POST /projects/{projectId}/tasks/{taskId}/assignees` | [FR-010](docs/requirements.md#functional-requirements), [FR-019](docs/requirements.md#functional-requirements) | [US-012](docs/user-stories.md#stories), [US-020](docs/user-stories.md#stories) |
+    | `unassignTask` | `DELETE /projects/{projectId}/tasks/{taskId}/assignees/{personId}` | [FR-010](docs/requirements.md#functional-requirements), [FR-019](docs/requirements.md#functional-requirements) | [US-019](docs/user-stories.md#stories), [US-020](docs/user-stories.md#stories) |
+    | `listTaskComments` | `GET /projects/{projectId}/tasks/{taskId}/comments` | [FR-021](docs/requirements.md#functional-requirements) | [US-022](docs/user-stories.md#stories) |
+    | `addTaskComment` | `POST /projects/{projectId}/tasks/{taskId}/comments` | [FR-020](docs/requirements.md#functional-requirements) | [US-021](docs/user-stories.md#stories) |
 
-    **Not decided by this draft.** REST is the scope of this documentation
-    exercise, not an approved implementation decision; the JSON
-    representations and the error format are proposals of this draft. No
-    technology, framework, storage, hosting, or base URL is chosen, so no
-    `servers` are declared ([OQ-020](docs/constraints.md#open-questions)). How
-    the User interface is delivered is not decided either
-    ([architecture](docs/architecture.md#decision-and-rationale)). Identifiers
-    and attributes correspond to the
-    [proposed data model](docs/database.md#entities), itself pending
-    validation.
+    Nothing [outside the initial scope](docs/requirements.md#outside-the-initial-scope)
+    is specified: there is no registration, password recovery, restore of
+    deleted items, comment editing or deletion, or notification.
 
-    **Identity.** Every operation requires the person's identity to be
-    established first
+    **Not decided by this draft.** The REST/JSON API as the single entry
+    point used by the web client, served under the base path `/api` on the
+    same origin as the web client, is a provisional team decision
+    ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)); this file
+    is its contract. The architectural style
+    ([ADR-001](docs/adr/ADR-001-modular-monolith.md)) and the technology
+    stack ([ADR-003](docs/adr/ADR-003-technology-stack.md)) are provisional
+    team decisions as well; this contract does not depend on them. Hosting
+    is open ([OQ-020](docs/constraints.md#open-questions)), so the server
+    URL is relative and no host is given. The JSON representations and the
+    error format are proposals of this draft. Identifiers and attributes
+    correspond to the [proposed data model](docs/database.md#entities),
+    itself pending validation.
+
+    **Identity.** Every operation except `signIn` requires the person's
+    identity to be established first
     ([NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
-    [Assumption A-014](docs/constraints.md#assumptions)). How identity is
-    established is undecided ([OQ-018](docs/constraints.md#open-questions)), so
-    no security scheme is declared; this absence does not mean that the
-    operations are public. `401` means that identity has not been
-    established; nothing is disclosed or changed
-    ([EX-012](docs/user-stories.md#edge-cases-and-exceptions)).
+    [Assumption A-014](docs/constraints.md#assumptions),
+    [Assumption A-016](docs/constraints.md#assumptions)). As a provisional
+    team decision ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)),
+    `signIn` exchanges the login name and password of a prepared account for
+    a signed JWT access token, which the client sends with every other
+    request as `Authorization: Bearer <token>` (security scheme
+    `bearerAuth`). After `signOut`, the presented token is no longer
+    accepted. A missing, malformed, invalid, expired, or revoked token
+    receives `401` with a `WWW-Authenticate: Bearer` challenge (RFC 6750);
+    nothing is disclosed or changed
+    ([EX-012](docs/user-stories.md#edge-cases-and-exceptions)). The token
+    lifetime, password rules, and the response to repeated failed attempts
+    are open ([OQ-027](docs/constraints.md#open-questions)), and so is how
+    identity will finally be established
+    ([OQ-018](docs/constraints.md#open-questions)).
 
-    **Access.** Project membership and role permissions apply to every request
+    **Access.** Project membership and role permissions apply to every
+    request
     ([NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
     [Assumption A-001](docs/constraints.md#assumptions),
-    [Assumption A-002](docs/constraints.md#assumptions)). A person who is not a
-    member of the project receives `404`, exactly as if the project did not
-    exist, so neither the project nor its tasks are disclosed
-    ([EX-003](docs/user-stories.md#edge-cases-and-exceptions)). A member whose
-    role or assignment does not permit the change receives `403`. Whether the
-    roles and permissions are correct
-    ([OQ-002](docs/constraints.md#open-questions)) and how they are enforced
-    consistently ([OQ-019](docs/constraints.md#open-questions)) are open.
+    [Assumption A-002](docs/constraints.md#assumptions);
+    [permission matrix](docs/requirements.md#permission-matrix-proposed)). A
+    person who is not a member of a project receives `404`, exactly as if
+    the project did not exist, so neither the project nor its members, tasks,
+    or comments are disclosed
+    ([EX-003](docs/user-stories.md#edge-cases-and-exceptions)). Deleted
+    projects and tasks receive `404` for everyone, exactly as if they did not
+    exist, and are excluded from every list, count, progress value, and
+    completion check ([Assumption A-022](docs/constraints.md#assumptions);
+    [OQ-023](docs/constraints.md#open-questions)). A member whose role or
+    assignment does not permit the request receives `403`. Whether the roles
+    and permissions are correct ([OQ-002](docs/constraints.md#open-questions))
+    and how they are enforced consistently
+    ([OQ-019](docs/constraints.md#open-questions)) are open; the interim
+    answer is that this API is the only entry point and checks every request
+    ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)).
 
     **Errors.** Errors are problem details (RFC 9457) in
     `application/problem+json`. `type` is omitted (meaning `about:blank`), so
-    `title` is the HTTP status phrase and `detail` explains the occurrence. If
-    a request fails several checks, the first applicable status in this order
-    is returned: `401`, `404`, `403`, `400`, `422`, `409`. A refused request
-    changes nothing. Texts in the examples are English illustrations; the
-    user-facing language is open ([OQ-013](docs/constraints.md#open-questions)),
-    and [Assumption A-013](docs/constraints.md#assumptions) proposes
-    Portuguese.
+    `title` is the HTTP status phrase and `detail` explains the occurrence.
+    `400` means that the request content is absent, is not in the
+    operation's media type, or is not well-formed JSON, or that a query
+    parameter value is invalid. `422` means well-formed content that does
+    not satisfy the request schema, including unknown properties; `errors`
+    points to each invalid member. If a request fails several checks, the
+    first applicable status in this order is returned: `401`, `404`, `403`,
+    `400`, `422`, `409`. The exceptions are stated where they apply: `signIn`
+    is public, so its order is `400`, `422`, `401`; and in `assignTask` the
+    `403` check needs the content. A refused request changes nothing. Texts
+    are in English, the proposed user-facing language
+    ([Assumption A-028](docs/constraints.md#assumptions);
+    [OQ-013](docs/constraints.md#open-questions)); enumeration values are
+    language-neutral codes, not labels.
+
+    **Lists.** Lists are returned whole; this draft defines no pagination,
+    because no volumes are known
+    ([OQ-010](docs/constraints.md#open-questions);
+    [ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)).
+    Query parameters that an operation does not define are ignored. Unless a
+    requirement is cited for it, the order of a list is a proposal of this
+    draft. Text matching follows
+    [Assumption A-024](docs/constraints.md#assumptions): the name contains
+    the search text, ignoring letter case, so partial words match; whether
+    accents are ignored is not decided
+    ([OQ-026](docs/constraints.md#open-questions)).
+
+    **Simultaneous changes.** The last change saved prevails. A change that
+    depends on a rule spanning projects, members, and tasks (for example,
+    completing a project only without unfinished tasks, or removing a
+    participant only without assigned tasks) is checked and applied as one
+    indivisible change, so the rule is never broken
+    ([Assumption A-029](docs/constraints.md#assumptions);
+    [ADR-006](docs/adr/ADR-006-simultaneous-changes.md)). No concurrency
+    tokens (`ETag`, `If-Match`, or versions) are defined. How the client
+    wants simultaneous changes resolved is still open
+    ([OQ-017](docs/constraints.md#open-questions)).
+
+    **Changes from 0.1.0-draft (breaking for the draft).**
+    - `Task.assignee` (one assignee or `null`) is replaced by
+      `Task.assignees` (zero or more), and the `Assignee` schema by
+      `PersonSummary`
+      ([FR-010](docs/requirements.md#functional-requirements);
+      [Assumption A-019](docs/constraints.md#assumptions)).
+    - `Task.priority` is added
+      ([FR-018](docs/requirements.md#functional-requirements);
+      [Assumption A-021](docs/constraints.md#assumptions)).
+    - Paths are relative to the base path `/api`, and every operation except
+      `signIn` requires a bearer token
+      ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md),
+      [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)).
+    - 21 operations are added; see the scope table.
 
     **Other open questions reflected, not answered:**
+    - who may create projects and how people receive access
+      ([OQ-001](docs/constraints.md#open-questions); interim:
+      [Assumption A-016](docs/constraints.md#assumptions),
+      [Assumption A-018](docs/constraints.md#assumptions));
     - naming rules beyond "nonempty"
       ([OQ-003](docs/constraints.md#open-questions));
     - task states and transitions
       ([OQ-004](docs/constraints.md#open-questions));
+    - what progress measures, and its rounding
+      ([OQ-005](docs/constraints.md#open-questions); interim:
+      [Assumption A-025](docs/constraints.md#assumptions),
+      [Assumption A-026](docs/constraints.md#assumptions));
     - reopening a Completed project and access after completion
       ([OQ-006](docs/constraints.md#open-questions),
       [OQ-008](docs/constraints.md#open-questions));
-    - simultaneous changes: no concurrency control is defined, and the
-      responses may change once [OQ-017](docs/constraints.md#open-questions)
-      is answered;
-    - personal data: people appear only as opaque identifiers; which data
-      identify or display a person is open
-      ([OQ-011](docs/constraints.md#open-questions),
-      [OQ-018](docs/constraints.md#open-questions)).
+    - unassignment and reassignment, several assignees, and self-assignment
+      ([OQ-007](docs/constraints.md#open-questions),
+      [OQ-025](docs/constraints.md#open-questions));
+    - Task priority ([OQ-022](docs/constraints.md#open-questions)),
+      deletion ([OQ-023](docs/constraints.md#open-questions)), comments
+      ([OQ-024](docs/constraints.md#open-questions)), and search and filter
+      matching ([OQ-026](docs/constraints.md#open-questions));
+    - personal data: display names, member lists, and comments identify
+      people, and which data may be processed and which obligations apply
+      is open ([OQ-011](docs/constraints.md#open-questions);
+      [NFR-003](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria)).
+      Login names are never returned. All examples use fictitious people.
+servers:
+  - url: /api
+    description: |
+      Base path of the API, on the same origin as the web client
+      ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)). The host
+      is not decided ([OQ-020](docs/constraints.md#open-questions)).
+security:
+  - bearerAuth: []
 tags:
+  - name: Identity
+    description: Signing in and out, and the signed-in person (NFR-001).
+  - name: Projects
+    description: Projects and their progress (F01, F03).
+  - name: Members
+    description: Members of a project and their roles (F01).
   - name: Tasks
-    description: Tasks of a project (F02). Only two task operations are drafted.
+    description: Tasks of a project, their Task priority, state, and assignees (F02).
+  - name: Comments
+    description: Comments on tasks (F02).
 paths:
+  /session:
+    post:
+      tags: [Identity]
+      operationId: signIn
+      summary: Sign in with a login name and password
+      security: []
+      description: |
+        Checks the login name and password of a prepared account and, if they
+        match, returns a signed access token for the other operations,
+        together with the signed-in person.
+
+        **Traceability:**
+        [FR-013](docs/requirements.md#functional-requirements);
+        [US-013](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-013--sign-in);
+        [EX-014](docs/user-stories.md#edge-cases-and-exceptions);
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+        [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md).
+
+        **Rules (proposed, not client-approved):**
+        - Only prepared accounts exist; there is no public registration or
+          password recovery
+          ([Assumption A-016](docs/constraints.md#assumptions),
+          [Assumption A-017](docs/constraints.md#assumptions);
+          [OQ-001](docs/constraints.md#open-questions)).
+        - This is the only public operation, so its order of checks is
+          `400`, `422`, `401`.
+        - A wrong password and an unknown login name receive the same `401`
+          with the same text, which never says which one was wrong or
+          whether the login name exists; the person is not signed in
+          ([EX-014](docs/user-stories.md#edge-cases-and-exceptions)).
+        - Each successful sign-in issues a new, independent token; an
+          `Authorization` header sent with this request is ignored
+          (proposal of this draft).
+        - Clients treat the token as opaque and use `expiresIn` to know
+          when to sign in again; there is no renewal operation (proposal of
+          this draft). The token lifetime, password rules, and the response
+          to repeated failed attempts are open
+          ([OQ-027](docs/constraints.md#open-questions)); this draft limits
+          no attempts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SignInRequest'
+            examples:
+              ana:
+                summary: US-013 — Ana signs in (placeholder password)
+                value:
+                  loginName: ana
+                  password: example-password
+      responses:
+        '200':
+          description: |
+            The person is signed in; the token and the signed-in person are
+            returned ([US-013](docs/user-stories.md#us-013--sign-in)).
+          headers:
+            Cache-Control:
+              description: |
+                The response contains a token, so it must not be stored by
+                caches (proposal of this draft).
+              required: true
+              schema:
+                type: string
+              example: no-store
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SignInResponse'
+              examples:
+                ana:
+                  summary: US-013 — Ana is signed in (illustrative token and lifetime)
+                  value:
+                    accessToken: example-access-token
+                    tokenType: Bearer
+                    expiresIn: 3600
+                    person:
+                      personId: 'c95e0a27'
+                      displayName: Ana Silva
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          description: |
+            The login name or password is incorrect; the person is not signed
+            in, and the response does not say which one was wrong
+            ([EX-014](docs/user-stories.md#edge-cases-and-exceptions)). The
+            challenge is sent because HTTP requires one with this status.
+          headers:
+            WWW-Authenticate:
+              $ref: '#/components/headers/WWWAuthenticate'
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                incorrectCredentials:
+                  summary: EX-014 — wrong password, or unknown login name
+                  value:
+                    title: Unauthorized
+                    status: 401
+                    detail: The login name or password is incorrect.
+        '422':
+          description: |
+            The content does not satisfy `SignInRequest`: it is not a JSON
+            object, `loginName` or `password` is missing, empty, or not a
+            string, or another property is present. Nothing is checked
+            against the accounts, and `errors` identifies each invalid
+            member.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                emptyPassword:
+                  summary: 'Response to {"loginName": "ana", "password": ""}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: A login name and a password are required.
+                    errors:
+                      - pointer: /password
+                        detail: A password is required.
+    delete:
+      tags: [Identity]
+      operationId: signOut
+      summary: Sign out
+      description: |
+        Ends the sign-in of the presented access token: afterwards that token
+        is no longer accepted, and any request that presents it receives
+        `401`.
+
+        **Traceability:**
+        [FR-014](docs/requirements.md#functional-requirements);
+        [US-014](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-014--sign-out);
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions);
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+        [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md).
+
+        **Rules (proposed, not client-approved):**
+        - Only the presented token is ended; other sign-ins of the same
+          person are not affected (proposal of this draft).
+        - The token is refused from then on, until it would have expired;
+          [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md) proposes that
+          the server keeps the identifiers of ended tokens until then, and
+          records this as an open point.
+        - Signing out again with the same token receives `401`, because the
+          token is no longer accepted.
+        - The effect of signing out is part of the open session policy
+          ([OQ-027](docs/constraints.md#open-questions)).
+      responses:
+        '204':
+          description: |
+            The sign-in has ended; the presented token is no longer accepted
+            ([US-014](docs/user-stories.md#us-014--sign-out)).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /me:
+    get:
+      tags: [Identity]
+      operationId: getCurrentPerson
+      summary: Show the signed-in person
+      description: |
+        Returns the identifier and display name of the signed-in person, so
+        that the client can show who is signed in.
+
+        **Traceability:**
+        [FR-015](docs/requirements.md#functional-requirements);
+        [US-015](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-015--see-who-is-signed-in);
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions);
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Only the identifier and display name are returned; the login name
+          is never returned (proposal of this draft;
+          [Assumption A-017](docs/constraints.md#assumptions);
+          [OQ-011](docs/constraints.md#open-questions)).
+      responses:
+        '200':
+          description: The signed-in person.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PersonSummary'
+              examples:
+                ana:
+                  summary: US-015 — Ana Silva is signed in
+                  value:
+                    personId: 'c95e0a27'
+                    displayName: Ana Silva
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+  /projects:
+    get:
+      tags: [Projects]
+      operationId: listProjects
+      summary: List or search the signed-in person's projects (My projects)
+      description: |
+        Returns the signed-in person's accessible projects, Active and
+        Completed, each with its name, state, the person's role, and its task
+        counts by state. With `name`, only the projects whose name contains
+        that text, ignoring letter case, are returned.
+
+        **Traceability:**
+        [FR-001](docs/requirements.md#functional-requirements),
+        [FR-022](docs/requirements.md#functional-requirements),
+        [FR-024](docs/requirements.md#functional-requirements);
+        [US-007](docs/user-stories.md#stories),
+        [US-023](docs/user-stories.md#stories), and
+        [US-025](docs/user-stories.md#stories) and their acceptance criteria
+        ([US-007](docs/user-stories.md#us-007--view-accessible-projects),
+        [US-023](docs/user-stories.md#us-023--search-projects),
+        [US-025](docs/user-stories.md#us-025--view-my-projects));
+        [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-025](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Only accessible projects are returned: projects of which the
+          person is not a member, and deleted projects, are never listed,
+          also when their name matches `name`
+          ([EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+          [EX-025](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-002](docs/constraints.md#assumptions),
+          [Assumption A-022](docs/constraints.md#assumptions)).
+        - Completed projects stay listed, with state `COMPLETED`
+          ([Assumption A-011](docs/constraints.md#assumptions)).
+        - `name` selects the projects whose name contains the text, ignoring
+          letter case ([Assumption A-024](docs/constraints.md#assumptions)),
+          so partial words match; whether accents are ignored is not decided
+          ([OQ-026](docs/constraints.md#open-questions)). An empty `name`
+          receives `400` (proposal of this draft).
+        - Each project has its own task counts by state, not counting
+          deleted tasks; no totals across projects are returned
+          ([Assumption A-022](docs/constraints.md#assumptions),
+          [Assumption A-025](docs/constraints.md#assumptions);
+          [OQ-005](docs/constraints.md#open-questions)).
+        - An empty list is a successful response: the client then says that
+          the person has no projects yet, or that no projects match.
+        - Order: by name (proposal of this draft; no requirement specifies
+          an order).
+      parameters:
+        - name: name
+          in: query
+          required: false
+          description: |
+            Search text; only projects whose name contains it, ignoring
+            letter case, are returned
+            ([Assumption A-024](docs/constraints.md#assumptions)).
+          schema:
+            type: string
+            minLength: 1
+          example: web
+      responses:
+        '200':
+          description: The person's accessible projects, possibly none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ProjectSummary'
+              examples:
+                myProjects:
+                  summary: US-025 AC1 — Active project A and Completed project B; C is not listed
+                  value:
+                    - projectId: '7f3a9c1e'
+                      name: Project Alpha
+                      state: ACTIVE
+                      myRole: PROJECT_PARTICIPANT
+                      taskCounts:
+                        toDo: 2
+                        inProgress: 1
+                        done: 1
+                    - projectId: 'b4e2d6a1'
+                      name: Project Gamma
+                      state: COMPLETED
+                      myRole: PROJECT_OWNER
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 3
+                searchWeb:
+                  summary: US-023 — response to ?name=web
+                  value:
+                    - projectId: 'd3f6a8b1'
+                      name: Website Redesign
+                      state: ACTIVE
+                      myRole: PROJECT_PARTICIPANT
+                      taskCounts:
+                        toDo: 3
+                        inProgress: 1
+                        done: 0
+                noMatch:
+                  summary: EX-025 — response to ?name=audit; a non-member project matches but is not listed
+                  value: []
+                noProjects:
+                  summary: US-025 AC3 — the person is a member of no project
+                  value: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    post:
+      tags: [Projects]
+      operationId: createProject
+      summary: Create a project
+      description: |
+        Creates an Active project with a nonempty name. The signed-in person
+        becomes its Project Owner and a member.
+
+        **Traceability:**
+        [FR-002](docs/requirements.md#functional-requirements);
+        [US-001](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-001--create-project);
+        [EX-001](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-012](docs/user-stories.md#edge-cases-and-exceptions)
+        and
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Any signed-in person may create projects, so there is no `403`
+          ([Assumption A-018](docs/constraints.md#assumptions);
+          [OQ-001](docs/constraints.md#open-questions)).
+        - The creator becomes the project's Project Owner and a member
+          ([Assumption A-008](docs/constraints.md#assumptions)), and the
+          project starts Active
+          ([Assumption A-003](docs/constraints.md#assumptions)); neither can
+          be chosen.
+        - The name is required and nonempty; an empty name creates no
+          project and returns `422` with an error for `/name`
+          ([EX-001](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-003](docs/constraints.md#assumptions)). Other naming
+          rules, including uniqueness, are open
+          ([OQ-003](docs/constraints.md#open-questions)) and are not
+          enforced.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateProjectRequest'
+            examples:
+              projectAlpha:
+                summary: US-001 — create "Project Alpha"
+                value:
+                  name: Project Alpha
+      responses:
+        '201':
+          description: |
+            The project was created, Active, with the signed-in person as its
+            Project Owner ([US-001](docs/user-stories.md#us-001--create-project)).
+          headers:
+            Location:
+              description: URI reference of the created project (`getProject`).
+              required: true
+              schema:
+                type: string
+                format: uri-reference
+              example: /api/projects/7f3a9c1e
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+              examples:
+                projectAlpha:
+                  summary: US-001 AC1 — "Project Alpha", Active, created by its Project Owner
+                  value:
+                    projectId: '7f3a9c1e'
+                    name: Project Alpha
+                    state: ACTIVE
+                    myRole: PROJECT_OWNER
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 0
+                      percentDone: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '422':
+          description: |
+            The content does not satisfy `CreateProjectRequest`: it is not a
+            JSON object, `name` is missing, empty, or not a string, or another
+            property is present. No project is created, and `errors`
+            identifies each invalid member
+            ([EX-001](docs/user-stories.md#edge-cases-and-exceptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                emptyName:
+                  summary: 'EX-001 — response to {"name": ""}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: A project name is required.
+                    errors:
+                      - pointer: /name
+                        detail: A name is required.
+  /projects/{projectId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Projects]
+      operationId: getProject
+      summary: View a project and its progress
+      description: |
+        Returns an accessible project with its name, state, the person's
+        role, and its progress: task counts by state and the percentage Done.
+
+        **Traceability:**
+        [FR-001](docs/requirements.md#functional-requirements),
+        [FR-012](docs/requirements.md#functional-requirements);
+        [US-006](docs/user-stories.md#stories) and
+        [US-007](docs/user-stories.md#stories) and their acceptance criteria
+        ([US-006](docs/user-stories.md#us-006--view-progress),
+        [US-007](docs/user-stories.md#us-007--view-accessible-projects));
+        [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-005](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-027](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Progress counts only tasks that are not deleted
+          ([Assumption A-006](docs/constraints.md#assumptions),
+          [Assumption A-022](docs/constraints.md#assumptions)); task filters
+          never change it
+          ([EX-026](docs/user-stories.md#edge-cases-and-exceptions)).
+        - `percentDone` is Done tasks / all tasks × 100, rounded to the
+          nearest whole number, halves up: 1 of 3 is 33, 2 of 3 is 67, and
+          1 of 8 is 13
+          ([EX-027](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-026](docs/constraints.md#assumptions);
+          [OQ-005](docs/constraints.md#open-questions)).
+        - With zero tasks, the counts are 0 and `percentDone` is `null`; the
+          client shows "No tasks", never 0% or 100%
+          ([EX-005](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-006](docs/constraints.md#assumptions)).
+        - Completed projects remain viewable
+          ([Assumption A-011](docs/constraints.md#assumptions)).
+      responses:
+        '200':
+          description: The project and its progress.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+              examples:
+                fourTasks:
+                  summary: US-006 AC1 — 1 To do, 1 In progress, 2 Done; 50%
+                  value:
+                    projectId: '7f3a9c1e'
+                    name: Project Alpha
+                    state: ACTIVE
+                    myRole: PROJECT_PARTICIPANT
+                    progress:
+                      taskCounts:
+                        toDo: 1
+                        inProgress: 1
+                        done: 2
+                      percentDone: 50
+                noTasks:
+                  summary: US-006 AC2 and EX-005 — zero tasks; the client shows "No tasks"
+                  value:
+                    projectId: 'a61f0d93'
+                    name: Project Delta
+                    state: ACTIVE
+                    myRole: PROJECT_PARTICIPANT
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 0
+                      percentDone: null
+                oneOfThreeDone:
+                  summary: EX-027 — 1 of 3 tasks Done; 33%
+                  value:
+                    projectId: 'c2d8e4f6'
+                    name: Project Sigma
+                    state: ACTIVE
+                    myRole: PROJECT_PARTICIPANT
+                    progress:
+                      taskCounts:
+                        toDo: 1
+                        inProgress: 1
+                        done: 1
+                      percentDone: 33
+                completed:
+                  summary: US-007 AC2 — a Completed project remains viewable
+                  value:
+                    projectId: 'b4e2d6a1'
+                    name: Project Gamma
+                    state: COMPLETED
+                    myRole: PROJECT_OWNER
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 3
+                      percentDone: 100
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ProjectNotFound'
+    patch:
+      tags: [Projects]
+      operationId: renameProject
+      summary: Rename a project
+      description: |
+        Changes the name of an Active project. The content is a JSON Merge
+        Patch ([RFC 7396](https://www.rfc-editor.org/rfc/rfc7396)) in which
+        only `name` may appear.
+
+        **Traceability:**
+        [FR-003](docs/requirements.md#functional-requirements);
+        [US-008](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-008--rename-project);
+        [EX-009](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-010](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may rename it
+          ([Assumption A-001](docs/constraints.md#assumptions)).
+        - `name` is required and must be a nonempty string; `null`, which
+          would remove the name under JSON Merge Patch, and an empty name
+          are refused with `422`, and the project keeps its name
+          ([EX-010](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-003](docs/constraints.md#assumptions)). Other naming
+          rules are open ([OQ-003](docs/constraints.md#open-questions)).
+        - A Completed project cannot be renamed
+          ([EX-009](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-011](docs/constraints.md#assumptions)).
+        - Renaming to the current name succeeds and changes nothing
+          (proposal of this draft).
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/RenameProjectRequest'
+            examples:
+              projectBeta:
+                summary: US-008 — rename "Project Alpha" to "Project Beta"
+                value:
+                  name: Project Beta
+      responses:
+        '200':
+          description: |
+            The project was renamed; the updated project is returned
+            ([US-008](docs/user-stories.md#us-008--rename-project)).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+              examples:
+                projectBeta:
+                  summary: US-008 — the project now displays "Project Beta"
+                  value:
+                    projectId: '7f3a9c1e'
+                    name: Project Beta
+                    state: ACTIVE
+                    myRole: PROJECT_OWNER
+                    progress:
+                      taskCounts:
+                        toDo: 1
+                        inProgress: 1
+                        done: 2
+                      percentDone: 50
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotProjectOwner'
+        '404':
+          $ref: '#/components/responses/ProjectNotFound'
+        '409':
+          $ref: '#/components/responses/ProjectCompleted'
+          description: |
+            The project is Completed, so it cannot be renamed; its name is
+            unchanged
+            ([EX-009](docs/user-stories.md#edge-cases-and-exceptions)).
+        '422':
+          description: |
+            The content does not satisfy `RenameProjectRequest`: it is not a
+            JSON object, `name` is missing, `null`, empty, or not a string,
+            or another property is present. The name is unchanged, and
+            `errors` identifies each invalid member
+            ([EX-010](docs/user-stories.md#edge-cases-and-exceptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                emptyName:
+                  summary: 'EX-010 — response to {"name": ""}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: A project name is required.
+                    errors:
+                      - pointer: /name
+                        detail: A name is required.
+                nullName:
+                  summary: 'Response to {"name": null}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: A project name is required.
+                    errors:
+                      - pointer: /name
+                        detail: The name cannot be removed.
+    delete:
+      tags: [Projects]
+      operationId: deleteProject
+      summary: Delete a project
+      description: |
+        Deletes an Active project: from then on it is hidden from everyone,
+        as if it did not exist, but its data is kept in storage.
+
+        **Traceability:**
+        [FR-016](docs/requirements.md#functional-requirements);
+        [US-016](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-016--delete-project);
+        [EX-015](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-016](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+        soft deletion in [database.md](docs/database.md#rules-not-shown-in-the-diagram).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may delete it
+          ([EX-016](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-001](docs/constraints.md#assumptions)).
+        - A Completed project cannot be deleted
+          ([EX-015](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-011](docs/constraints.md#assumptions),
+          [Assumption A-022](docs/constraints.md#assumptions)).
+        - A deleted project, with its members, tasks, assignments, and
+          comments, receives `404` for everyone and is no longer listed by
+          any operation; deleting it again also receives `404`
+          ([Assumption A-022](docs/constraints.md#assumptions)).
+        - The data is kept, and there is no restore operation; what is kept,
+          for how long, restoring, and purging are open
+          ([OQ-023](docs/constraints.md#open-questions)).
+        - Asking the person to confirm is a step of the client, not of this
+          API: this request is sent only after confirmation, and cancelling
+          sends nothing, so the project is unchanged
+          ([US-016](docs/user-stories.md#us-016--delete-project),
+          acceptance criterion 2).
+      responses:
+        '204':
+          description: |
+            The project is deleted and hidden from everyone
+            ([US-016](docs/user-stories.md#us-016--delete-project)).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotProjectOwner'
+          description: |
+            The person is a Project Participant, not the Project Owner of
+            this project; nothing is deleted
+            ([EX-016](docs/user-stories.md#edge-cases-and-exceptions)).
+        '404':
+          $ref: '#/components/responses/ProjectNotFound'
+        '409':
+          $ref: '#/components/responses/ProjectCompleted'
+          description: |
+            The project is Completed, so it cannot be deleted; it remains
+            visible and unchanged
+            ([EX-015](docs/user-stories.md#edge-cases-and-exceptions)).
+  /projects/{projectId}/state:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    put:
+      tags: [Projects]
+      operationId: completeProject
+      summary: Complete a project
+      description: |
+        Changes the state of an Active project to Completed. Completing is
+        the only change of project state in this draft.
+
+        **Traceability:**
+        [FR-007](docs/requirements.md#functional-requirements);
+        [US-010](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-010--complete-project);
+        [EX-006](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-018](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may complete it
+          ([Assumption A-001](docs/constraints.md#assumptions)).
+        - The project can be completed only if none of its tasks is To do or
+          In progress; a project with zero tasks can be completed. This
+          interpretation needs explicit client approval
+          ([EX-006](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-007](docs/constraints.md#assumptions);
+          [OQ-006](docs/constraints.md#open-questions)).
+        - Deleted tasks are not counted as unfinished, so deleting the last
+          unfinished task makes the project completable
+          ([EX-018](docs/user-stories.md#edge-cases-and-exceptions);
+          [OQ-023](docs/constraints.md#open-questions)).
+        - The check for unfinished tasks and the change of state happen in
+          one indivisible step, so a task changed at the same time cannot be
+          left unfinished in a Completed project
+          ([Assumption A-029](docs/constraints.md#assumptions);
+          [ADR-006](docs/adr/ADR-006-simultaneous-changes.md)).
+        - `state` can only be `COMPLETED`; reopening a Completed project is
+          not defined ([OQ-006](docs/constraints.md#open-questions)), so any
+          other value receives `422`.
+        - Completing a project that is already Completed receives `409`
+          rather than succeeding unchanged (proposal of this draft).
+        - Once Completed, the project and its tasks are read-only, except
+          that comments can still be added
+          ([Assumption A-011](docs/constraints.md#assumptions),
+          [Assumption A-023](docs/constraints.md#assumptions)).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteProjectRequest'
+            examples:
+              complete:
+                summary: US-010 — complete the project
+                value:
+                  state: COMPLETED
+      responses:
+        '200':
+          description: |
+            The project is Completed; the updated project is returned
+            ([US-010](docs/user-stories.md#us-010--complete-project)).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Project'
+              examples:
+                allDone:
+                  summary: US-010 AC1 — all tasks were Done
+                  value:
+                    projectId: '7f3a9c1e'
+                    name: Project Alpha
+                    state: COMPLETED
+                    myRole: PROJECT_OWNER
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 4
+                      percentDone: 100
+                noTasks:
+                  summary: US-010 AC2 — zero tasks (needs explicit client approval, A-007)
+                  value:
+                    projectId: 'a61f0d93'
+                    name: Project Delta
+                    state: COMPLETED
+                    myRole: PROJECT_OWNER
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 0
+                      percentDone: null
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotProjectOwner'
+        '404':
+          $ref: '#/components/responses/ProjectNotFound'
+        '409':
+          description: |
+            The project cannot be completed: at least one of its tasks is To
+            do or In progress, so it remains Active
+            ([EX-006](docs/user-stories.md#edge-cases-and-exceptions)), or it
+            is already Completed.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unfinishedTasks:
+                  summary: EX-006 — a task is To do or In progress
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The project has tasks that are To do or In progress; it remains Active.
+                alreadyCompleted:
+                  summary: The project is already Completed
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The project is Completed; it cannot be changed.
+        '422':
+          description: |
+            The content does not satisfy `CompleteProjectRequest`: it is not
+            a JSON object, `state` is missing or is not `COMPLETED`, or
+            another property is present. Reopening is not defined
+            ([OQ-006](docs/constraints.md#open-questions)). The state is
+            unchanged, and `errors` identifies each invalid member.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                reopen:
+                  summary: 'Response to {"state": "ACTIVE"}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: A project can only be changed to the state COMPLETED.
+                    errors:
+                      - pointer: /state
+                        detail: The only accepted value is COMPLETED.
+  /projects/{projectId}/members:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Members]
+      operationId: listProjectMembers
+      summary: List the members of a project and their roles
+      description: |
+        Returns every member of an accessible project, with their display
+        name and role. The client also uses it to show who can be assigned
+        to tasks, since any member is an eligible assignee.
+
+        **Traceability:**
+        [FR-025](docs/requirements.md#functional-requirements);
+        [US-026](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-026--view-members);
+        also supports [US-001](docs/user-stories.md#stories), acceptance
+        criterion [2](docs/user-stories.md#us-001--create-project),
+        [US-002](docs/user-stories.md#us-002--add-participant),
+        [US-009](docs/user-stories.md#us-009--remove-participant), and the
+        choice of assignees in
+        [US-012](docs/user-stories.md#us-012--assign-task); access rules
+        from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Every member, not only the Project Owner, may see the member list
+          ([Assumption A-027](docs/constraints.md#assumptions)), also in a
+          Completed project.
+        - Each member appears once, with role `PROJECT_OWNER` or
+          `PROJECT_PARTICIPANT`; the Project Owner is also a member
+          ([Assumption A-001](docs/constraints.md#assumptions),
+          [Assumption A-008](docs/constraints.md#assumptions)). Removed
+          members are not listed.
+        - Only display names are returned, never login names
+          ([Assumption A-017](docs/constraints.md#assumptions);
+          [OQ-011](docs/constraints.md#open-questions)).
+        - Order: the Project Owner first, then the other members by display
+          name (proposal of this draft).
+      responses:
+        '200':
+          description: The members of the project and their roles.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Member'
+              examples:
+                anaRuiEva:
+                  summary: US-026 — Ana is the Project Owner; Rui and Eva are Project Participants
+                  value:
+                    - person:
+                        personId: 'c95e0a27'
+                        displayName: Ana Silva
+                      role: PROJECT_OWNER
+                    - person:
+                        personId: '0d4a7e3b'
+                        displayName: Eva Santos
+                      role: PROJECT_PARTICIPANT
+                    - person:
+                        personId: '3e7b5a90'
+                        displayName: Rui Martins
+                      role: PROJECT_PARTICIPANT
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ProjectNotFound'
+    post:
+      tags: [Members]
+      operationId: addParticipant
+      summary: Add a person to a project as a Project Participant
+      description: |
+        Makes an existing person who is not yet a member a Project
+        Participant of an Active project, so that they can view and work on
+        it.
+
+        **Traceability:**
+        [FR-004](docs/requirements.md#functional-requirements);
+        [US-002](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-002--add-participant);
+        access rules from
+        [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may add members
+          ([Assumption A-001](docs/constraints.md#assumptions)).
+        - The person always becomes a Project Participant; the role cannot
+          be chosen, and ownership cannot be transferred
+          ([OQ-002](docs/constraints.md#open-questions),
+          [OQ-008](docs/constraints.md#open-questions)).
+        - `personId` must identify an existing person, otherwise `422` with
+          an error for `/personId`; `listEligibleParticipants` returns the
+          people who can be added.
+        - A person who is already a member, including the Project Owner,
+          receives `409`, and nothing changes.
+        - Members cannot be added to a Completed project
+          ([Assumption A-011](docs/constraints.md#assumptions)).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AddParticipantRequest'
+            examples:
+              daniel:
+                summary: US-002 — the Project Owner adds Daniel Rocha
+                value:
+                  personId: '6c0f9b25'
+      responses:
+        '201':
+          description: |
+            The person is now a Project Participant and can view the project
+            ([US-002](docs/user-stories.md#us-002--add-participant)).
+          headers:
+            Location:
+              description: |
+                URI reference of the new membership; it is the path of
+                `removeParticipant`, and no read operation is defined on it.
+              required: true
+              schema:
+                type: string
+                format: uri-reference
+              example: /api/projects/7f3a9c1e/members/6c0f9b25
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Member'
+              examples:
+                daniel:
+                  summary: US-002 — Daniel Rocha is a Project Participant
+                  value:
+                    person:
+                      personId: '6c0f9b25'
+                      displayName: Daniel Rocha
+                    role: PROJECT_PARTICIPANT
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotProjectOwner'
+        '404':
+          $ref: '#/components/responses/ProjectNotFound'
+        '409':
+          description: |
+            The person is already a member of the project, or the project is
+            Completed; nothing changes.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                alreadyMember:
+                  summary: The person is already a member
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The person is already a member of the project.
+                projectCompleted:
+                  summary: The project is Completed
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The project is Completed; it cannot be changed.
+        '422':
+          description: |
+            The content does not satisfy `AddParticipantRequest` (it is not a
+            JSON object, `personId` is missing or not a valid `Identifier`,
+            or another property is present), or `personId` does not identify
+            an existing person. Nothing changes, and `errors` identifies each
+            invalid member.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                unknownPerson:
+                  summary: '`personId` identifies no person'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: The person to add was not found.
+                    errors:
+                      - pointer: /personId
+                        detail: No person has this identifier.
+                missingPersonId:
+                  summary: 'Response to {}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: The person to add is required.
+                    errors:
+                      - pointer: /personId
+                        detail: A person identifier is required.
+  /projects/{projectId}/members/{personId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/PersonId'
+    delete:
+      tags: [Members]
+      operationId: removeParticipant
+      summary: Remove a Project Participant from a project
+      description: |
+        Removes a Project Participant from an Active project; the person can
+        then no longer view the project.
+
+        **Traceability:**
+        [FR-005](docs/requirements.md#functional-requirements);
+        [US-009](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-009--remove-participant);
+        [US-017](docs/user-stories.md#stories), acceptance criterion
+        [2](docs/user-stories.md#us-017--delete-task);
+        [EX-007](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+        member removal in
+        [database.md](docs/database.md#rules-not-shown-in-the-diagram).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may remove members; a Project
+          Participant cannot remove anyone, including themselves (proposal of
+          this draft: leaving a project is not specified).
+        - `404` also when `personId` does not identify a member of the
+          project. As every `404`, it is checked before the Project Owner
+          check; it discloses nothing new, because every member can see the
+          member list ([Assumption A-027](docs/constraints.md#assumptions)).
+        - The Project Owner cannot be removed
+          ([Assumption A-009](docs/constraints.md#assumptions);
+          [OQ-008](docs/constraints.md#open-questions)).
+        - A member who is an assignee of a task that is not deleted cannot
+          be removed; their assignments must be removed first, or the tasks
+          deleted
+          ([EX-007](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-009](docs/constraints.md#assumptions),
+          [Assumption A-022](docs/constraints.md#assumptions);
+          [OQ-007](docs/constraints.md#open-questions)). The check and the
+          removal happen in one indivisible step, so an assignment made at
+          the same time cannot be left without its member
+          ([Assumption A-029](docs/constraints.md#assumptions);
+          [ADR-006](docs/adr/ADR-006-simultaneous-changes.md)).
+        - Members cannot be removed from a Completed project
+          ([Assumption A-011](docs/constraints.md#assumptions)).
+        - The removed person's comments are kept and still show them as
+          author, because comments cannot be deleted (proposal of this draft,
+          following [Assumption A-023](docs/constraints.md#assumptions)).
+      responses:
+        '204':
+          description: |
+            The person is no longer a member and can no longer view the
+            project ([US-009](docs/user-stories.md#us-009--remove-participant)).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotProjectOwner'
+        '404':
+          description: |
+            The project does not exist, is deleted, or is not accessible to
+            the signed-in person, or `personId` does not identify a member of
+            the project.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  summary: Unknown, deleted, or inaccessible project, or not a member
+                  value:
+                    title: Not Found
+                    status: 404
+                    detail: The project or member does not exist or is not accessible.
+        '409':
+          description: |
+            The person is the Project Owner, is an assignee of at least one
+            task that is not deleted
+            ([EX-007](docs/user-stories.md#edge-cases-and-exceptions)), or
+            the project is Completed. The person remains a member.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                projectOwner:
+                  summary: The person is the Project Owner
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The Project Owner cannot be removed from the project.
+                assignedTasks:
+                  summary: EX-007 — the person has assigned tasks
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The person is assigned to tasks of this project; remove those assignments first.
+                projectCompleted:
+                  summary: The project is Completed
+                  value:
+                    title: Conflict
+                    status: 409
+                    detail: The project is Completed; it cannot be changed.
+  /projects/{projectId}/eligible-participants:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Members]
+      operationId: listEligibleParticipants
+      summary: List the people who can be added to a project
+      description: |
+        Returns the people who are not members of the project, so that its
+        Project Owner can choose whom to add with `addParticipant`.
+
+        **Traceability:**
+        [FR-004](docs/requirements.md#functional-requirements);
+        [US-002](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-002--add-participant);
+        access rules from
+        [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may use it
+          ([Assumption A-001](docs/constraints.md#assumptions)). It also
+          answers for a Completed project, although nobody can be added to
+          it (proposal of this draft).
+        - Every person who is not a member of the project is returned, with
+          identifier and display name only; login names are never returned
+          ([Assumption A-016](docs/constraints.md#assumptions),
+          [Assumption A-017](docs/constraints.md#assumptions)). This
+          discloses the display names of people outside the Project Owner's
+          projects, and any signed-in person can become a Project Owner
+          ([Assumption A-018](docs/constraints.md#assumptions)). This rule is
+          a proposal registered as
+          [Assumption A-030](docs/constraints.md#assumptions), not yet
+          decided by the team; which personal data may be shown, and to whom,
+          is open ([OQ-011](docs/constraints.md#open-questions);
+          [NFR-003](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria)).
+        - `name` selects the people whose display name contains the text,
+          ignoring letter case (proposal of this draft, following
+          [Assumption A-024](docs/constraints.md#assumptions);
+          [OQ-026](docs/constraints.md#open-questions)). An empty `name`
+          receives `400`.
+        - Order: by display name (proposal of this draft).
+      parameters:
+        - name: name
+          in: query
+          required: false
+          description: |
+            Search text; only people whose display name contains it, ignoring
+            letter case, are returned.
+          schema:
+            type: string
+            minLength: 1
+          example: rocha
+      responses:
+        '200':
+          description: The people who are not members of the project, possibly none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PersonSummary'
+              examples:
+                everyone:
+                  summary: US-002 — the people who can be added
+                  value:
+                    - personId: 'e8a1c3d7'
+                      displayName: Carla Mendes
+                    - personId: '6c0f9b25'
+                      displayName: Daniel Rocha
+                searchRocha:
+                  summary: Response to ?name=rocha
+                  value:
+                    - personId: '6c0f9b25'
+                      displayName: Daniel Rocha
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotProjectOwner'
+        '404':
+          $ref: '#/components/responses/ProjectNotFound'
   /projects/{projectId}/tasks:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
+    get:
+      tags: [Tasks]
+      operationId: listTasks
+      summary: List or filter the tasks of a project
+      description: |
+        Returns the tasks of an accessible project, each with its title,
+        state, Task priority, and assignees. With `state` or `priority`, only
+        the matching tasks are returned.
+
+        **Traceability:**
+        [FR-006](docs/requirements.md#functional-requirements),
+        [FR-023](docs/requirements.md#functional-requirements);
+        [US-004](docs/user-stories.md#stories) and
+        [US-024](docs/user-stories.md#stories) and their acceptance criteria
+        ([US-004](docs/user-stories.md#us-004--view-tasks),
+        [US-024](docs/user-stories.md#us-024--filter-tasks));
+        [EX-026](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Every member may view the tasks, also in a Completed project
+          ([Assumption A-002](docs/constraints.md#assumptions),
+          [Assumption A-011](docs/constraints.md#assumptions)). Deleted
+          tasks are never listed
+          ([Assumption A-022](docs/constraints.md#assumptions)).
+        - A task matches if its state is any of the given `state` values and
+          its Task priority is any of the given `priority` values; an absent
+          parameter does not restrict, and repeating a value has no further
+          effect ([Assumption A-024](docs/constraints.md#assumptions);
+          [OQ-026](docs/constraints.md#open-questions)).
+        - Values are the codes of `TaskState` and `TaskPriority`, never
+          labels; any other value, including an empty one, receives `400`.
+        - Filters change only this list: progress, returned by `getProject`,
+          always counts every task that is not deleted
+          ([EX-026](docs/user-stories.md#edge-cases-and-exceptions)).
+        - An empty list is a successful response: the client then says that
+          the project has no tasks, or that no tasks match the filters
+          ([EX-026](docs/user-stories.md#edge-cases-and-exceptions)).
+        - Order: by creation, oldest first (proposal of this draft).
+      parameters:
+        - name: state
+          in: query
+          required: false
+          description: |
+            Task state to include; repeat the parameter to include several
+            (`?state=TO_DO&state=IN_PROGRESS`).
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/components/schemas/TaskState'
+          example: [TO_DO, IN_PROGRESS]
+        - name: priority
+          in: query
+          required: false
+          description: |
+            Task priority to include; repeat the parameter to include several
+            (`?priority=MEDIUM&priority=HIGH`).
+          style: form
+          explode: true
+          schema:
+            type: array
+            minItems: 1
+            items:
+              $ref: '#/components/schemas/TaskPriority'
+          example: [HIGH]
+      responses:
+        '200':
+          description: The tasks of the project that match the filters, possibly none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Task'
+              examples:
+                allTasks:
+                  summary: US-004 — "Prepare proposal" unassigned and "Review proposal" assigned to Ana
+                  value:
+                    - taskId: '41b2d8e0'
+                      projectId: '7f3a9c1e'
+                      title: Prepare proposal
+                      state: TO_DO
+                      priority: MEDIUM
+                      assignees: []
+                    - taskId: '9d07c3f5'
+                      projectId: '7f3a9c1e'
+                      title: Review proposal
+                      state: IN_PROGRESS
+                      priority: HIGH
+                      assignees:
+                        - personId: 'c95e0a27'
+                          displayName: Ana Silva
+                filtered:
+                  summary: US-024 — response to ?state=TO_DO&state=IN_PROGRESS&priority=HIGH
+                  value:
+                    - taskId: 'e1f7b2c9'
+                      projectId: '7f3a9c1e'
+                      title: T1
+                      state: TO_DO
+                      priority: HIGH
+                      assignees: []
+                    - taskId: '4d8a0c63'
+                      projectId: '7f3a9c1e'
+                      title: T2
+                      state: IN_PROGRESS
+                      priority: HIGH
+                      assignees: []
+                noMatch:
+                  summary: EX-026 — no task matches the filters
+                  value: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/ProjectNotFound'
     post:
       tags: [Tasks]
       operationId: createTask
       summary: Create a task in a project
       description: |
         Creates a task with a nonempty title in an Active project. The task
-        starts in To do with no assignee.
+        starts in To do with no assignee and, unless another is chosen, with
+        Task priority Medium.
 
         **Traceability:**
-        [FR-008](docs/requirements.md#functional-requirements);
+        [FR-008](docs/requirements.md#functional-requirements),
+        [FR-018](docs/requirements.md#functional-requirements);
         [US-003](docs/user-stories.md#stories), acceptance criterion
         [1](docs/user-stories.md#us-003--create-task);
+        [US-018](docs/user-stories.md#stories), acceptance criteria
+        [1 and 2](docs/user-stories.md#us-018--set-task-priority);
         [EX-002](docs/user-stories.md#edge-cases-and-exceptions); access rules
         from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
         [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
@@ -128,10 +1616,15 @@ paths:
           do and cannot be chosen
           ([Assumption A-004](docs/constraints.md#assumptions),
           [Assumption A-010](docs/constraints.md#assumptions)).
-        - No assignee is accepted. FR-008 and US-003 do not state whether a
-          task can be assigned when it is created; assignment is
-          [FR-010](docs/requirements.md#functional-requirements), which this
-          draft does not cover.
+        - `priority` is optional and defaults to `MEDIUM`
+          ([FR-018](docs/requirements.md#functional-requirements);
+          [Assumption A-021](docs/constraints.md#assumptions);
+          [OQ-022](docs/constraints.md#open-questions)).
+        - No assignee is accepted (proposal of this draft): FR-008 and US-003
+          do not state whether a task can be assigned when it is created.
+          Assignees are added afterwards with `assignTask`
+          ([FR-010](docs/requirements.md#functional-requirements),
+          [FR-019](docs/requirements.md#functional-requirements)).
       requestBody:
         required: true
         content:
@@ -140,38 +1633,51 @@ paths:
               $ref: '#/components/schemas/CreateTaskRequest'
             examples:
               prepareProposal:
-                summary: US-003 — create an unassigned task
+                summary: US-003 and US-018 AC1 — create an unassigned task without choosing a Task priority
                 value:
                   title: Prepare proposal
+              highPriority:
+                summary: US-018 AC2 — create a task with Task priority High
+                value:
+                  title: Prepare budget
+                  priority: HIGH
       responses:
         '201':
           description: |
             The task was created in To do with no assignee
-            ([US-003](docs/user-stories.md#us-003--create-task)).
+            ([US-003](docs/user-stories.md#us-003--create-task),
+            [US-018](docs/user-stories.md#us-018--set-task-priority)).
           headers:
             Location:
-              description: |
-                URI reference of the created task. This draft defines no
-                operation on that URI itself; `changeTaskState` uses its
-                `state` sub-resource.
+              description: URI reference of the created task (`getTask`).
               required: true
               schema:
                 type: string
                 format: uri-reference
-              example: /projects/7f3a9c1e/tasks/41b2d8e0
+              example: /api/projects/7f3a9c1e/tasks/41b2d8e0
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Task'
               examples:
                 prepareProposal:
-                  summary: US-003 — created task, To do, no assignee
+                  summary: US-003 and US-018 AC1 — To do, no assignee, Task priority Medium
                   value:
                     taskId: '41b2d8e0'
                     projectId: '7f3a9c1e'
                     title: Prepare proposal
                     state: TO_DO
-                    assignee: null
+                    priority: MEDIUM
+                    assignees: []
+                highPriority:
+                  summary: US-018 AC2 — Task priority High
+                  value:
+                    taskId: '8c1f5e3a'
+                    projectId: '7f3a9c1e'
+                    title: Prepare budget
+                    state: TO_DO
+                    priority: HIGH
+                    assignees: []
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -194,24 +1700,7 @@ paths:
                     status: 403
                     detail: Only the Project Owner can create tasks in this project.
         '404':
-          description: |
-            The project does not exist, or the person is not a member of it.
-            Both cases receive the same response, so nothing about the project
-            is disclosed; no task is created
-            ([EX-003](docs/user-stories.md#edge-cases-and-exceptions);
-            [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
-            [Assumption A-002](docs/constraints.md#assumptions)).
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-              examples:
-                projectNotAccessible:
-                  summary: EX-003 — not a member, or no such project
-                  value:
-                    title: Not Found
-                    status: 404
-                    detail: The project does not exist or is not accessible.
+          $ref: '#/components/responses/ProjectNotFound'
         '409':
           description: |
             The project is not Active (it is Completed); no task is created
@@ -233,10 +1722,10 @@ paths:
         '422':
           description: |
             The content does not satisfy `CreateTaskRequest`: it is not a JSON
-            object, `title` is missing, empty, or not a string, or another
-            property is present. No task is created, and `errors` identifies
-            each invalid member
-            ([EX-002](docs/user-stories.md#edge-cases-and-exceptions)).
+            object, `title` is missing, empty, or not a string, `priority` is
+            not one of the codes of `TaskPriority`, or another property is
+            present. No task is created, and `errors` identifies each invalid
+            member ([EX-002](docs/user-stories.md#edge-cases-and-exceptions)).
           content:
             application/problem+json:
               schema:
@@ -251,6 +1740,284 @@ paths:
                     errors:
                       - pointer: /title
                         detail: A title is required.
+                labelInsteadOfCode:
+                  summary: 'Response to {"title": "Prepare budget", "priority": "High"}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: The Task priority is not valid.
+                    errors:
+                      - pointer: /priority
+                        detail: Use one of LOW, MEDIUM, or HIGH.
+  /projects/{projectId}/tasks/{taskId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags: [Tasks]
+      operationId: getTask
+      summary: View a task
+      description: |
+        Returns one task of an accessible project with its title, state, Task
+        priority, and assignees.
+
+        **Traceability:**
+        [FR-006](docs/requirements.md#functional-requirements);
+        [US-004](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-004--view-tasks);
+        access rules from
+        [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Every member may view the task, also in a Completed project
+          ([Assumption A-002](docs/constraints.md#assumptions),
+          [Assumption A-011](docs/constraints.md#assumptions)).
+        - A deleted task, or a task of a deleted project, receives `404`
+          ([Assumption A-022](docs/constraints.md#assumptions)).
+      responses:
+        '200':
+          description: The task.
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              examples:
+                reviewProposal:
+                  summary: US-004 — "Review proposal", In progress, assigned to Ana
+                  value:
+                    taskId: '9d07c3f5'
+                    projectId: '7f3a9c1e'
+                    title: Review proposal
+                    state: IN_PROGRESS
+                    priority: HIGH
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+    patch:
+      tags: [Tasks]
+      operationId: updateTask
+      summary: Change the title or Task priority of a task
+      description: |
+        Changes the title, the Task priority, or both, of a task in an Active
+        project. The content is a JSON Merge Patch
+        ([RFC 7396](https://www.rfc-editor.org/rfc/rfc7396)); members that
+        are absent are left unchanged.
+
+        **Traceability:**
+        [FR-009](docs/requirements.md#functional-requirements),
+        [FR-018](docs/requirements.md#functional-requirements);
+        [US-011](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-011--rename-task);
+        [US-018](docs/user-stories.md#stories), acceptance criterion
+        [3](docs/user-stories.md#us-018--set-task-priority);
+        [EX-011](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-019](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may change a task's title or Task
+          priority; any other member receives `403`, and nothing changes
+          ([EX-019](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-001](docs/constraints.md#assumptions),
+          [Assumption A-021](docs/constraints.md#assumptions)).
+        - At least one of `title` and `priority` is required. `title` must be
+          a nonempty string
+          ([EX-011](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-004](docs/constraints.md#assumptions);
+          [OQ-003](docs/constraints.md#open-questions)), and `priority` one
+          of the codes of `TaskPriority`
+          ([OQ-022](docs/constraints.md#open-questions)). Neither can be
+          removed, so `null`, which would remove a member under JSON Merge
+          Patch, receives `422`. If any member is invalid, nothing changes.
+        - The task's state and assignees are not changed here, but with
+          `changeTaskState`, `assignTask`, and `unassignTask`.
+        - Tasks of a Completed project cannot be changed
+          ([Assumption A-011](docs/constraints.md#assumptions)).
+        - Setting the current values succeeds and changes nothing (proposal
+          of this draft).
+      requestBody:
+        required: true
+        content:
+          application/merge-patch+json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+            examples:
+              changeTitle:
+                summary: US-011 — change "Prepare proposal" to "Prepare final proposal"
+                value:
+                  title: Prepare final proposal
+              lowerPriority:
+                summary: US-018 AC3 — change the Task priority from Medium to Low
+                value:
+                  priority: LOW
+      responses:
+        '200':
+          description: |
+            The task was changed; the updated task is returned
+            ([US-011](docs/user-stories.md#us-011--rename-task),
+            [US-018](docs/user-stories.md#us-018--set-task-priority)).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              examples:
+                changeTitle:
+                  summary: US-011 — the task shows "Prepare final proposal"
+                  value:
+                    taskId: '41b2d8e0'
+                    projectId: '7f3a9c1e'
+                    title: Prepare final proposal
+                    state: TO_DO
+                    priority: MEDIUM
+                    assignees: []
+                lowerPriority:
+                  summary: US-018 AC3 — the task shows Task priority Low
+                  value:
+                    taskId: '41b2d8e0'
+                    projectId: '7f3a9c1e'
+                    title: Prepare proposal
+                    state: TO_DO
+                    priority: LOW
+                    assignees: []
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotProjectOwner'
+          description: |
+            The person is a member of the project but not its Project Owner;
+            the title and Task priority are unchanged
+            ([EX-019](docs/user-stories.md#edge-cases-and-exceptions)).
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+        '409':
+          $ref: '#/components/responses/ProjectCompleted'
+        '422':
+          description: |
+            The content does not satisfy `UpdateTaskRequest`: it is not a
+            JSON object or is an empty one, `title` is `null`, empty, or not
+            a string, `priority` is `null` or not one of the codes of
+            `TaskPriority`, or another property is present. Nothing changes,
+            and `errors` identifies each invalid member
+            ([EX-011](docs/user-stories.md#edge-cases-and-exceptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                emptyTitle:
+                  summary: 'EX-011 — response to {"title": ""}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: A task title is required.
+                    errors:
+                      - pointer: /title
+                        detail: A title is required.
+                nullPriority:
+                  summary: 'Response to {"priority": null}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: The Task priority cannot be removed.
+                    errors:
+                      - pointer: /priority
+                        detail: Use one of LOW, MEDIUM, or HIGH.
+                emptyObject:
+                  summary: 'Response to {}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: Nothing to change; give a title, a Task priority, or both.
+                    errors:
+                      - pointer: ''
+                        detail: At least one of title and priority is required.
+    delete:
+      tags: [Tasks]
+      operationId: deleteTask
+      summary: Delete a task
+      description: |
+        Deletes a task of an Active project: from then on it is hidden from
+        everyone, as if it did not exist, but its data is kept in storage.
+
+        **Traceability:**
+        [FR-017](docs/requirements.md#functional-requirements);
+        [US-017](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-017--delete-task);
+        [EX-016](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-017](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-018](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+        soft deletion in [database.md](docs/database.md#rules-not-shown-in-the-diagram).
+
+        **Rules (proposed, not client-approved):**
+        - Only the project's Project Owner may delete tasks
+          ([EX-016](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-001](docs/constraints.md#assumptions)).
+        - Tasks of a Completed project cannot be deleted
+          ([EX-017](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-011](docs/constraints.md#assumptions),
+          [Assumption A-022](docs/constraints.md#assumptions)).
+        - A deleted task receives `404` for everyone, is no longer listed,
+          and is no longer counted in progress or in the check for
+          unfinished tasks; deleting it again also receives `404`. In
+          [US-017](docs/user-stories.md#us-017--delete-task), acceptance
+          criterion 1, deleting the To do task of 2 Done, 1 In progress, and
+          1 To do leaves 2 Done, 1 In progress, 0 To do, and 67%
+          ([Assumption A-022](docs/constraints.md#assumptions),
+          [Assumption A-026](docs/constraints.md#assumptions)).
+        - Deleting a task removes its assignments, so a member whose only
+          assigned task is deleted can then be removed
+          ([US-017](docs/user-stories.md#us-017--delete-task), acceptance
+          criterion 2; [Assumption A-009](docs/constraints.md#assumptions)).
+          Its comments are kept but hidden with it.
+        - Deleting the only unfinished task makes the project completable,
+          which lets the completion rule be bypassed; this needs explicit
+          client approval
+          ([EX-018](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-007](docs/constraints.md#assumptions);
+          [OQ-023](docs/constraints.md#open-questions)).
+        - The data is kept, and there is no restore operation
+          ([OQ-023](docs/constraints.md#open-questions)). Asking the person
+          to confirm is a step of the client, not of this API.
+      responses:
+        '204':
+          description: |
+            The task is deleted and hidden from everyone
+            ([US-017](docs/user-stories.md#us-017--delete-task)).
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/NotProjectOwner'
+          description: |
+            The person is a Project Participant, not the Project Owner of
+            this project; nothing is deleted
+            ([EX-016](docs/user-stories.md#edge-cases-and-exceptions)).
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+        '409':
+          $ref: '#/components/responses/ProjectCompleted'
+          description: |
+            The project is Completed, so its tasks cannot be deleted; the
+            task remains visible and unchanged
+            ([EX-017](docs/user-stories.md#edge-cases-and-exceptions)).
   /projects/{projectId}/tasks/{taskId}/state:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
@@ -266,7 +2033,7 @@ paths:
         **Traceability:**
         [FR-011](docs/requirements.md#functional-requirements);
         [US-005](docs/user-stories.md#stories), acceptance criteria
-        [1 and 2](docs/user-stories.md#us-005--change-task-state);
+        [1, 2, and 3](docs/user-stories.md#us-005--change-task-state);
         [EX-004](docs/user-stories.md#edge-cases-and-exceptions),
         [EX-008](docs/user-stories.md#edge-cases-and-exceptions),
         [EX-013](docs/user-stories.md#edge-cases-and-exceptions); access rules
@@ -278,14 +2045,18 @@ paths:
 
         **Rules (proposed, not client-approved):**
         - Allowed for the project's Project Owner, whether or not they are
-          the assignee ([EX-013](docs/user-stories.md#edge-cases-and-exceptions)),
-          and for the task's assignee
+          an assignee ([EX-013](docs/user-stories.md#edge-cases-and-exceptions)),
+          and for any assignee of the task
           ([FR-011](docs/requirements.md#functional-requirements);
-          [Assumption A-001](docs/constraints.md#assumptions)). Any other
-          member receives `403` and the state is unchanged
-          ([EX-004](docs/user-stories.md#edge-cases-and-exceptions)).
-        - Besides non-members, `404` also covers a `taskId` that does not
-          belong to the project in the path.
+          [Assumption A-001](docs/constraints.md#assumptions),
+          [Assumption A-019](docs/constraints.md#assumptions);
+          [OQ-025](docs/constraints.md#open-questions)). Any other member
+          receives `403` and the state is unchanged
+          ([EX-004](docs/user-stories.md#edge-cases-and-exceptions)); a
+          Project Participant can first assign themselves with `assignTask`
+          ([Assumption A-020](docs/constraints.md#assumptions)).
+        - Besides non-members and deleted projects or tasks, `404` also
+          covers a `taskId` that does not belong to the project in the path.
         - Any of the three states can be set from any state, including
           reopening a Done task
           ([Assumption A-005](docs/constraints.md#assumptions);
@@ -295,16 +2066,24 @@ paths:
         - If the project is Completed, the state is unchanged and `409` is
           returned ([EX-008](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-011](docs/constraints.md#assumptions)).
+        - If two members change the state at the same time, the last change
+          saved prevails ([Assumption A-029](docs/constraints.md#assumptions);
+          [ADR-006](docs/adr/ADR-006-simultaneous-changes.md);
+          [OQ-017](docs/constraints.md#open-questions)).
         - No reopening marker is recorded: the “(reopened)” of US-005 is read
           as describing the change, as flagged in the
           [data model](docs/database.md#findings)
           ([OQ-004](docs/constraints.md#open-questions)).
 
-        A dedicated `state` sub-resource keeps this change, which the assignee
-        may make, separate from changing a task's title
-        ([FR-009](docs/requirements.md#functional-requirements)) or assignee
-        ([FR-010](docs/requirements.md#functional-requirements)), which only
-        the Project Owner may do and which this draft does not cover.
+        A dedicated `state` sub-resource keeps this change, which any
+        assignee may make, separate from changing a task's title or Task
+        priority (`updateTask`;
+        [FR-009](docs/requirements.md#functional-requirements),
+        [FR-018](docs/requirements.md#functional-requirements)), which only
+        the Project Owner may do, and from changing its assignees
+        (`assignTask` and `unassignTask`;
+        [FR-010](docs/requirements.md#functional-requirements),
+        [FR-019](docs/requirements.md#functional-requirements)).
       requestBody:
         required: true
         content:
@@ -318,6 +2097,10 @@ paths:
                   state: DONE
               assigneeReopens:
                 summary: US-005 AC2 — the assignee reopens a Done task
+                value:
+                  state: IN_PROGRESS
+              secondAssigneeStarts:
+                summary: US-005 AC3 — Rui, one of two assignees, changes To do to In progress
                 value:
                   state: IN_PROGRESS
               ownerMarksUnassignedDone:
@@ -339,8 +2122,10 @@ paths:
                     projectId: '7f3a9c1e'
                     title: Review proposal
                     state: DONE
-                    assignee:
-                      personId: 'c95e0a27'
+                    priority: HIGH
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
                 assigneeReopens:
                   summary: US-005 AC2 — the task shows In progress (reopened)
                   value:
@@ -348,8 +2133,23 @@ paths:
                     projectId: '7f3a9c1e'
                     title: Review proposal
                     state: IN_PROGRESS
-                    assignee:
-                      personId: 'c95e0a27'
+                    priority: HIGH
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
+                secondAssigneeStarts:
+                  summary: US-005 AC3 — the task assigned to Ana and Rui shows In progress
+                  value:
+                    taskId: '8c1f5e3a'
+                    projectId: '7f3a9c1e'
+                    title: Prepare budget
+                    state: IN_PROGRESS
+                    priority: HIGH
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
+                      - personId: '3e7b5a90'
+                        displayName: Rui Martins
                 ownerMarksUnassignedDone:
                   summary: EX-013 — the unassigned task shows Done
                   value:
@@ -357,7 +2157,8 @@ paths:
                     projectId: '7f3a9c1e'
                     title: Prepare proposal
                     state: DONE
-                    assignee: null
+                    priority: MEDIUM
+                    assignees: []
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -365,9 +2166,10 @@ paths:
         '403':
           description: |
             The person is a member of the project but neither its Project
-            Owner nor the task's assignee; the state is unchanged
+            Owner nor an assignee of the task; the state is unchanged
             ([EX-004](docs/user-stories.md#edge-cases-and-exceptions);
-            [Assumption A-001](docs/constraints.md#assumptions)).
+            [Assumption A-001](docs/constraints.md#assumptions),
+            [Assumption A-019](docs/constraints.md#assumptions)).
           content:
             application/problem+json:
               schema:
@@ -378,27 +2180,9 @@ paths:
                   value:
                     title: Forbidden
                     status: 403
-                    detail: Only the Project Owner or the task's assignee can change its state.
+                    detail: Only the Project Owner or an assignee of the task can change its state.
         '404':
-          description: |
-            The project does not exist or the person is not a member of it, or
-            no task with `taskId` belongs to the project. A non-member receives
-            this response whether or not the project or task exists, so
-            nothing is disclosed; the state is unchanged
-            ([EX-003](docs/user-stories.md#edge-cases-and-exceptions);
-            [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
-            [Assumption A-002](docs/constraints.md#assumptions)).
-          content:
-            application/problem+json:
-              schema:
-                $ref: '#/components/schemas/Problem'
-              examples:
-                taskNotAccessible:
-                  summary: EX-003 — not a member, or no such project or task
-                  value:
-                    title: Not Found
-                    status: 404
-                    detail: The project or task does not exist or is not accessible.
+          $ref: '#/components/responses/TaskNotFound'
         '409':
           description: |
             The project is not Active (it is Completed); the state is unchanged
@@ -438,7 +2222,561 @@ paths:
                     errors:
                       - pointer: /state
                         detail: Must be TO_DO, IN_PROGRESS, or DONE.
+  /projects/{projectId}/tasks/{taskId}/assignees:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TaskId'
+    post:
+      tags: [Tasks]
+      operationId: assignTask
+      summary: Assign a member to a task
+      description: |
+        Makes a member of the project an assignee of a task in an Active
+        project, in addition to its current assignees, and returns the
+        updated task.
+
+        **Traceability:**
+        [FR-010](docs/requirements.md#functional-requirements),
+        [FR-019](docs/requirements.md#functional-requirements);
+        [US-012](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-012--assign-task);
+        [US-020](docs/user-stories.md#stories), acceptance criterion
+        [1](docs/user-stories.md#us-020--assign-or-unassign-myself);
+        [EX-020](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-021](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-022](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - The Project Owner may assign any member of the project, including
+          themselves, and a task can have several assignees
+          ([US-012](docs/user-stories.md#us-012--assign-task);
+          [Assumption A-019](docs/constraints.md#assumptions);
+          [OQ-025](docs/constraints.md#open-questions)).
+        - A Project Participant may assign only themselves; naming another
+          person receives `403`, and the assignees are unchanged
+          ([EX-021](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-020](docs/constraints.md#assumptions)). Once
+          assigned, they can change the task's state
+          ([US-020](docs/user-stories.md#us-020--assign-or-unassign-myself)),
+          so any Project Participant can change the state of any task; the
+          register flags that this weakens the restriction in
+          [Assumption A-001](docs/constraints.md#assumptions) and the intent
+          of
+          [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria)
+          and [EX-004](docs/user-stories.md#edge-cases-and-exceptions)
+          ([Assumption A-020](docs/constraints.md#assumptions);
+          [OQ-002](docs/constraints.md#open-questions),
+          [OQ-025](docs/constraints.md#open-questions)).
+        - The `403` check needs `personId`, so this operation checks in the
+          order `401`, `404`, `400`, `422` for content that does not satisfy
+          `AssignTaskRequest`, `403`, `422` for a person who is not a member,
+          `409` (proposal of this draft). A Project Participant naming
+          another person therefore receives `403` whether or not that person
+          is a member.
+        - `personId` must identify a member of the project, otherwise `422`
+          with an error for `/personId`, and the assignees are unchanged
+          ([EX-020](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-019](docs/constraints.md#assumptions)). A person who
+          does not exist receives the same response (proposal of this
+          draft).
+        - Assigning a person who is already an assignee succeeds and changes
+          nothing, so repeating the request is harmless.
+        - Assignees of tasks in a Completed project cannot be changed
+          ([EX-022](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-011](docs/constraints.md#assumptions)).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AssignTaskRequest'
+            examples:
+              ownerAssignsParticipant:
+                summary: US-012 AC1 — the Project Owner assigns Project Participant Ana
+                value:
+                  personId: 'c95e0a27'
+              ownerAddsSecondAssignee:
+                summary: US-012 AC2 — the Project Owner also assigns Rui to a task assigned to Ana
+                value:
+                  personId: '3e7b5a90'
+              ownerAssignsThemselves:
+                summary: US-012 AC3 — the Project Owner, Bruno, assigns himself
+                value:
+                  personId: '2b6e4f18'
+              participantAssignsThemselves:
+                summary: US-020 AC1 — Project Participant Rui assigns himself
+                value:
+                  personId: '3e7b5a90'
+      responses:
+        '200':
+          description: |
+            The person is an assignee of the task; the updated task is
+            returned ([US-012](docs/user-stories.md#us-012--assign-task),
+            [US-020](docs/user-stories.md#us-020--assign-or-unassign-myself)).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              examples:
+                ownerAssignsParticipant:
+                  summary: US-012 AC1 — the task shows Ana as an assignee
+                  value:
+                    taskId: '41b2d8e0'
+                    projectId: '7f3a9c1e'
+                    title: Prepare proposal
+                    state: TO_DO
+                    priority: MEDIUM
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
+                ownerAddsSecondAssignee:
+                  summary: US-012 AC2 — the task shows both Ana and Rui
+                  value:
+                    taskId: '41b2d8e0'
+                    projectId: '7f3a9c1e'
+                    title: Prepare proposal
+                    state: TO_DO
+                    priority: MEDIUM
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
+                      - personId: '3e7b5a90'
+                        displayName: Rui Martins
+                ownerAssignsThemselves:
+                  summary: US-012 AC3 — the task shows the Project Owner as an assignee
+                  value:
+                    taskId: '41b2d8e0'
+                    projectId: '7f3a9c1e'
+                    title: Prepare proposal
+                    state: TO_DO
+                    priority: MEDIUM
+                    assignees:
+                      - personId: '2b6e4f18'
+                        displayName: Bruno Costa
+                participantAssignsThemselves:
+                  summary: US-020 AC1 — the task shows Rui among its assignees
+                  value:
+                    taskId: '9d07c3f5'
+                    projectId: '7f3a9c1e'
+                    title: Review proposal
+                    state: IN_PROGRESS
+                    priority: HIGH
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
+                      - personId: '3e7b5a90'
+                        displayName: Rui Martins
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            The person is a Project Participant and named someone other than
+            themselves; the assignees are unchanged
+            ([EX-021](docs/user-stories.md#edge-cases-and-exceptions);
+            [Assumption A-020](docs/constraints.md#assumptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                assignsSomeoneElse:
+                  summary: EX-021 — Project Participant Rui tries to assign another member
+                  value:
+                    title: Forbidden
+                    status: 403
+                    detail: A Project Participant can assign only themselves.
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+        '409':
+          $ref: '#/components/responses/ProjectCompleted'
+          description: |
+            The project is Completed, so the task's assignees cannot be
+            changed; they are unchanged
+            ([EX-022](docs/user-stories.md#edge-cases-and-exceptions)).
+        '422':
+          description: |
+            The content does not satisfy `AssignTaskRequest` (it is not a
+            JSON object, `personId` is missing or not a valid `Identifier`,
+            or another property is present), or `personId` does not identify
+            a member of the project. The assignees are unchanged, and
+            `errors` identifies each invalid member
+            ([EX-020](docs/user-stories.md#edge-cases-and-exceptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                notAMember:
+                  summary: EX-020 — the Project Owner names a person who is not a member
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: Only members of the project can be assigned to its tasks.
+                    errors:
+                      - pointer: /personId
+                        detail: This person is not a member of the project.
+                missingPersonId:
+                  summary: 'Response to {}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: The person to assign is required.
+                    errors:
+                      - pointer: /personId
+                        detail: A person identifier is required.
+  /projects/{projectId}/tasks/{taskId}/assignees/{personId}:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TaskId'
+      - $ref: '#/components/parameters/PersonId'
+    delete:
+      tags: [Tasks]
+      operationId: unassignTask
+      summary: Remove an assignee from a task
+      description: |
+        Removes one assignee from a task in an Active project and returns the
+        updated task, so that the client can show the remaining assignees.
+
+        **Traceability:**
+        [FR-010](docs/requirements.md#functional-requirements),
+        [FR-019](docs/requirements.md#functional-requirements);
+        [US-019](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-019--unassign-a-member);
+        [US-020](docs/user-stories.md#stories), acceptance criterion
+        [2](docs/user-stories.md#us-020--assign-or-unassign-myself);
+        [EX-021](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-022](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - The Project Owner may remove any assignee, including themselves
+          ([US-019](docs/user-stories.md#us-019--unassign-a-member);
+          [Assumption A-019](docs/constraints.md#assumptions);
+          [OQ-007](docs/constraints.md#open-questions)).
+        - A Project Participant may remove only themselves; removing another
+          assignee receives `403`, and the assignees are unchanged
+          ([EX-021](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-020](docs/constraints.md#assumptions);
+          [OQ-025](docs/constraints.md#open-questions)).
+        - `404` also when `personId` is not an assignee of the task. As
+          every `404`, it is checked before the `403` checks; it discloses
+          nothing new, because every member can see the assignees of every
+          task.
+        - The last assignee can be removed; the task is then unassigned. The
+          task's state is not changed.
+        - Once a Project Participant is no longer an assignee of any task,
+          the Project Owner can remove them from the project
+          ([US-019](docs/user-stories.md#us-019--unassign-a-member),
+          acceptance criterion 2;
+          [Assumption A-009](docs/constraints.md#assumptions)).
+        - Assignees of tasks in a Completed project cannot be changed
+          ([EX-022](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-011](docs/constraints.md#assumptions)).
+      responses:
+        '200':
+          description: |
+            The person is no longer an assignee of the task; the updated task
+            is returned
+            ([US-019](docs/user-stories.md#us-019--unassign-a-member),
+            [US-020](docs/user-stories.md#us-020--assign-or-unassign-myself)).
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Task'
+              examples:
+                ownerUnassignsRui:
+                  summary: US-019 AC1 — the Project Owner unassigns Rui; only Ana remains
+                  value:
+                    taskId: '8c1f5e3a'
+                    projectId: '7f3a9c1e'
+                    title: Prepare budget
+                    state: IN_PROGRESS
+                    priority: HIGH
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
+                participantUnassignsThemselves:
+                  summary: US-020 AC2 — Rui unassigns himself; only Ana remains
+                  value:
+                    taskId: '9d07c3f5'
+                    projectId: '7f3a9c1e'
+                    title: Review proposal
+                    state: IN_PROGRESS
+                    priority: HIGH
+                    assignees:
+                      - personId: 'c95e0a27'
+                        displayName: Ana Silva
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: |
+            The person is a Project Participant and tried to remove another
+            assignee; the assignees are unchanged
+            ([EX-021](docs/user-stories.md#edge-cases-and-exceptions);
+            [Assumption A-020](docs/constraints.md#assumptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                unassignsSomeoneElse:
+                  summary: EX-021 — Project Participant Rui tries to unassign Ana
+                  value:
+                    title: Forbidden
+                    status: 403
+                    detail: A Project Participant can unassign only themselves.
+        '404':
+          description: |
+            The project or task does not exist, is deleted, or is not
+            accessible to the signed-in person, or `personId` is not an
+            assignee of the task; the assignees are unchanged.
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/Problem'
+              examples:
+                notFound:
+                  summary: Unknown, deleted, or inaccessible project or task, or not an assignee
+                  value:
+                    title: Not Found
+                    status: 404
+                    detail: The project, task, or assignee does not exist or is not accessible.
+        '409':
+          $ref: '#/components/responses/ProjectCompleted'
+          description: |
+            The project is Completed, so the task's assignees cannot be
+            changed; they are unchanged
+            ([EX-022](docs/user-stories.md#edge-cases-and-exceptions)).
+  /projects/{projectId}/tasks/{taskId}/comments:
+    parameters:
+      - $ref: '#/components/parameters/ProjectId'
+      - $ref: '#/components/parameters/TaskId'
+    get:
+      tags: [Comments]
+      operationId: listTaskComments
+      summary: List the comments on a task
+      description: |
+        Returns the comments on a task of an accessible project, oldest
+        first, each with its author's display name and the date and time it
+        was added.
+
+        **Traceability:**
+        [FR-021](docs/requirements.md#functional-requirements);
+        [US-022](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-022--read-comments);
+        access rules from
+        [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Every member may read the comments, also in a Completed project
+          ([Assumption A-023](docs/constraints.md#assumptions);
+          [OQ-024](docs/constraints.md#open-questions)).
+        - Order: oldest first, by the date and time each comment was added
+          ([US-022](docs/user-stories.md#us-022--read-comments);
+          [Assumption A-023](docs/constraints.md#assumptions)).
+        - Comments are never edited or deleted
+          ([Assumption A-023](docs/constraints.md#assumptions)). A comment
+          whose author is no longer a member of the project is still listed
+          with that author (proposal of this draft), and comments on a
+          deleted task are hidden with it
+          ([Assumption A-022](docs/constraints.md#assumptions)).
+        - An empty list is a successful response: the client then says that
+          there are no comments yet
+          ([US-022](docs/user-stories.md#us-022--read-comments), acceptance
+          criterion 2).
+        - Comment texts may contain personal data
+          ([OQ-011](docs/constraints.md#open-questions)).
+      responses:
+        '200':
+          description: The comments on the task, oldest first, possibly none.
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Comment'
+              examples:
+                firstAndSecond:
+                  summary: US-022 AC1 — "First" by Ana, then "Second" by Rui
+                  value:
+                    - commentId: 'f2c8a4b6'
+                      taskId: '9d07c3f5'
+                      author:
+                        personId: 'c95e0a27'
+                        displayName: Ana Silva
+                      createdAt: '2026-10-29T09:30:00Z'
+                      text: First
+                    - commentId: 'd7e9b1c3'
+                      taskId: '9d07c3f5'
+                      author:
+                        personId: '3e7b5a90'
+                        displayName: Rui Martins
+                      createdAt: '2026-10-29T10:05:00Z'
+                      text: Second
+                noComments:
+                  summary: US-022 AC2 — the task has no comments yet
+                  value: []
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+    post:
+      tags: [Comments]
+      operationId: addTaskComment
+      summary: Add a comment to a task
+      description: |
+        Adds a comment with nonempty text to a task of an accessible project.
+        The signed-in person is its author, and the date and time it was
+        added are recorded.
+
+        **Traceability:**
+        [FR-020](docs/requirements.md#functional-requirements);
+        [US-021](docs/user-stories.md#stories) and its
+        [acceptance criteria](docs/user-stories.md#us-021--add-comment);
+        [EX-023](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-024](docs/user-stories.md#edge-cases-and-exceptions); access
+        rules from [EX-003](docs/user-stories.md#edge-cases-and-exceptions),
+        [EX-012](docs/user-stories.md#edge-cases-and-exceptions),
+        [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria),
+        and
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
+
+        **Rules (proposed, not client-approved):**
+        - Any member may add comments, whether Project Owner or Project
+          Participant and whether or not they are an assignee, so there is
+          no `403` ([Assumption A-001](docs/constraints.md#assumptions),
+          [Assumption A-023](docs/constraints.md#assumptions);
+          [OQ-024](docs/constraints.md#open-questions)).
+        - Comments can also be added while the project is Completed, an
+          explicit exception to its being read-only, so there is no `409`;
+          the project's other information is unchanged
+          ([EX-024](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-011](docs/constraints.md#assumptions),
+          [Assumption A-023](docs/constraints.md#assumptions)).
+        - The text is required and nonempty; an empty text adds no comment
+          and returns `422` with an error for `/text`
+          ([EX-023](docs/user-stories.md#edge-cases-and-exceptions)). Length
+          limits and whitespace-only text are open
+          ([OQ-024](docs/constraints.md#open-questions)) and are not
+          enforced.
+        - The author is the signed-in person and the date and time are
+          recorded by Matriz; neither can be chosen
+          ([Assumption A-023](docs/constraints.md#assumptions)).
+        - A comment cannot be edited or deleted, and no notification is sent
+          ([Assumption A-023](docs/constraints.md#assumptions)).
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCommentRequest'
+            examples:
+              draftSent:
+                summary: US-021 — Ana adds "Draft sent to the client"
+                value:
+                  text: Draft sent to the client
+              completedProject:
+                summary: EX-024 — a member comments on a task of a Completed project
+                value:
+                  text: Final report approved by the team
+      responses:
+        '201':
+          description: |
+            The comment was added, with the signed-in person as author and
+            the date and time it was added
+            ([US-021](docs/user-stories.md#us-021--add-comment)).
+          headers:
+            Location:
+              description: |
+                URI reference of the created comment. This draft defines no
+                operation on that URI; comments are read with
+                `listTaskComments`.
+              required: true
+              schema:
+                type: string
+                format: uri-reference
+              example: /api/projects/7f3a9c1e/tasks/9d07c3f5/comments/6b1d9f40
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Comment'
+              examples:
+                draftSent:
+                  summary: US-021 — the comment shows Ana's display name and when it was added
+                  value:
+                    commentId: '6b1d9f40'
+                    taskId: '9d07c3f5'
+                    author:
+                      personId: 'c95e0a27'
+                      displayName: Ana Silva
+                    createdAt: '2026-10-29T11:15:00Z'
+                    text: Draft sent to the client
+                completedProject:
+                  summary: EX-024 — the comment is added although the project is Completed
+                  value:
+                    commentId: 'b8f3d2a6'
+                    taskId: '5a9e1c74'
+                    author:
+                      personId: 'c95e0a27'
+                      displayName: Ana Silva
+                    createdAt: '2026-10-29T16:40:00Z'
+                    text: Final report approved by the team
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/TaskNotFound'
+        '422':
+          description: |
+            The content does not satisfy `CreateCommentRequest`: it is not a
+            JSON object, `text` is missing, empty, or not a string, or
+            another property is present. No comment is added, and `errors`
+            identifies each invalid member
+            ([EX-023](docs/user-stories.md#edge-cases-and-exceptions)).
+          content:
+            application/problem+json:
+              schema:
+                $ref: '#/components/schemas/ValidationProblem'
+              examples:
+                emptyText:
+                  summary: 'EX-023 — response to {"text": ""}'
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: Comment text is required.
+                    errors:
+                      - pointer: /text
+                        detail: Text is required.
 components:
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: |
+        Signed JWT access token issued by `signIn` and sent with every other
+        request in the `Authorization` header with the `Bearer` scheme
+        (RFC 6750), a provisional team decision
+        ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)). Clients
+        treat the token as opaque. It is refused once it has expired or after
+        `signOut`; its lifetime is open
+        ([OQ-027](docs/constraints.md#open-questions)).
   parameters:
     ProjectId:
       name: projectId
@@ -454,12 +2792,36 @@ components:
       description: Identifier of a task belonging to the project.
       schema:
         $ref: '#/components/schemas/Identifier'
+    PersonId:
+      name: personId
+      in: path
+      required: true
+      description: Identifier of a person.
+      schema:
+        $ref: '#/components/schemas/Identifier'
+  headers:
+    WWWAuthenticate:
+      description: |
+        Bearer challenge (RFC 6750): `Bearer` when no token was sent, and
+        `Bearer error="invalid_token"` when the token is malformed, invalid,
+        expired, or no longer accepted.
+      required: true
+      schema:
+        type: string
+      examples:
+        noToken:
+          summary: No token was sent
+          value: Bearer
+        invalidToken:
+          summary: The token is malformed, invalid, expired, or no longer accepted
+          value: 'Bearer error="invalid_token"'
   responses:
     BadRequest:
       description: |
-        The request content is absent or is not well-formed JSON; nothing is
-        changed. Well-formed content that does not satisfy the request schema
-        receives `422` instead.
+        The request content is absent, is not in the operation's media type,
+        or is not well-formed JSON, or a query parameter value is invalid;
+        nothing is changed. Well-formed content that does not satisfy the
+        request schema receives `422` instead.
       content:
         application/problem+json:
           schema:
@@ -471,27 +2833,125 @@ components:
                 title: Bad Request
                 status: 400
                 detail: The request content is not well-formed JSON.
+            emptySearchText:
+              summary: Response to ?name= (empty search text)
+              value:
+                title: Bad Request
+                status: 400
+                detail: The query parameter name must not be empty.
+            labelInsteadOfCode:
+              summary: Response to ?state=Done, a label instead of a code
+              value:
+                title: Bad Request
+                status: 400
+                detail: The query parameter state must be TO_DO, IN_PROGRESS, or DONE.
     Unauthorized:
       description: |
-        The person's identity has not been established. No project or task
-        information is disclosed and nothing is changed
+        The person's identity has not been established: no token was sent,
+        or the token is malformed, invalid, expired, or no longer accepted
+        after `signOut`. No information is disclosed and nothing is changed
         ([EX-012](docs/user-stories.md#edge-cases-and-exceptions);
         [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
-        [Assumption A-014](docs/constraints.md#assumptions)). HTTP requires a
-        `WWW-Authenticate` challenge with this status; it is not specified
-        because how identity is established is open
-        ([OQ-018](docs/constraints.md#open-questions)).
+        [Assumption A-014](docs/constraints.md#assumptions);
+        [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)).
+      headers:
+        WWW-Authenticate:
+          $ref: '#/components/headers/WWWAuthenticate'
       content:
         application/problem+json:
           schema:
             $ref: '#/components/schemas/Problem'
           examples:
             identityNotEstablished:
-              summary: EX-012 — identity not established
+              summary: EX-012 — no token was sent
               value:
                 title: Unauthorized
                 status: 401
                 detail: Identity has not been established.
+            invalidToken:
+              summary: The token is invalid, expired, or no longer accepted
+              value:
+                title: Unauthorized
+                status: 401
+                detail: The access token is invalid, expired, or no longer accepted.
+    ProjectNotFound:
+      description: |
+        The project does not exist, is deleted, or the person is not a member
+        of it. All cases receive the same response, so nothing about the
+        project is disclosed; nothing is changed
+        ([EX-003](docs/user-stories.md#edge-cases-and-exceptions);
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+        [Assumption A-002](docs/constraints.md#assumptions),
+        [Assumption A-022](docs/constraints.md#assumptions)).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            projectNotAccessible:
+              summary: EX-003 — not a member, deleted, or no such project
+              value:
+                title: Not Found
+                status: 404
+                detail: The project does not exist or is not accessible.
+    TaskNotFound:
+      description: |
+        The project does not exist, is deleted, or the person is not a member
+        of it, or no task with `taskId` that is not deleted belongs to the
+        project. A non-member receives this response whether or not the
+        project or task exists, so nothing is disclosed; nothing is changed
+        ([EX-003](docs/user-stories.md#edge-cases-and-exceptions);
+        [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
+        [Assumption A-002](docs/constraints.md#assumptions),
+        [Assumption A-022](docs/constraints.md#assumptions)).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            taskNotAccessible:
+              summary: EX-003 — not a member, deleted, or no such project or task
+              value:
+                title: Not Found
+                status: 404
+                detail: The project or task does not exist or is not accessible.
+    NotProjectOwner:
+      description: |
+        The person is a member of the project but not its Project Owner;
+        nothing is changed
+        ([Assumption A-001](docs/constraints.md#assumptions);
+        [permission matrix](docs/requirements.md#permission-matrix-proposed)).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            notProjectOwner:
+              summary: A Project Participant tries what only the Project Owner may do
+              value:
+                title: Forbidden
+                status: 403
+                detail: Only the Project Owner of this project can do this.
+    ProjectCompleted:
+      description: |
+        The project is Completed, so neither it nor its members, tasks, or
+        assignments can be changed; nothing is changed
+        ([Assumption A-011](docs/constraints.md#assumptions)). Comments are
+        the only exception
+        ([Assumption A-023](docs/constraints.md#assumptions)). Whether a
+        Completed project can be reopened is open
+        ([OQ-006](docs/constraints.md#open-questions)).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            projectCompleted:
+              summary: The project is Completed
+              value:
+                title: Conflict
+                status: 409
+                detail: The project is Completed; it cannot be changed.
   schemas:
     Identifier:
       type: string
@@ -501,6 +2961,16 @@ components:
         because names and titles can change
         ([data model](docs/database.md#entities)). Its format is not decided;
         clients must not derive anything from it.
+    ProjectName:
+      type: string
+      minLength: 1
+      description: |
+        Required, nonempty project name
+        ([Assumption A-003](docs/constraints.md#assumptions)). Whether
+        whitespace-only names are accepted, any maximum length, and whether
+        names must be unique are open
+        ([OQ-003](docs/constraints.md#open-questions)); this draft enforces
+        none of them.
     TaskTitle:
       type: string
       minLength: 1
@@ -511,6 +2981,74 @@ components:
         titles must be unique are open
         ([OQ-003](docs/constraints.md#open-questions)); this draft enforces
         none of them.
+    CommentText:
+      type: string
+      minLength: 1
+      description: |
+        Required, nonempty comment text
+        ([Assumption A-023](docs/constraints.md#assumptions)). Whether
+        whitespace-only text is accepted and any length limits are open
+        ([OQ-024](docs/constraints.md#open-questions)); this draft enforces
+        neither. The text may contain personal data
+        ([OQ-011](docs/constraints.md#open-questions)).
+    DisplayName:
+      type: string
+      minLength: 1
+      description: |
+        The name by which a person is shown to the other members of their
+        projects ([glossary](docs/requirements.md#glossary);
+        [Assumption A-017](docs/constraints.md#assumptions)). It is personal
+        data ([OQ-011](docs/constraints.md#open-questions)). Clients identify
+        people by `personId`; this draft does not require display names to be
+        unique.
+    LoginName:
+      type: string
+      minLength: 1
+      description: |
+        The unique name a person enters to sign in
+        ([glossary](docs/requirements.md#glossary);
+        [Assumption A-017](docs/constraints.md#assumptions)). It is sent only
+        to `signIn` and is never returned by any operation (proposal of this
+        draft).
+    Password:
+      type: string
+      format: password
+      writeOnly: true
+      minLength: 1
+      description: |
+        The person's password, sent only to `signIn` and never returned;
+        Matriz keeps only a hash of it
+        ([Assumption A-017](docs/constraints.md#assumptions)). Password rules
+        are open ([OQ-027](docs/constraints.md#open-questions)); this draft
+        requires only a nonempty value.
+    ProjectState:
+      type: string
+      enum: [ACTIVE, COMPLETED]
+      description: |
+        Project state ([Assumption A-003](docs/constraints.md#assumptions)).
+        Each value corresponds exactly to a
+        [glossary](docs/requirements.md#glossary) term:
+
+        - `ACTIVE`: Active
+        - `COMPLETED`: Completed
+
+        A Completed project is read-only, except that comments can be added
+        ([Assumption A-011](docs/constraints.md#assumptions),
+        [Assumption A-023](docs/constraints.md#assumptions)); reopening is
+        open ([OQ-006](docs/constraints.md#open-questions)).
+    MemberRole:
+      type: string
+      enum: [PROJECT_OWNER, PROJECT_PARTICIPANT]
+      description: |
+        Per-project role ([Assumption A-001](docs/constraints.md#assumptions)).
+        Each value corresponds exactly to a
+        [glossary](docs/requirements.md#glossary) term:
+
+        - `PROJECT_OWNER`: Project Owner
+        - `PROJECT_PARTICIPANT`: Project Participant
+
+        Whether these roles are correct is open
+        ([OQ-002](docs/constraints.md#open-questions)).
     TaskState:
       type: string
       enum: [TO_DO, IN_PROGRESS, DONE]
@@ -523,27 +3061,152 @@ components:
         - `IN_PROGRESS`: In progress
         - `DONE`: Done
 
-        The values are language-neutral codes, not user-facing labels, because
-        the user-facing language is open
-        ([OQ-013](docs/constraints.md#open-questions)). Whether these states
+        The values are language-neutral codes, not user-facing labels; the
+        client shows the labels in the user-facing language, proposed to be
+        English ([Assumption A-028](docs/constraints.md#assumptions);
+        [OQ-013](docs/constraints.md#open-questions)). Whether these states
         are correct is open ([OQ-004](docs/constraints.md#open-questions)).
-    Assignee:
+    TaskPriority:
+      type: string
+      enum: [LOW, MEDIUM, HIGH]
+      description: |
+        Task priority: the importance of a task within its project, not the
+        MoSCoW priority of a requirement
+        ([glossary](docs/requirements.md#glossary);
+        [Assumption A-021](docs/constraints.md#assumptions)). Each value
+        corresponds exactly to a glossary value:
+
+        - `LOW`: Low
+        - `MEDIUM`: Medium
+        - `HIGH`: High
+
+        A new task has `MEDIUM` unless the Project Owner chooses another, and
+        only the Project Owner can set or change it. Whether a Task priority
+        is needed, and its values and default, are open
+        ([OQ-022](docs/constraints.md#open-questions)).
+    PersonSummary:
       type: object
-      required: [personId]
+      required: [personId, displayName]
       properties:
         personId:
           $ref: '#/components/schemas/Identifier'
-          description: Identifier of a person who is a member of the task's project.
+          description: Identifier of the person.
+        displayName:
+          $ref: '#/components/schemas/DisplayName'
       description: |
-        The single project participant responsible for the task
+        A person as shown to others: identifier and display name only. The
+        login name and the password hash are never included
+        ([Assumption A-017](docs/constraints.md#assumptions);
+        [OQ-011](docs/constraints.md#open-questions)).
+    Member:
+      type: object
+      required: [person, role]
+      properties:
+        person:
+          $ref: '#/components/schemas/PersonSummary'
+        role:
+          $ref: '#/components/schemas/MemberRole'
+      description: |
+        A member of a project and their role in it
         ([glossary](docs/requirements.md#glossary);
-        [Assumption A-004](docs/constraints.md#assumptions)). Only the
-        person's identifier is included: which data identify or display a
-        person is open ([OQ-011](docs/constraints.md#open-questions),
-        [OQ-018](docs/constraints.md#open-questions)).
+        [Assumption A-001](docs/constraints.md#assumptions)).
+    TaskCounts:
+      type: object
+      required: [toDo, inProgress, done]
+      properties:
+        toDo:
+          type: integer
+          minimum: 0
+          description: Number of tasks that are To do.
+        inProgress:
+          type: integer
+          minimum: 0
+          description: Number of tasks that are In progress.
+        done:
+          type: integer
+          minimum: 0
+          description: Number of tasks that are Done.
+      description: |
+        Number of tasks of one project in each state. Deleted tasks are not
+        counted, and task filters never change the counts
+        ([FR-012](docs/requirements.md#functional-requirements),
+        [FR-024](docs/requirements.md#functional-requirements);
+        [EX-026](docs/user-stories.md#edge-cases-and-exceptions);
+        [Assumption A-006](docs/constraints.md#assumptions),
+        [Assumption A-022](docs/constraints.md#assumptions)).
+    Progress:
+      type: object
+      required: [taskCounts, percentDone]
+      properties:
+        taskCounts:
+          $ref: '#/components/schemas/TaskCounts'
+        percentDone:
+          type: [integer, 'null']
+          minimum: 0
+          maximum: 100
+          description: |
+            Done tasks / all tasks × 100, rounded to the nearest whole
+            number, halves up: 1 of 3 is 33, 2 of 3 is 67, and 1 of 8 is 13
+            ([EX-027](docs/user-stories.md#edge-cases-and-exceptions);
+            [Assumption A-026](docs/constraints.md#assumptions)). `null` when
+            the project has no tasks; the client then shows "No tasks", never
+            0% or 100% ([EX-005](docs/user-stories.md#edge-cases-and-exceptions);
+            [Assumption A-006](docs/constraints.md#assumptions)). Because of
+            rounding, 100 does not imply that every task is Done, nor 0 that
+            none is; `taskCounts` gives the exact numbers.
+      description: |
+        Progress of one project
+        ([FR-012](docs/requirements.md#functional-requirements);
+        [glossary](docs/requirements.md#glossary)). What progress should
+        measure is open ([OQ-005](docs/constraints.md#open-questions)).
+    ProjectSummary:
+      type: object
+      required: [projectId, name, state, myRole, taskCounts]
+      properties:
+        projectId:
+          $ref: '#/components/schemas/Identifier'
+          description: Identifier of the project.
+        name:
+          $ref: '#/components/schemas/ProjectName'
+        state:
+          $ref: '#/components/schemas/ProjectState'
+        myRole:
+          $ref: '#/components/schemas/MemberRole'
+          description: The signed-in person's role in the project.
+        taskCounts:
+          $ref: '#/components/schemas/TaskCounts'
+      description: |
+        An accessible project as listed in My projects, with its own task
+        counts by state; no totals across projects are given
+        ([FR-001](docs/requirements.md#functional-requirements),
+        [FR-024](docs/requirements.md#functional-requirements);
+        [Assumption A-025](docs/constraints.md#assumptions)).
+    Project:
+      type: object
+      required: [projectId, name, state, myRole, progress]
+      properties:
+        projectId:
+          $ref: '#/components/schemas/Identifier'
+          description: Identifier of the project.
+        name:
+          $ref: '#/components/schemas/ProjectName'
+        state:
+          $ref: '#/components/schemas/ProjectState'
+        myRole:
+          $ref: '#/components/schemas/MemberRole'
+          description: |
+            The signed-in person's role in the project, so that the client can
+            offer only the permitted actions.
+        progress:
+          $ref: '#/components/schemas/Progress'
+      description: |
+        An accessible project with its progress
+        ([FR-001](docs/requirements.md#functional-requirements),
+        [FR-012](docs/requirements.md#functional-requirements)). Its members
+        are returned by `listProjectMembers`, and its tasks by `listTasks`.
     Task:
       type: object
-      required: [taskId, projectId, title, state, assignee]
+      required: [taskId, projectId, title, state, priority, assignees]
       properties:
         taskId:
           $ref: '#/components/schemas/Identifier'
@@ -555,15 +3218,134 @@ components:
           $ref: '#/components/schemas/TaskTitle'
         state:
           $ref: '#/components/schemas/TaskState'
-        assignee:
-          description: The task's assignee, or `null` if it is unassigned.
-          oneOf:
-            - $ref: '#/components/schemas/Assignee'
-            - type: 'null'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+        assignees:
+          type: array
+          uniqueItems: true
+          items:
+            $ref: '#/components/schemas/PersonSummary'
+          description: |
+            The task's assignees, possibly none; each is a member of the
+            task's project and appears at most once, identified by
+            `personId` ([Assumption A-019](docs/constraints.md#assumptions);
+            [OQ-025](docs/constraints.md#open-questions)). Order: by display
+            name (proposal of this draft).
       description: |
-        A task as returned by both operations: it belongs to exactly one
-        project and has at most one assignee
-        ([Assumption A-004](docs/constraints.md#assumptions)).
+        A task: it belongs to exactly one project and has zero or more
+        assignees ([glossary](docs/requirements.md#glossary);
+        [Assumption A-004](docs/constraints.md#assumptions),
+        [Assumption A-019](docs/constraints.md#assumptions)). Changed from
+        0.1.0-draft: the single `assignee` became `assignees`, and `priority`
+        was added.
+    Comment:
+      type: object
+      required: [commentId, taskId, author, createdAt, text]
+      properties:
+        commentId:
+          $ref: '#/components/schemas/Identifier'
+          description: Identifier of the comment.
+        taskId:
+          $ref: '#/components/schemas/Identifier'
+          description: Identifier of the task the comment belongs to.
+        author:
+          $ref: '#/components/schemas/PersonSummary'
+          description: |
+            The person who added the comment; kept if they later stop being a
+            member of the project.
+        createdAt:
+          type: string
+          format: date-time
+          description: Date and time the comment was added, recorded by Matriz (RFC 3339).
+        text:
+          $ref: '#/components/schemas/CommentText'
+      description: |
+        A comment on a task ([glossary](docs/requirements.md#glossary);
+        [Assumption A-023](docs/constraints.md#assumptions)). It is never
+        edited or deleted.
+    SignInRequest:
+      type: object
+      required: [loginName, password]
+      additionalProperties: false
+      properties:
+        loginName:
+          $ref: '#/components/schemas/LoginName'
+        password:
+          $ref: '#/components/schemas/Password'
+      description: Content for signing in. Any other property receives `422`.
+    SignInResponse:
+      type: object
+      required: [accessToken, tokenType, expiresIn, person]
+      properties:
+        accessToken:
+          type: string
+          minLength: 1
+          description: |
+            Signed JWT access token, to be sent as a bearer token with every
+            other request ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)).
+            Clients treat it as opaque.
+        tokenType:
+          type: string
+          const: Bearer
+          description: How the token is sent (RFC 6750).
+        expiresIn:
+          type: integer
+          minimum: 1
+          description: |
+            Number of seconds until the token expires. The lifetime is open
+            ([OQ-027](docs/constraints.md#open-questions)).
+        person:
+          $ref: '#/components/schemas/PersonSummary'
+          description: The signed-in person.
+      description: |
+        Result of a successful sign-in
+        ([FR-013](docs/requirements.md#functional-requirements)).
+    CreateProjectRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          $ref: '#/components/schemas/ProjectName'
+      description: |
+        Content for creating a project. Only `name` is accepted: the project
+        always starts Active, with its creator as Project Owner
+        ([Assumption A-003](docs/constraints.md#assumptions),
+        [Assumption A-008](docs/constraints.md#assumptions)). Any other
+        property receives `422`.
+    RenameProjectRequest:
+      type: object
+      required: [name]
+      additionalProperties: false
+      properties:
+        name:
+          $ref: '#/components/schemas/ProjectName'
+      description: |
+        JSON Merge Patch for renaming a project: `name` is required and cannot
+        be `null`. Any other property receives `422`.
+    CompleteProjectRequest:
+      type: object
+      required: [state]
+      additionalProperties: false
+      properties:
+        state:
+          type: string
+          const: COMPLETED
+          description: |
+            The only state that can be set. Reopening a Completed project is
+            not defined ([OQ-006](docs/constraints.md#open-questions)).
+      description: Content for completing a project. Any other property receives `422`.
+    AddParticipantRequest:
+      type: object
+      required: [personId]
+      additionalProperties: false
+      properties:
+        personId:
+          $ref: '#/components/schemas/Identifier'
+          description: Identifier of the person to add, who must not yet be a member.
+      description: |
+        Content for adding a person as a Project Participant; the role cannot
+        be chosen. Any other property receives `422`.
     CreateTaskRequest:
       type: object
       required: [title]
@@ -571,12 +3353,32 @@ components:
       properties:
         title:
           $ref: '#/components/schemas/TaskTitle'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+          default: MEDIUM
+          description: |
+            Task priority of the new task; `MEDIUM` if absent
+            ([Assumption A-021](docs/constraints.md#assumptions)).
       description: |
-        Content for creating a task. Only `title` is accepted: the initial
-        state is always To do
-        ([Assumption A-010](docs/constraints.md#assumptions)), and assignment
-        ([FR-010](docs/requirements.md#functional-requirements)) is not
-        covered by this draft. Any other property receives `422`.
+        Content for creating a task. Only `title` and `priority` are
+        accepted: the initial state is always To do
+        ([Assumption A-010](docs/constraints.md#assumptions)), and assignees
+        are added afterwards with `assignTask`. Any other property receives
+        `422`.
+    UpdateTaskRequest:
+      type: object
+      minProperties: 1
+      additionalProperties: false
+      properties:
+        title:
+          $ref: '#/components/schemas/TaskTitle'
+        priority:
+          $ref: '#/components/schemas/TaskPriority'
+      description: |
+        JSON Merge Patch for changing a task: at least one of `title` and
+        `priority`; an absent member is unchanged. Neither can be `null`, and
+        any other property receives `422`. The state and the assignees are
+        changed by other operations.
     ChangeTaskStateRequest:
       type: object
       required: [state]
@@ -585,6 +3387,28 @@ components:
         state:
           $ref: '#/components/schemas/TaskState'
       description: The state to set. Any other property receives `422`.
+    AssignTaskRequest:
+      type: object
+      required: [personId]
+      additionalProperties: false
+      properties:
+        personId:
+          $ref: '#/components/schemas/Identifier'
+          description: |
+            Identifier of the member to assign; a Project Participant can give
+            only their own.
+      description: Content for assigning a member to a task. Any other property receives `422`.
+    CreateCommentRequest:
+      type: object
+      required: [text]
+      additionalProperties: false
+      properties:
+        text:
+          $ref: '#/components/schemas/CommentText'
+      description: |
+        Content for adding a comment. Only `text` is accepted: the author and
+        the date and time are recorded by Matriz. Any other property receives
+        `422`.
     Problem:
       type: object
       required: [title, status, detail]
@@ -611,8 +3435,8 @@ components:
           description: Reference identifying this occurrence; optional.
       description: |
         Problem details (RFC 9457). Additional members may appear. A problem
-        never contains project or task information that the person may not
-        see
+        never contains project, task, member, comment, or account information
+        that the person may not see
         ([NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria)).
     ValidationProblem:
       allOf:
