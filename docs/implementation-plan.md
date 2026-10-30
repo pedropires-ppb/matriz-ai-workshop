@@ -54,7 +54,7 @@ The status of each increment is kept in one place only: the **Status** column of
 
 | ID | Goal | Depends on | Acceptance criteria | Status |
 |---|---|---|---|---|
-| [I0](#i0--documentation-alignment) | Record the team's decisions in the documentation. | ADR-002 | Documentation checks | Awaiting review |
+| [I0](#i0--documentation-alignment) | Record the team's decisions in the documentation. | ADR-002 | Documentation checks | Accepted 2026-10-30 by the project team |
 | [I1](#i1--walking-skeleton) | A running, empty application with all quality checks. | I0 | Technical criteria | Planned |
 | [I2](#i2--identity) | Sign in, sign out, and see the signed-in person. | I1 | US-013–US-015; EX-012, EX-014 | Planned |
 | [I3](#i3--projects-and-access-control) | Create, list, view, and rename projects. | I2 | US-001, US-007, US-008; EX-001, EX-003, EX-009, EX-010 | Planned |
@@ -100,6 +100,7 @@ The status of each increment is kept in one place only: the **Status** column of
 - **Acceptance (technical, new):** [Proposal]
   - The application builds and starts from a clean checkout with the documented commands.
   - A request to an unknown API path returns a Problem Details response.
+  - Request content that is not in the operation's media type returns `415` as a Problem Details response ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md)).
   - The module boundary test fails when a module uses another module's internals.
 - **Verification:**
   - automated: the boundary test; an integration test against PostgreSQL in a container; a check that responses match openapi.yaml; an end-to-end test that opens the User interface shell;
@@ -168,7 +169,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - Progress: counts by state and the rounded percentage Done ([Assumption A-026](constraints.md#assumptions));
   - progress and per-project counts in `getProject` and `listProjects`;
   - User interface: My projects as the first screen after signing in, and the progress area of the Project dashboard.
-- **Depends on:** I4; [Assumption A-025](constraints.md#assumptions).
+- **Depends on:** I4; [Assumption A-025](constraints.md#assumptions). Before starting, the team decides whether to keep the rounding of [Assumption A-026](constraints.md#assumptions) despite its edge case.
 - **Acceptance:**
   - [US-006](user-stories.md#us-006--view-progress) and [US-025](user-stories.md#us-025--view-my-projects).
   - The parts of US-013 and US-015 left from I2.
@@ -203,7 +204,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - operations `assignTask` and `unassignTask`, and `changeTaskState` for assignees;
   - the removal check of `removeParticipant` now counts assignments;
   - User interface: assignees on the task list and detail, assign and unassign controls, and “Assign me” and “Unassign me” for Project Participants.
-- **Depends on:** I4, I6; [Assumption A-019](constraints.md#assumptions), [Assumption A-020](constraints.md#assumptions).
+- **Depends on:** I4, I6; [Assumption A-019](constraints.md#assumptions), [Assumption A-020](constraints.md#assumptions). Before starting, the team decides the order in which `assignTask` checks a request ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md)).
 - **Acceptance:**
   - [US-004](user-stories.md#us-004--view-tasks) (completed), [US-005](user-stories.md#us-005--change-task-state), [US-012](user-stories.md#us-012--assign-task), [US-019](user-stories.md#us-019--unassign-a-member), and [US-020](user-stories.md#us-020--assign-or-unassign-myself).
   - [EX-004](user-stories.md#edge-cases-and-exceptions), [EX-007](user-stories.md#edge-cases-and-exceptions), [EX-020](user-stories.md#edge-cases-and-exceptions), and [EX-021](user-stories.md#edge-cases-and-exceptions).
@@ -319,7 +320,10 @@ Interim answers are the team's ([interim team answers](constraints.md#interim-te
 | Sign-in and session policy ([OQ-027](constraints.md#open-questions)) | I2 | Open points of [ADR-005](adr/ADR-005-authentication-with-jwt.md); the team decides them before I2. |
 | Naming rules and text lengths ([OQ-003](constraints.md#open-questions), [OQ-024](constraints.md#open-questions)) | I3, I4, I9 | Open. [Proposal] Check only that names, titles, and comments are nonempty, and set a technical maximum length agreed by the team in I3. |
 | Personal data ([OQ-011](constraints.md#open-questions)) | All | Interim: fictitious data only ([Assumption A-016](constraints.md#assumptions)). Blocks any use with real people. |
-| Finding the person to add as a participant ([OQ-001](constraints.md#open-questions), [OQ-011](constraints.md#open-questions)) | I6 | Proposal, not yet decided by the team: [Assumption A-030](constraints.md#assumptions). High risk: any signed-in person can list the display names of everyone known to Matriz. |
+| Status for content not in the operation's media type ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md)) | I1 | Decided by the project team on 2026-10-30: `415`, replacing the draft's `400`. Recorded in ADR-004 and [openapi.yaml](../openapi.yaml); it no longer blocks I1. Its place in the status order, just before `400`, is a proposal. |
+| Rounding of the percentage Done ([Assumption A-026](constraints.md#assumptions); [OQ-005](constraints.md#open-questions)) | I5 | Open; blocks I5. The team decided rounding halves up; whether to keep it, given that 199 of 200 tasks Done shows 100%, is not decided. The team is asked before I5 starts. |
+| Finding the person to add as a participant ([Assumption A-030](constraints.md#assumptions); [OQ-001](constraints.md#open-questions), [OQ-011](constraints.md#open-questions)) | I6 | Open; blocks I6. A-030 is a proposal, not decided by the team. High risk: any signed-in person can list the display names of everyone known to Matriz. The team is asked before I6 starts. |
+| Order of checks in `assignTask` ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md); [openapi.yaml](../openapi.yaml)) | I7 | Open; blocks I7. The 0.2.0-draft contract checks `403` before `422` for a person who is not a member, unlike the usual order [Proposal], so a Project Participant naming another person always receives `403`. The team is asked before I7 starts. |
 | Deletion details ([OQ-023](constraints.md#open-questions)) | I10 | The proposed details of [Assumption A-022](constraints.md#assumptions) need the team's confirmation before I10. |
 | Self-assignment ([OQ-025](constraints.md#open-questions)) | I7 | Interim: [Assumption A-020](constraints.md#assumptions). High risk: any Project Participant can change any task's state. Review with the client. |
 | Task priority, search and filter matching, progress and My projects ([OQ-022](constraints.md#open-questions), [OQ-026](constraints.md#open-questions), [OQ-005](constraints.md#open-questions)) | I4, I5, I11 | Interim: [Assumption A-021](constraints.md#assumptions), [Assumption A-024](constraints.md#assumptions), [Assumption A-025](constraints.md#assumptions), [Assumption A-026](constraints.md#assumptions). |

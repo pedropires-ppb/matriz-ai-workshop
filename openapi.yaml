@@ -112,14 +112,16 @@ info:
     **Errors.** Errors are problem details (RFC 9457) in
     `application/problem+json`. `type` is omitted (meaning `about:blank`), so
     `title` is the HTTP status phrase and `detail` explains the occurrence.
-    `400` means that the request content is absent, is not in the
-    operation's media type, or is not well-formed JSON, or that a query
+    `415` means that the request content is not in the operation's media
+    type ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md);
+    decided by the project team on 2026-10-30). `400` means that the
+    request content is absent or is not well-formed JSON, or that a query
     parameter value is invalid. `422` means well-formed content that does
     not satisfy the request schema, including unknown properties; `errors`
     points to each invalid member. If a request fails several checks, the
     first applicable status in this order is returned: `401`, `404`, `403`,
-    `400`, `422`, `409`. The exceptions are stated where they apply: `signIn`
-    is public, so its order is `400`, `422`, `401`; and in `assignTask` the
+    `415`, `400`, `422`, `409`. The exceptions are stated where they apply:
+    `signIn` is public, so its order is `415`, `400`, `422`, `401`; and in `assignTask` the
     `403` check needs the content. A refused request changes nothing. Texts
     are in English, the proposed user-facing language
     ([Assumption A-028](docs/constraints.md#assumptions);
@@ -163,6 +165,9 @@ info:
       ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md),
       [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)).
     - 21 operations are added; see the scope table.
+    - Content that is not in the operation's media type receives `415`, not
+      `400`
+      ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)).
 
     **Other open questions reflected, not answered:**
     - who may create projects and how people receive access
@@ -238,7 +243,7 @@ paths:
           [Assumption A-017](docs/constraints.md#assumptions);
           [OQ-001](docs/constraints.md#open-questions)).
         - This is the only public operation, so its order of checks is
-          `400`, `422`, `401`.
+          `415`, `400`, `422`, `401`.
         - A wrong password and an unknown login name receive the same `401`
           with the same text, which never says which one was wrong or
           whether the login name exists; the person is not signed in
@@ -294,6 +299,8 @@ paths:
                       displayName: Ana Silva
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           description: |
             The login name or password is incorrect; the person is not signed
@@ -597,6 +604,8 @@ paths:
                       percentDone: null
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '422':
@@ -799,6 +808,8 @@ paths:
                       percentDone: 50
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1002,6 +1013,8 @@ paths:
                       percentDone: null
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1197,6 +1210,8 @@ paths:
                     role: PROJECT_PARTICIPANT
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1680,6 +1695,8 @@ paths:
                     assignees: []
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -1893,6 +1910,8 @@ paths:
                     assignees: []
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2161,6 +2180,8 @@ paths:
                     assignees: []
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2273,7 +2294,7 @@ paths:
           [OQ-002](docs/constraints.md#open-questions),
           [OQ-025](docs/constraints.md#open-questions)).
         - The `403` check needs `personId`, so this operation checks in the
-          order `401`, `404`, `400`, `422` for content that does not satisfy
+          order `401`, `404`, `415`, `400`, `422` for content that does not satisfy
           `AssignTaskRequest`, `403`, `422` for a person who is not a member,
           `409` (proposal of this draft). A Project Participant naming
           another person therefore receives `403` whether or not that person
@@ -2373,6 +2394,8 @@ paths:
                         displayName: Rui Martins
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '403':
@@ -2738,6 +2761,8 @@ paths:
                     text: Final report approved by the team
         '400':
           $ref: '#/components/responses/BadRequest'
+        '415':
+          $ref: '#/components/responses/UnsupportedMediaType'
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -2816,11 +2841,27 @@ components:
           summary: The token is malformed, invalid, expired, or no longer accepted
           value: 'Bearer error="invalid_token"'
   responses:
+    UnsupportedMediaType:
+      description: |
+        The request content is not in the operation's media type, for example
+        JSON sent as `text/plain`; nothing is changed
+        ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)).
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          examples:
+            wrongMediaType:
+              summary: The request content is not in the operation's media type
+              value:
+                title: Unsupported Media Type
+                status: 415
+                detail: The request content must be in the operation's media type.
     BadRequest:
       description: |
-        The request content is absent, is not in the operation's media type,
-        or is not well-formed JSON, or a query parameter value is invalid;
-        nothing is changed. Well-formed content that does not satisfy the
+        The request content is absent or is not well-formed JSON, or a query
+        parameter value is invalid; nothing is changed. Content that is not
+        in the operation's media type receives `415` instead. Well-formed content that does not satisfy the
         request schema receives `422` instead.
       content:
         application/problem+json:
