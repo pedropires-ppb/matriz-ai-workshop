@@ -1,7 +1,7 @@
 # ADR-003 — Technology stack
 
 - **Status:** Accepted (provisional)
-- **Date:** 2026-10-29
+- **Date:** 2026-10-29; amended on 2026-10-30 (build tool)
 - **Decided by:** the project team ([ADR-002](ADR-002-phase-scope-and-implementation-authorization.md), question 3). The team chose among three options that the AI assistant presented at the team's request.
 - **Related:** [ADR-001](ADR-001-modular-monolith.md), [ADR-004](ADR-004-rest-api-single-entry-point.md), [ADR-005](ADR-005-authentication-with-jwt.md), [ADR-006](ADR-006-simultaneous-changes.md); [NFR-004–NFR-007](../requirements.md#non-functional-requirements-and-unresolved-quality-criteria); [OQ-010](../constraints.md#open-questions), [OQ-020](../constraints.md#open-questions), [OQ-021](../constraints.md#open-questions)
 
@@ -23,6 +23,7 @@ The team chose option A:
 | Database | PostgreSQL. Schema changes are versioned as Flyway migrations. |
 | User interface | A single-page application written in React and TypeScript and built with Vite. The same deployable unit serves it, from the same origin as the API ([ADR-004](ADR-004-rest-api-single-entry-point.md)). |
 | Automated tests | JUnit for unit tests; Spring's test support with MockMvc for API tests; Testcontainers to run PostgreSQL in integration tests; Playwright for end-to-end tests through the User interface. |
+| Build tool | Maven. *Added on 2026-10-30 by team decision, chosen over Gradle; this was an open point of this ADR.* |
 | Authentication | Signed access tokens ([ADR-005](ADR-005-authentication-with-jwt.md)). Option A had proposed server-side sessions. |
 
 Exact versions are chosen and pinned in increment I1 ([implementation plan](../implementation-plan.md)). This ADR fixes only the Java release.
@@ -50,7 +51,7 @@ These options were presented in the phase 1 analysis with the pros and cons belo
 
 These are decided in increment I1 unless stated otherwise:
 
-- The build tool, and how the User interface's build is included in the deployable unit.
+- How the User interface's build is included in the deployable unit. The build tool is Maven (see the decision above).
 - The versions of every component.
 - The continuous integration service.
 - The browsers covered by end-to-end tests. This depends on [OQ-021](../constraints.md#open-questions).

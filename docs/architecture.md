@@ -99,7 +99,7 @@ The project team's provisional decisions of 2026-10-29 ([ADR-002](adr/ADR-002-ph
 
 | Field | Value |
 |---|---|
-| Decision | Option A: Java 25 with Spring Boot and Spring Modulith; PostgreSQL with Flyway migrations; a React and TypeScript single-page application built with Vite and served by the same deployable unit; JUnit, MockMvc, Testcontainers, and Playwright for automated tests. One change to option A: authentication uses signed access tokens (JWT, [ADR-005](adr/ADR-005-authentication-with-jwt.md)) instead of the server-side sessions that option A had proposed. |
+| Decision | Option A: Java 25 with Spring Boot and Spring Modulith, built with Maven (added on 2026-10-30 by team decision); PostgreSQL with Flyway migrations; a React and TypeScript single-page application built with Vite and served by the same deployable unit; JUnit, MockMvc, Testcontainers, and Playwright for automated tests. One change to option A: authentication uses signed access tokens (JWT, [ADR-005](adr/ADR-005-authentication-with-jwt.md)) instead of the server-side sessions that option A had proposed. |
 | Decided by | The project team (workshop trainer), on 2026-10-29: option A in question 3, choosing among three options that the AI assistant presented at the team's request, and JWT in question 14 ([ADR-002](adr/ADR-002-phase-scope-and-implementation-authorization.md)). No rationale was recorded. |
 | Status | Accepted, provisional: it can change with the client's answers, in particular on the MVP scope ([OQ-016](constraints.md#open-questions)) and on hosting ([OQ-020](constraints.md#open-questions)). |
 
