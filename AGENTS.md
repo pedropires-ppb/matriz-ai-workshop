@@ -45,6 +45,10 @@ Matriz is an application for work teams to organize projects (F01), manage tasks
 - Work only within the proposed MVP (FR-001–FR-025) described in [requirements.md](docs/requirements.md#mvp-scope). FR-013–FR-025 are team decisions, not client requests. *Changed on 2026-10-29 by team decision ([ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md), question 2: amend AGENTS.md to bring task comments into scope): previously FR-001–FR-012.*
 - Do not specify or implement anything listed in [Outside the initial scope](docs/requirements.md#outside-the-initial-scope).
 
+## Code structure
+
+- Structure the backend code as [ADR-008](docs/adr/ADR-008-domain-driven-design.md) decides, and keep [`LayeringTests`](src/test/java/com/matriz/LayeringTests.java) and [`ModuleBoundaryTests`](src/test/java/com/matriz/ModuleBoundaryTests.java) passing. *Added on 2026-10-30 by team decision (the conversation “I1 review: remaining decisions”, decision 2).*
+
 ## Agents must not
 
 - Invent requirements, business rules, priorities, success measures, or answers to open questions.
@@ -71,7 +75,7 @@ Matriz is an application for work teams to organize projects (F01), manage tasks
 ## Current phase and next steps
 
 - **Current phase:** Requirements specification v0.2 — draft awaiting client validation. Implementation was provisionally authorized by the project team on 2026-10-29, at the team's risk, while the client's approval of the MVP scope stays open (OQ-016; [ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md), question 1).
-- **Next:** Increment I1 (walking skeleton) of the [implementation plan](docs/implementation-plan.md), then I2–I12 in dependency order. In parallel, client validation of the open questions, the assumptions, and the team's [interim answers](docs/constraints.md#interim-team-answers-2026-10-29). A client answer that differs from an interim answer prevails; record it in a new ADR or a register update, and re-plan the affected increments.
+- **Next:** The first increment whose Status is not Accepted in the [Increments table of the implementation plan](docs/implementation-plan.md#increments), then the following increments in dependency order. In parallel, client validation of the open questions, the assumptions, and the team's [interim answers](docs/constraints.md#interim-team-answers-2026-10-29). A client answer that differs from an interim answer prevails; record it in a new ADR or a register update, and re-plan the affected increments. *Changed on 2026-10-30 by team decision (the conversation “I1 review: remaining decisions”, decision 2): previously “Increment I1 (walking skeleton) of the implementation plan, then I2–I12 in dependency order”. The plan's Status column now names the increment, so this line does not go stale.*
 
 *Changed on 2026-10-30 with the project team's approval: previously, the current phase was requirements specification v0.1, and no implementation was to start before the MVP scope was approved (OQ-016).*
 

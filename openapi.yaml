@@ -128,6 +128,15 @@ info:
     [OQ-013](docs/constraints.md#open-questions)); enumeration values are
     language-neutral codes, not labels.
 
+    **Unsupported methods.** A request to a path of this contract with a
+    method that the path does not define receives `405` with problem
+    details and an `Allow` header that lists the methods the path defines
+    ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md), decision 9;
+    decided by the project team on 2026-10-30). This rule applies to every
+    path and is stated only here, because OpenAPI cannot attach a response
+    to a method that a path does not define. Its place in the order of
+    checks above is not decided.
+
     **Lists.** Lists are returned whole; this draft defines no pagination,
     because no volumes are known
     ([OQ-010](docs/constraints.md#open-questions);

@@ -26,11 +26,75 @@ All features below are proposed Must priorities, subject to client approval; the
 ## Project status and next phase
 
 - **Current phase:** requirements specification v0.2 — draft awaiting client validation, with the project team's provisional decisions of 2026-10-29 ([ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md)).
-- **Architecture:** modular monolith chosen by the project team on 2026-10-25 ([ADR-001](docs/adr/ADR-001-modular-monolith.md)); see [architecture definition](docs/architecture.md). On 2026-10-29 the team chose the technology stack ([ADR-003](docs/adr/ADR-003-technology-stack.md)), a REST API as the single entry point ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)), signed access tokens ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)), and how simultaneous changes are handled ([ADR-006](docs/adr/ADR-006-simultaneous-changes.md)). All are provisional until the MVP scope is approved (OQ-016).
+- **Architecture:** modular monolith chosen by the project team on 2026-10-25 ([ADR-001](docs/adr/ADR-001-modular-monolith.md)); see [architecture definition](docs/architecture.md). On 2026-10-29 the team chose the technology stack ([ADR-003](docs/adr/ADR-003-technology-stack.md)), a REST API as the single entry point ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)), signed access tokens ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)), and how simultaneous changes are handled ([ADR-006](docs/adr/ADR-006-simultaneous-changes.md)). All are provisional until the MVP scope is approved (OQ-016). *Added on 2026-10-30 by team decision in the review of increment I1:* the backend is structured with domain-driven design inside the modules ([ADR-008](docs/adr/ADR-008-domain-driven-design.md)).
 - **Implementation:** provisionally authorized by the project team on 2026-10-29, at the team's risk, while the client's approval stays open (OQ-016). Work proceeds in increments I1–I12 of the [implementation plan](docs/implementation-plan.md); the team approved the matching update of the current phase in [AGENTS.md](AGENTS.md#current-phase-and-next-steps) on 2026-10-30. *Changed in v0.2: previously, implementation was not to start before the MVP scope was approved.*
 - **MVP release criteria (proposed):** see [MVP scope](docs/requirements.md#mvp-scope); business success measures are still open (OQ-009).
 - **Pending:** client answers to the [open questions](docs/constraints.md#open-questions) (OQ-001–OQ-027) and validation of the [assumptions](docs/constraints.md#assumptions) (A-001–A-030). The team's [interim answers](docs/constraints.md#interim-team-answers-2026-10-29) apply until the client answers.
-- **Next phase:** increment I1, the walking skeleton; client validation continues in parallel.
+- **Next phase:** the project team's review of increment I1, the walking skeleton, with the changes requested in its first review: demonstration data through a Flyway migration ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md), decision 10, amended) and domain-driven design ([ADR-008](docs/adr/ADR-008-domain-driven-design.md)). I1's status is in the [implementation plan](docs/implementation-plan.md#increments). Then increment I2. Client validation continues in parallel. *Changed on 2026-10-30: previously “increment I1, the walking skeleton; client validation continues in parallel”. Changed again on 2026-10-30 after the team's review of I1: previously “the project team's review of increment I1, the walking skeleton, which is awaiting review in the implementation plan; then increment I2”.*
+
+## Run Matriz locally
+
+*Added on 2026-10-30 with increment I1 ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md)).* Increment I1 has no features yet. The application starts, creates the database schema, loads the demonstration data when asked, reports its health, and serves an empty User interface shell. Run the commands from the repository root in a macOS or Linux shell; they were verified on macOS.
+
+**Prerequisites:** JDK 25 (`java -version` reports 25), and Docker with Docker Compose, running. The build downloads Maven, Node.js, npm, and the other dependencies at their pinned versions. The tests also download Chromium.
+
+1. **Set up the environment (once).** Copy the example file, then replace its fictitious values with your own:
+
+   ```sh
+   cp .env.example .env
+   ```
+
+   git ignores `.env`; never commit it. Matriz and Docker Compose read it when started from the repository root, and real environment variables take precedence over it. If a variable that Matriz needs is missing or blank, Matriz refuses to start and names the variable.
+
+2. **Start the database.** PostgreSQL 18.6 listens on `127.0.0.1:5432` and keeps its data in the Docker volume `matriz_matriz-db`:
+
+   ```sh
+   docker compose up -d --wait
+   ```
+
+   Compose takes the database user and password from `.env` only when it creates the volume; to change them later, reset the database (step 6). `docker compose stop` stops the database and keeps the data.
+
+3. **Build and run the application.** At start-up, Matriz applies any pending database migrations. It never deletes data.
+
+   ```sh
+   ./mvnw -B package -DskipTests
+   java -jar target/matriz-0.1.0-SNAPSHOT.jar
+   ```
+
+   In another terminal, check that the application and its database are up:
+
+   ```sh
+   curl http://localhost:8080/actuator/health
+   ```
+
+   The answer includes `"status":"UP"` and `"db":{"status":"UP"}`. The User interface shell is at <http://localhost:8080/>. Stop the application with Ctrl+C.
+
+4. **Add the demonstration data.** In `.env`, set `MATRIZ_DEMO_DATA=true`, and choose a password for each demonstration account: `MATRIZ_DEMO_PASSWORD_ANA`, `MATRIZ_DEMO_PASSWORD_RUI`, `MATRIZ_DEMO_PASSWORD_EVA`, and `MATRIZ_DEMO_PASSWORD_DANIEL`. Then start the application as in step 3. At that start, a database migration adds the demonstration people, projects, tasks, and comments, once for this database. A demonstration row that you later change or delete stays so; the next start does not restore it.
+   - The setting is fixed for each database. Keep `MATRIZ_DEMO_DATA=true` and the passwords in `.env` while you use this database: Matriz requires them at every start, but uses the passwords only when the migration runs, so changing a password later does not change the account.
+   - If the setting does not match the database, for example `false` for a database that has the demonstration data, or if existing rows conflict with the demonstration data, Matriz refuses to start, adds nothing, and names the remedy.
+   - To get fresh demonstration data or new passwords, reset the database (step 6).
+   - The people, projects, tasks, and comments are listed in [ADR-007, decision 10](docs/adr/ADR-007-build-persistence-and-demonstration-data.md#10-demonstration-data). Signing in arrives in increment I2.
+
+   *Changed on 2026-10-30 by team decision in the I1 review ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md), decision 10, amended): previously this step was “Load the demonstration data”; each start added only the demonstration rows that were missing, so a deleted demonstration row came back, and a password was used only when its account was first added.*
+
+5. **Run the tests.** Docker must be running: the tests start their own PostgreSQL container and never touch the local database.
+
+   ```sh
+   ./mvnw -B verify
+   ```
+
+   The tests include the module boundary and layering checks ([ADR-008](docs/adr/ADR-008-domain-driven-design.md)). Only `DemoDataTests` uses the demonstration data, on databases of its own in the test container. *Added on 2026-10-30 in the I1 review.* Continuous integration runs the same command on every push and pull request ([.github/workflows/ci.yml](.github/workflows/ci.yml)).
+
+6. **Reset the local database (manual step; it deletes all local data).** Matriz never does this by itself. The first command deletes the volume and every row in it, including data added by hand, and cannot be undone:
+
+   ```sh
+   docker compose down -v
+   docker compose up -d --wait
+   ```
+
+   The next start of the application (step 3) creates the schema again and, if requested, the demonstration data. Resetting is also the way to get fresh demonstration data, to apply new demonstration passwords, or to change `MATRIZ_DEMO_DATA` for the database. *Added on 2026-10-30 in the I1 review.*
+
+**Troubleshooting.** If Maven cannot download because of a certificate error, such as `PKIX path building failed`, on a network that uses a private certificate authority, point the JDK at a trust store that contains that authority: `export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/path/to/truststore"`. Never commit trust stores or registry settings.
 
 ## Review log (human-in-the-loop)
 
@@ -64,8 +128,9 @@ The AI reviewed the documentation for six categories (R-01–R-13). From R-14 on
 - [MVP user stories and acceptance criteria](docs/user-stories.md): testable scenarios and exceptional situations.
 - [Constraints, assumptions and open questions](docs/constraints.md): known and unknown constraints, assumption register, security/privacy, and decisions awaiting the client.
 - [Architecture definition](docs/architecture.md): comparison of a monolith, a modular monolith, and microservices for the proposed MVP; the chosen modular monolith (provisional until OQ-016), its main trade-offs, and its logical modules.
-- [Architecture decision records](docs/adr/README.md): the project team's decisions (ADR-001–ADR-006): modular monolith, phase scope and provisional implementation authorization, technology stack, REST API, authentication, and simultaneous changes; all provisional until OQ-016.
+- [Architecture decision records](docs/adr/README.md): the project team's decisions (ADR-001–ADR-008): modular monolith, phase scope and provisional implementation authorization, technology stack, REST API, authentication, simultaneous changes, build, persistence, and demonstration data, and domain-driven design; all provisional until OQ-016. *Changed on 2026-10-30: ADR-007 added; then ADR-008, after the team's review of I1.*
 - [Implementation plan](docs/implementation-plan.md): increments I0–I12, each with its status, goal, components, dependencies, acceptance criteria (US/EX), and verification, and the rule for updating the status.
+- [Verification record of increment I1](docs/evidence/I1-verification.md): the checks run on 2026-10-30 and their trimmed outputs, the evidence to which I1's status links. *Added on 2026-10-30; the re-verification after the team's review of I1 was added the same day.*
 - [Data model](docs/database.md): proposed logical data model for the MVP (entities, relationships, ER diagram, stored and derived data, and consistency review); a proposal pending validation (OQ-016), not an approved design.
 - [API contract (draft)](openapi.yaml): OpenAPI 3.1 contract (0.2.0-draft) for the operations of the proposed MVP, FR-001–FR-025; REST is the single entry point by team decision (ADR-004), and the contract is a draft pending validation (OQ-016).
 - [Wireframe: project dashboard](docs/ui/project-dashboard.md): low-fidelity wireframe of one proposed MVP screen (a single project's progress, tasks, and members) with its FR/US traceability, the open questions affecting it, and the changes required by the team decisions of 2026-10-29; a proposal pending MVP approval (OQ-016).

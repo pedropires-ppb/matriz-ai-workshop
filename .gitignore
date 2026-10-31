@@ -25,3 +25,20 @@ replay_pid*
 
 # IntelliJ IDEA
 .idea/
+
+# Local environment (ADR-007 decision 6): copy .env.example to .env; never commit the real file
+.env
+.env.*
+!.env.example
+
+# Maven build output
+target/
+
+# User interface build: Node.js installed by the build, npm packages, and Vite output
+frontend/node/
+frontend/node_modules/
+frontend/dist/
+
+# Playwright output
+test-results/
+playwright-report/

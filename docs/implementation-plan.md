@@ -1,15 +1,15 @@
 # Matriz — Implementation Plan (v0.2)
 
-**Status:** Proposal by the AI assistant, adopted provisionally by the project team on 2026-10-29 ([ADR-002](adr/ADR-002-phase-scope-and-implementation-authorization.md)). The team authorized implementation provisionally, at its own risk, while the client's approval of the MVP scope is pending ([OQ-016](constraints.md#open-questions)). If the client changes the scope, this plan changes.
+**Status:** Proposal by the AI assistant, adopted provisionally by the project team on 2026-10-29 ([ADR-002](adr/ADR-002-phase-scope-and-implementation-authorization.md)). Revised on 2026-10-30 by team decision ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)): I1 now creates the whole schema and loads the demonstration data; each change is marked where it is made. Revised again on 2026-10-30 by team decision in the review of I1 ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md) decision 10, amended; [ADR-008](adr/ADR-008-domain-driven-design.md)): the demonstration data is a Flyway migration, and the backend is structured with domain-driven design; each change is marked “in the I1 review”. The team authorized implementation provisionally, at its own risk, while the client's approval of the MVP scope is pending ([OQ-016](constraints.md#open-questions)). If the client changes the scope, this plan changes.
 
 Requirements, acceptance criteria, and assumptions are defined only in [requirements](requirements.md), [user stories](user-stories.md), and [constraints](constraints.md); this plan links to them. The technologies are those of [ADR-003](adr/ADR-003-technology-stack.md), and the API is [openapi.yaml](../openapi.yaml) ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md)).
 
 ## Approach
 
-- **Vertical slices.** Each increment from I2 onwards delivers its API operations, the User interface screens that use them, the database migrations it needs, and its automated tests. [Proposal]
+- **Vertical slices.** Each increment from I2 onwards delivers its API operations, the User interface screens that use them, any further database migrations it needs, and its automated tests. I1 creates the whole schema of the [data model](database.md); later increments change it only through new migrations, and an applied migration is never edited ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)). [Proposal] *Changed on 2026-10-30 by team decision ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md), plan revision): previously each increment from I2 onwards added the migrations it needed. Any technical data needed to end a sign-in is still added in I2, with the open points of [ADR-005](adr/ADR-005-authentication-with-jwt.md).* Within each module, an increment adds the aggregates with their JPA mapping, the repository implementations, use cases, and web layer it needs, in the layers of [ADR-008](adr/ADR-008-domain-driven-design.md). *Added on 2026-10-30 by team decision in the I1 review. Changed on 2026-10-30 by team decision (decision 9 of the conversation “I1 review: remaining decisions”): previously “the aggregates, use cases, persistence model, and web layer it needs”.*
 - **Acceptance.** The acceptance criteria of an increment are the user stories (US) and exceptional cases (EX) listed for it. A story listed as partial is completed in the increment named beside it.
-- **Test fixtures.** Before I6 adds members and I8 completes projects, tests that need a Project Participant or a Completed project create it directly in the database.
-- **Test data.** Demonstration accounts are fictitious and match the people in the user stories, for example login name “ana” with display name “Ana Silva”. Their passwords are supplied when the application starts and are never committed ([Assumption A-016](constraints.md#assumptions)). [Proposal]
+- **Test fixtures.** Before I6 adds members and I8 completes projects, tests that need a Project Participant or a Completed project create it directly in the database. Automated tests never use the demonstration data; they create their own. *The last sentence was added on 2026-10-30 by team decision ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)).* The exception is `DemoDataTests`, which checks the demonstration data migration on databases of its own. *Added on 2026-10-30 by team decision in the I1 review ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md), decision 10, amended).*
+- **Demonstration data.** Demonstration people, projects, tasks, assignments, and comments are fictitious and match the people and examples in the user stories, for example login name “ana” with display name “Ana Silva” ([Assumption A-016](constraints.md#assumptions)). From I1 onwards, a Flyway migration adds them once per database, only when requested (`MATRIZ_DEMO_DATA=true`); a demonstration row deleted later is not restored. *Changed on 2026-10-30 by team decision in the I1 review ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md), decision 10, amended): previously “They are loaded from I1 onwards, only when requested”.* Their passwords are supplied when the application starts and are never committed ([ADR-005](adr/ADR-005-authentication-with-jwt.md), [ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)). *Changed on 2026-10-30 by team decision ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md), plan revision): previously “Test data”, with demonstration accounts only, seeded in I2.*
 - **Order.** Increments may be reordered or run in parallel when their dependencies allow.
 
 ### Exit criteria for every increment [Proposal]
@@ -23,12 +23,14 @@ Requirements, acceptance criteria, and assumptions are defined only in [requirem
 
    In each case, nothing changes.
 3. Responses match [openapi.yaml](../openapi.yaml), and errors are Problem Details ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md)).
-4. The module boundary test passes ([ADR-001](adr/ADR-001-modular-monolith.md)).
+4. The module boundary test and the layering test pass ([ADR-001](adr/ADR-001-modular-monolith.md), [ADR-008](adr/ADR-008-domain-driven-design.md)). *The layering test was added on 2026-10-30 by team decision in the I1 review.*
 5. No secret, password, or real personal data is committed or logged.
 6. The documentation is updated if behaviour or the contract changed. Any new assumption is registered in [constraints](constraints.md#assumptions) before it is used.
 7. The project team reviews and accepts the increment.
 
-## Increment status [Proposal]
+## Increment status
+
+*Changed on 2026-10-31 by team decision (the conversation “I1 review: last decisions”, decision 6), which accepted rules 1–7: previously the heading was “Increment status [Proposal]”. Rule 8 was accepted on 2026-10-30.*
 
 The status of each increment is kept in one place only: the **Status** column of the [Increments](#increments) table. Its values are deliberately different from the task states (To do, In progress, Done) and the project states (Active, Completed).
 
@@ -49,13 +51,14 @@ The status of each increment is kept in one place only: the **Status** column of
 5. **Any status → Blocked:** when a dependency, an unanswered question, or a failed check stops the work. The cell states the cause, for example an OQ, an assumption, or an increment, and the earlier status, which is restored when the cause is removed.
 6. **Accepted → Under way:** when a client answer, a team decision, or a defect requires changing an accepted increment. The cell states the reason.
 7. Changing a status never changes requirements or acceptance criteria. If they must change, they are changed first in [requirements](requirements.md) or [user stories](user-stories.md).
+8. **Awaiting review → Under way:** when the project team reviews the increment and requests changes. The cell names the requested changes and links to the decisions that record them. When the changes are done, rule 3 applies again. *Added on 2026-10-30 in the I1 review, which requested changes that rules 1–7 had no transition for. Accepted by the project team on 2026-10-30 (the conversation “I1 review: remaining decisions”, decision 5): previously tagged [Proposal].*
 
 ## Increments
 
 | ID | Goal | Depends on | Acceptance criteria | Status |
 |---|---|---|---|---|
 | [I0](#i0--documentation-alignment) | Record the team's decisions in the documentation. | ADR-002 | Documentation checks | Accepted 2026-10-30 by the project team |
-| [I1](#i1--walking-skeleton) | A running, empty application with all quality checks. | I0 | Technical criteria | Planned |
+| [I1](#i1--walking-skeleton) | A running application with no features yet: the whole schema, demonstration data, and all quality checks. | I0 | Technical criteria | Awaiting review since 2026-10-30, after the remaining decisions of the team's I1 review (rules 8 and 3), with the evidence in [section 9](evidence/I1-verification.md#9-re-verification-after-the-teams-review) and [section 10](evidence/I1-verification.md#10-re-verification-after-the-reviews-remaining-decisions) of the I1 verification record. The decisions are recorded in [Decisions affecting the increments](#decisions-affecting-the-increments), row “Remaining decisions of the I1 review”. *Previously Under way since 2026-10-30 for those decisions (rule 8); before that, Awaiting review with the evidence in section 9 (rules 8 and 3), Under way (rule 8), and Awaiting review with the evidence in sections 1–8.* *On 2026-10-31, the project team's last decisions of the review changed documents only (row “Last decisions of the I1 review”), and the team kept I1 Awaiting review instead of applying rule 8.* |
 | [I2](#i2--identity) | Sign in, sign out, and see the signed-in person. | I1 | US-013–US-015; EX-012, EX-014 | Planned |
 | [I3](#i3--projects-and-access-control) | Create, list, view, and rename projects. | I2 | US-001, US-007, US-008; EX-001, EX-003, EX-009, EX-010 | Planned |
 | [I4](#i4--tasks-and-task-priority) | Create, view, and change tasks, including Task priority. | I3 | US-003, US-004 (partial), US-011, US-018; EX-002, EX-011, EX-013, EX-019 | Planned |
@@ -87,34 +90,57 @@ The status of each increment is kept in one place only: the **Status** column of
 
 ### I1 — Walking skeleton
 
-- **Goal:** A running application with no features, in which every later increment can be built, tested, and verified.
+*Revised on 2026-10-30 by team decision ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md), plan revision). Previously the goal was “a running, empty application”; the first migration was not the whole schema; the database connection, the environment variables, the local database, and password hashing were not listed; the demonstration accounts were seeded in I2; and the last three acceptance criteria below did not exist.*
+
+*Revised again on 2026-10-30 by team decision in the I1 review ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md) decision 10, amended; [ADR-008](adr/ADR-008-domain-driven-design.md)): the demonstration data is added by a Flyway migration instead of start-up loaders, and each module gets the layers and the layering check of domain-driven design. Each change is marked below.*
+
+- **Goal:** A running application with no features yet, in which every later increment can be built, tested, and verified. It already holds the whole schema and, when requested, the demonstration data.
 - **Components:**
-  - the build, with the tool and versions chosen and pinned ([ADR-003](adr/ADR-003-technology-stack.md));
-  - empty Identity, Projects, Tasks, Progress, and Access control modules, declared for Spring Modulith;
-  - the first database migration;
+  - the build, with the tool and versions chosen and pinned ([ADR-003](adr/ADR-003-technology-stack.md), [ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md));
+  - empty Identity, Projects, Tasks, Progress, and Access control modules, declared for Spring Modulith. Each has its API package and the empty layers `domain`, `application`, `infrastructure`, and `web` ([ADR-008](adr/ADR-008-domain-driven-design.md)); *layers added in the I1 review;*
+  - the first database migration, which creates the whole schema of the [data model](database.md): Person, Project, Membership, Task, Assignment, and Comment, with the constraints of [ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md); *moved forward from I2–I9;*
+  - the database connection, configured only through environment variables, with an example file of fictitious values and a local PostgreSQL; *new;*
+  - the demonstration data, as a Flyway migration applied once per database and only when requested, with passwords supplied at start-up and stored as hashes ([ADR-005](adr/ADR-005-authentication-with-jwt.md), [ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md) decision 10); *moved from I2; changed in the I1 review: previously “loaded only when requested”, by start-up loaders;*
+  - the layering check, `LayeringTests`, with ArchUnit ([ADR-008](adr/ADR-008-domain-driven-design.md)); *added in the I1 review;*
   - error handling that returns Problem Details;
-  - a health check;
+  - a health check that reports whether the database is up ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md));
   - the User interface shell, served from the same origin as the API;
   - continuous integration running every test.
-- **Depends on:** I0; [ADR-001](adr/ADR-001-modular-monolith.md), [ADR-003](adr/ADR-003-technology-stack.md), [ADR-004](adr/ADR-004-rest-api-single-entry-point.md).
+- **Depends on:** I0; [ADR-001](adr/ADR-001-modular-monolith.md), [ADR-003](adr/ADR-003-technology-stack.md), [ADR-004](adr/ADR-004-rest-api-single-entry-point.md), [ADR-005](adr/ADR-005-authentication-with-jwt.md), [ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md), [ADR-008](adr/ADR-008-domain-driven-design.md) (*added in the I1 review*).
 - **Acceptance (technical, new):** [Proposal]
   - The application builds and starts from a clean checkout with the documented commands.
   - A request to an unknown API path returns a Problem Details response.
   - Request content that is not in the operation's media type returns `415` as a Problem Details response ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md)).
   - The module boundary test fails when a module uses another module's internals.
+  - The layering check fails when a layer inside a module uses a layer it must not ([ADR-008](adr/ADR-008-domain-driven-design.md)). *Added on 2026-10-30 in the I1 review.*
+  - Started against an empty database, the application applies the migrations, and the health check reports the database as up. *Added on 2026-10-30.*
+  - Restarting the application deletes, overwrites, and duplicates nothing: neither the demonstration data nor data added by hand. *Added on 2026-10-30.*
+  - A demonstration row deleted by hand stays deleted after a restart. Started against an empty database without the demonstration data, and in the test databases, the application has none of it. *Added on 2026-10-30 in the I1 review.*
+  - No secret, password, or real personal data is in the repository, and the real environment file is ignored by git. *Added on 2026-10-30.*
 - **Verification:**
-  - automated: the boundary test; an integration test against PostgreSQL in a container; a check that responses match openapi.yaml; an end-to-end test that opens the User interface shell;
-  - manual: introduce a boundary violation and confirm the build fails, then revert it; a second person follows the README instructions.
+  - automated:
+    - the boundary test, and the layering test (*added in the I1 review*);
+    - integration tests against PostgreSQL in a container: the migration on an empty database, the database constraints, the health check, a missing environment variable stopping start-up, and the demonstration data migration applied once, with a restart that changes nothing, and refused when the setting does not match the database or a row conflicts; the test databases have no demonstration data. *Changed in the I1 review: previously “the demonstration data loaded twice and after a restart without duplicates”;*
+    - a check that schema migrations have whole version numbers and demonstration data migrations are sub-versions (*added in the I1 review*);
+    - a check that responses match openapi.yaml;
+    - an end-to-end test that opens the User interface shell;
+  - manual:
+    - introduce a boundary violation and confirm the build fails, then revert it;
+    - introduce a layering violation and confirm the build fails, then revert it (*added in the I1 review*);
+    - start from an empty database with the demonstration data, add a row by hand, restart, and confirm that nothing was lost or duplicated;
+    - delete a demonstration row by hand, restart, and confirm that it stays deleted; start from an empty database without the demonstration data and confirm that it has none (*added in the I1 review*);
+    - search the repository for secrets and real personal data;
+    - build from a clean checkout with the README's commands, and confirm that continuous integration passes after the push. *Changed on 2026-10-30 by team decision (the conversation “I1 review: remaining decisions”, decision 8): previously “a second person follows the README instructions”. The team is one person.*
 
 ### I2 — Identity
 
 - **Goal:** People sign in with prepared accounts, see who they are signed in as, and sign out. Every other operation requires a signed-in person.
 - **Components:**
-  - Identity: Person, with login name, display name, and password hash ([Assumption A-017](constraints.md#assumptions));
-  - seeded demonstration accounts;
+  - Identity: Person, with login name, display name, and password hash ([Assumption A-017](constraints.md#assumptions)); its table and the demonstration accounts exist from I1 ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)); *changed on 2026-10-30 by team decision (plan revision): previously this list also had “seeded demonstration accounts”, which moved to I1;*
   - token issuing, verification, and revocation on sign-out ([ADR-005](adr/ADR-005-authentication-with-jwt.md));
   - operations `signIn`, `signOut`, and `getCurrentPerson`;
   - User interface: the sign-in screen, and a header with the display name and a sign-out control.
+  - the Person aggregate in Identity's layers, mapped with JPA annotations, with its repository; the mapping conventions are decided here ([ADR-008](adr/ADR-008-domain-driven-design.md)); *added on 2026-10-30 by team decision in the I1 review; changed on 2026-10-30 by team decision (decision 9 of the conversation “I1 review: remaining decisions”): previously “with its persistence model and mappers; the mapper conventions are decided here”.*
 - **Depends on:** I1. Before starting, the team decides the open points of [ADR-005](adr/ADR-005-authentication-with-jwt.md): token lifetime, how sign-out is enforced, and where the token is kept ([OQ-027](constraints.md#open-questions)).
 - **Acceptance:**
   - [US-013](user-stories.md#us-013--sign-in), [US-014](user-stories.md#us-014--sign-out), and [US-015](user-stories.md#us-015--see-who-is-signed-in). Showing the person's projects (US-013) and My projects (US-015) is completed in I5.
@@ -135,6 +161,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - the protection of rules spanning modules ([ADR-006](adr/ADR-006-simultaneous-changes.md); the proposed project lock is confirmed here);
   - operations `createProject`, `listProjects` (without search), `getProject`, and `renameProject`;
   - User interface: a basic project list, project creation, and the Project dashboard header with renaming.
+  - the Project aggregate with the Project Owner's Membership, and Access control's policy, in the layers of [ADR-008](adr/ADR-008-domain-driven-design.md); the mapping of Memberships and the layers that Access control needs are decided here; *added on 2026-10-30 by team decision in the I1 review.*
 - **Depends on:** I2; [Assumption A-018](constraints.md#assumptions).
 - **Acceptance:**
   - [US-001](user-stories.md#us-001--create-project); its AC2 is checked through the member list in I6.
@@ -152,6 +179,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - Tasks: Task, with title, state, and Task priority;
   - operations `createTask`, `listTasks` (without filters), `getTask`, `updateTask` (title and Task priority), and `changeTaskState` (by the Project Owner for now; assignees follow in I7);
   - User interface: the task list on the Project dashboard, task creation, and a task detail showing title, Task priority, and state.
+  - the Task aggregate in the layers of [ADR-008](adr/ADR-008-domain-driven-design.md); whether and how the Task class maps the technical `creation_order` is decided here; *added on 2026-10-30 by team decision in the I1 review; the part on `creation_order` added on 2026-10-30 with decision 9 of the conversation “I1 review: remaining decisions”.*
 - **Depends on:** I3; [Assumption A-021](constraints.md#assumptions).
 - **Acceptance:**
   - [US-003](user-stories.md#us-003--create-task), [US-011](user-stories.md#us-011--rename-task), and [US-018](user-stories.md#us-018--set-task-priority).
@@ -169,6 +197,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - Progress: counts by state and the rounded percentage Done ([Assumption A-026](constraints.md#assumptions));
   - progress and per-project counts in `getProject` and `listProjects`;
   - User interface: My projects as the first screen after signing in, and the progress area of the Project dashboard.
+  - Progress as a read model, with no aggregate; the layers it needs are decided here ([ADR-008](adr/ADR-008-domain-driven-design.md)); *added on 2026-10-30 by team decision in the I1 review.*
 - **Depends on:** I4; [Assumption A-025](constraints.md#assumptions). Before starting, the team decides whether to keep the rounding of [Assumption A-026](constraints.md#assumptions) despite its edge case.
 - **Acceptance:**
   - [US-006](user-stories.md#us-006--view-progress) and [US-025](user-stories.md#us-025--view-my-projects).
@@ -185,6 +214,7 @@ The status of each increment is kept in one place only: the **Status** column of
 - **Components:**
   - operations `listProjectMembers`, `listEligibleParticipants` (Project Owner only; a proposal, [Assumption A-030](constraints.md#assumptions)), `addParticipant`, and `removeParticipant`;
   - User interface: the members area of the Project dashboard, with add and remove controls for the Project Owner.
+  - changes of Membership in the Project aggregate, and the task-facts interface that Projects defines and Tasks implements ([ADR-008](adr/ADR-008-domain-driven-design.md), decision 3); *added on 2026-10-30 by team decision in the I1 review.*
 - **Depends on:** I3; [Assumption A-027](constraints.md#assumptions). Before starting, the team decides how a Project Owner finds the person to add ([Assumption A-030](constraints.md#assumptions); [OQ-011](constraints.md#open-questions)).
 - **Acceptance:**
   - [US-002](user-stories.md#us-002--add-participant), [US-009](user-stories.md#us-009--remove-participant), and [US-026](user-stories.md#us-026--view-members).
@@ -204,6 +234,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - operations `assignTask` and `unassignTask`, and `changeTaskState` for assignees;
   - the removal check of `removeParticipant` now counts assignments;
   - User interface: assignees on the task list and detail, assign and unassign controls, and “Assign me” and “Unassign me” for Project Participants.
+  - Assignments inside the Task aggregate ([ADR-008](adr/ADR-008-domain-driven-design.md)); *added on 2026-10-30 by team decision in the I1 review.*
 - **Depends on:** I4, I6; [Assumption A-019](constraints.md#assumptions), [Assumption A-020](constraints.md#assumptions). Before starting, the team decides the order in which `assignTask` checks a request ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md)).
 - **Acceptance:**
   - [US-004](user-stories.md#us-004--view-tasks) (completed), [US-005](user-stories.md#us-005--change-task-state), [US-012](user-stories.md#us-012--assign-task), [US-019](user-stories.md#us-019--unassign-a-member), and [US-020](user-stories.md#us-020--assign-or-unassign-myself).
@@ -223,6 +254,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - a check, shared by every modifying operation, that refuses changes to Completed projects;
   - concurrency tests ([ADR-006](adr/ADR-006-simultaneous-changes.md));
   - User interface: the completion control, and read-only display of Completed projects.
+  - completing a project, and the check that refuses changes in a Completed project, in application services, as [ADR-008](adr/ADR-008-domain-driven-design.md) decision 3 describes; *added on 2026-10-30 by team decision in the I1 review.*
 - **Depends on:** I5, I7.
 - **Acceptance:**
   - [US-010](user-stories.md#us-010--complete-project).
@@ -241,6 +273,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - Comments, placed in Tasks (a proposal, [architecture definition](architecture.md#effect-of-the-2026-10-29-decisions));
   - operations `listTaskComments` and `addTaskComment`;
   - User interface: comments on the task detail.
+  - the Comment aggregate in Tasks ([ADR-008](adr/ADR-008-domain-driven-design.md)); *added on 2026-10-30 by team decision in the I1 review.*
 - **Depends on:** I4, I8; [Assumption A-023](constraints.md#assumptions).
 - **Acceptance:**
   - [US-021](user-stories.md#us-021--add-comment) and [US-022](user-stories.md#us-022--read-comments).
@@ -260,6 +293,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - every query excludes deleted items, including progress and the unfinished-task check;
   - deleting a task removes its assignments ([Assumption A-022](constraints.md#assumptions));
   - User interface: delete controls with a confirmation step.
+  - deletion in the Project and Task aggregates; a deleted task's Assignments are removed inside the Task aggregate ([ADR-008](adr/ADR-008-domain-driven-design.md), decision 2); *added on 2026-10-30 by team decision in the I1 review.*
 - **Depends on:** I5, I7, I8. Before starting, the team confirms the proposed details of [Assumption A-022](constraints.md#assumptions) ([OQ-023](constraints.md#open-questions)).
 - **Acceptance:**
   - [US-016](user-stories.md#us-016--delete-project) and [US-017](user-stories.md#us-017--delete-task).
@@ -276,6 +310,7 @@ The status of each increment is kept in one place only: the **Status** column of
   - the `name` parameter of `listProjects`;
   - the `state` and `priority` parameters of `listTasks`;
   - User interface: a search box on My projects and filter controls on the Project dashboard.
+  - the search and filter queries, in the layers of [ADR-008](adr/ADR-008-domain-driven-design.md); *added on 2026-10-30 by team decision in the I1 review.*
 - **Depends on:** I5; [Assumption A-024](constraints.md#assumptions).
 - **Acceptance:**
   - [US-023](user-stories.md#us-023--search-projects) and [US-024](user-stories.md#us-024--filter-tasks).
@@ -300,7 +335,7 @@ The status of each increment is kept in one place only: the **Status** column of
 
   NFR-003–NFR-007 cannot be verified until their criteria are known ([OQ-010](constraints.md#open-questions), [OQ-011](constraints.md#open-questions)).
 - **Verification:**
-  - the full automated suite, including the complete permission matrix and the contract checks;
+  - the full automated suite, including the complete permission matrix, the contract checks, and the module boundary and layering tests; *the layering tests were added on 2026-10-30 by team decision in the I1 review ([ADR-008](adr/ADR-008-domain-driven-design.md));*
   - an end-to-end walkthrough of the user stories in English;
   - a check that no secret or real personal data is in the repository;
   - the README instructions followed on a clean machine;
@@ -318,7 +353,7 @@ Interim answers are the team's ([interim team answers](constraints.md#interim-te
 | User-facing language ([OQ-013](constraints.md#open-questions)) | I1–I12 | Interim: English ([Assumption A-028](constraints.md#assumptions)). [Proposal] Keep all user-facing text in one place, so that another language can be added. |
 | Simultaneous changes ([OQ-017](constraints.md#open-questions)) | I3, I7, I8, I10 | Interim: [Assumption A-029](constraints.md#assumptions), [ADR-006](adr/ADR-006-simultaneous-changes.md). The locking mechanism is confirmed in I3. |
 | Sign-in and session policy ([OQ-027](constraints.md#open-questions)) | I2 | Open points of [ADR-005](adr/ADR-005-authentication-with-jwt.md); the team decides them before I2. |
-| Naming rules and text lengths ([OQ-003](constraints.md#open-questions), [OQ-024](constraints.md#open-questions)) | I3, I4, I9 | Open. [Proposal] Check only that names, titles, and comments are nonempty, and set a technical maximum length agreed by the team in I3. |
+| Naming rules and text lengths ([OQ-003](constraints.md#open-questions), [OQ-024](constraints.md#open-questions)) | I3, I4, I9 | Open. [Proposal] Check only that names, titles, and comments are nonempty, and set a technical maximum length agreed by the team in I3. *Added on 2026-10-30 by team decision ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)): the I1 schema checks only that text is nonempty; the maximum agreed in I3 is added by a new migration.* |
 | Personal data ([OQ-011](constraints.md#open-questions)) | All | Interim: fictitious data only ([Assumption A-016](constraints.md#assumptions)). Blocks any use with real people. |
 | Status for content not in the operation's media type ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md)) | I1 | Decided by the project team on 2026-10-30: `415`, replacing the draft's `400`. Recorded in ADR-004 and [openapi.yaml](../openapi.yaml); it no longer blocks I1. Its place in the status order, just before `400`, is a proposal. |
 | Rounding of the percentage Done ([Assumption A-026](constraints.md#assumptions); [OQ-005](constraints.md#open-questions)) | I5 | Open; blocks I5. The team decided rounding halves up; whether to keep it, given that 199 of 200 tasks Done shows 100%, is not decided. The team is asked before I5 starts. |
@@ -328,7 +363,11 @@ Interim answers are the team's ([interim team answers](constraints.md#interim-te
 | Self-assignment ([OQ-025](constraints.md#open-questions)) | I7 | Interim: [Assumption A-020](constraints.md#assumptions). High risk: any Project Participant can change any task's state. Review with the client. |
 | Task priority, search and filter matching, progress and My projects ([OQ-022](constraints.md#open-questions), [OQ-026](constraints.md#open-questions), [OQ-005](constraints.md#open-questions)) | I4, I5, I11 | Interim: [Assumption A-021](constraints.md#assumptions), [Assumption A-024](constraints.md#assumptions), [Assumption A-025](constraints.md#assumptions), [Assumption A-026](constraints.md#assumptions). |
 | Build tool ([ADR-003](adr/ADR-003-technology-stack.md#open-points)) | I1 | Decided by the project team on 2026-10-30: Maven. Recorded in ADR-003; it no longer blocks I1. |
-| Continuous integration service ([ADR-003](adr/ADR-003-technology-stack.md#open-points)) | I1 | Open; blocks the continuous integration part of I1. The team is asked before that part starts. |
-| Devices and hosting ([OQ-021](constraints.md#open-questions), [OQ-020](constraints.md#open-questions)) | I1, I12 | Open. [Proposal] Develop for desktop browsers and run locally only until the client answers. |
+| Continuous integration service ([ADR-003](adr/ADR-003-technology-stack.md#open-points)) | I1 | Decided by the project team on 2026-10-30: GitHub Actions. Recorded in ADR-003 and [ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md); it no longer blocks I1. *Changed on 2026-10-30: previously open and blocking the continuous integration part of I1.* |
+| Devices and hosting ([OQ-021](constraints.md#open-questions), [OQ-020](constraints.md#open-questions)) | I1, I12 | Open. [Proposal] Develop for desktop browsers and run locally only until the client answers. *Added on 2026-10-30 by team decision ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)): end-to-end tests use Chromium only, provisionally, until OQ-021 is answered.* |
+| Versions, packaging, local database, environment variables, physical schema, demonstration data, and packages ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)) | I1 | Decided by the project team on 2026-10-30; recorded in ADR-007, and the open points of ADR-003 in ADR-003. They no longer block I1. |
+| Domain-driven design ([ADR-008](adr/ADR-008-domain-driven-design.md)); demonstration data through Flyway ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md), decision 10, amended) | I1–I11 | Decided by the project team on 2026-10-30 in the I1 review. Due later ([ADR-008](adr/ADR-008-domain-driven-design.md#open-points)): the mapping conventions (I2); the mapping of Memberships and Assignments, the layers of Access control, and the project lock (I3); the mapping of Task's `creation_order` (I4); the layers of Progress (I5). *Added on 2026-10-30 in the I1 review. Changed on 2026-10-30 by team decision (decision 9 of the conversation “I1 review: remaining decisions”): previously “the mapper conventions (I2)”, and without `creation_order`.* |
+| Remaining decisions of the I1 review | I1–I11 | Decided by the project team on 2026-10-30 (the conversation “I1 review: remaining decisions”): (1) the rule for amending ADRs ([ADR index](adr/README.md)); (2) a code-structure rule and a “Next:” that follows this plan's Status column ([AGENTS.md](../AGENTS.md)); (3) `405` with Problem Details and `Allow` for unsupported methods ([ADR-004](adr/ADR-004-rest-api-single-entry-point.md), decision 9; [openapi.yaml](../openapi.yaml)); (4) Mockito loaded as a Java agent by Surefire ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md), decision 2); (5) [rule 8](#increment-status) and ADR-007's implementation details accepted; (6) the password hashes that PostgreSQL may log locally, an accepted risk ([ADR-007](adr/ADR-007-build-persistence-and-demonstration-data.md)); (7) the item on the IDE's JDK (`.idea/misc.xml`) dropped ([ADR-003](adr/ADR-003-technology-stack.md)); (8) the I1 verification without a second person ([I1](#i1--walking-skeleton); [verification record](evidence/I1-verification.md)); (9) JPA annotations on the domain classes ([ADR-008](adr/ADR-008-domain-driven-design.md), decision 4). Due later: the place of `405` in the status order (I2, [ADR-004](adr/ADR-004-rest-api-single-entry-point.md#open-points)) [Proposal]. *Added on 2026-10-30.* |
+| Last decisions of the I1 review | I1–I4 | Decided by the project team on 2026-10-31 (the conversation “I1 review: last decisions”): (1) the JVM's line about class data sharing is left in the test runs as a known, harmless line ([verification record](evidence/I1-verification.md#101-mockito-loaded-as-a-java-agent)); (2) the domain may use only Jakarta Persistence's annotations and enumerations ([ADR-008](adr/ADR-008-domain-driven-design.md#5-layering-check), decision 5, rule 1), while the mapping conventions (I2), the mapping of Task's `creation_order` (I4), and the place of `405` in the status order (I2) stay open; (3) resolving an open point or adding a cross-reference may be done in place, flagged ([ADR index](adr/README.md)); (4) no change for `.idea/`: the team set JDK 25 in its local IDE; (5) the sentence on superseded ADRs is kept ([ADR index](adr/README.md)); (6) rules 1–7 of [Increment status](#increment-status) accepted. These decisions changed documents only, and the team kept I1 Awaiting review. *Added on 2026-10-31.* |
 | Quality targets ([OQ-010](constraints.md#open-questions)) | I12 | Open. NFR-004–NFR-007 are not verified. |
 | Task states, completing a project with no tasks, ownership changes, integrations ([OQ-004](constraints.md#open-questions), [OQ-006](constraints.md#open-questions), [OQ-008](constraints.md#open-questions), [OQ-012](constraints.md#open-questions)) | — | Open, but not blocking: the current proposals are implemented. |
