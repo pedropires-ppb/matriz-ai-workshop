@@ -1,0 +1,3 @@
+org.springframework.boot.diagnostics.FailureAnalyzer=\
+com.matriz.EnvironmentVariablesFailureAnalyzer,\
+com.matriz.DemoDataFailureAnalyzer

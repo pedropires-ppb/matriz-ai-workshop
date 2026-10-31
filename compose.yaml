@@ -1,0 +1,23 @@
+# Local PostgreSQL for Matriz (ADR-007 decision 5). Start it with `docker compose up -d --wait`.
+# The user and password come from .env, copied from .env.example; there are no defaults.
+name: matriz
+
+services:
+  postgres:
+    image: postgres:18.6
+    environment:
+      POSTGRES_DB: matriz
+      POSTGRES_USER: ${MATRIZ_DB_USER:?set MATRIZ_DB_USER in .env (see .env.example)}
+      POSTGRES_PASSWORD: ${MATRIZ_DB_PASSWORD:?set MATRIZ_DB_PASSWORD in .env (see .env.example)}
+    ports:
+      - "127.0.0.1:5432:5432"
+    volumes:
+      - matriz-db:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d matriz"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+volumes:
+  matriz-db:

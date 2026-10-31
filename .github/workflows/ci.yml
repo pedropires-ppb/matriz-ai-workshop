@@ -1,0 +1,25 @@
+# Continuous integration (ADR-007 decision 4): builds and tests everything on every push and pull
+# request. The tests start PostgreSQL with Testcontainers and need no secret.
+name: CI
+
+on:
+  push:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  verify:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Install the system libraries that Chromium needs
+        run: npx --yes playwright@1.64.0 install-deps chromium
+      - name: Build and test
+        run: ./mvnw -B verify
