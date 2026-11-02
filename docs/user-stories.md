@@ -8,14 +8,14 @@ Revised on 2026-10-29: US-013–US-026 and EX-014–EX-027 record the project te
 
 | ID | Story | Priority (MoSCoW) | Related requirement | Proposed assumptions |
 |---|---|---|---|---|
-| US-001 | As a person authorized to create projects, I want to create a project, so that I can organize the team's work as its Project Owner. | Must (proposed) | [FR-002](requirements.md#functional-requirements) | [Assumption A-003](constraints.md#assumptions), [Assumption A-008](constraints.md#assumptions), [Assumption A-018](constraints.md#assumptions) |
+| US-001 | As a person authorized to create projects, I want to create a project with an optional description, so that I can organize the team's work as its Project Owner. *Changed on 2026-11-02 by team decision (the conversation “Implement project management”): description added; previously “…to create a project, so that…”* | Must (proposed) | [FR-002](requirements.md#functional-requirements) | [Assumption A-003](constraints.md#assumptions), [Assumption A-008](constraints.md#assumptions), [Assumption A-018](constraints.md#assumptions), [Assumption A-031](constraints.md#assumptions) |
 | US-002 | As a Project Owner, I want to add a Project Participant to a project, so that they can access the team's work. | Must (proposed) | [FR-004](requirements.md#functional-requirements) | [Assumption A-001](constraints.md#assumptions), [Assumption A-002](constraints.md#assumptions) |
 | US-003 | As a Project Owner, I want to create a task in a project, so that I can record work to be done. | Must (proposed) | [FR-008](requirements.md#functional-requirements) | [Assumption A-004](constraints.md#assumptions), [Assumption A-010](constraints.md#assumptions) |
 | US-004 | As a Project Participant, I want to view a project's tasks, so that I can see its recorded work. | Must (proposed) | [FR-006](requirements.md#functional-requirements) | [Assumption A-002](constraints.md#assumptions), [Assumption A-004](constraints.md#assumptions) |
 | US-005 | As a Project Participant, I want to change the state of a task assigned to me, so that I can record its progress. | Must (proposed) | [FR-011](requirements.md#functional-requirements) | [Assumption A-001](constraints.md#assumptions), [Assumption A-005](constraints.md#assumptions), [Assumption A-011](constraints.md#assumptions), [Assumption A-019](constraints.md#assumptions) |
 | US-006 | As a Project Participant, I want to view project progress, so that I can see how much work is Done. | Must (proposed) | [FR-012](requirements.md#functional-requirements) | [Assumption A-006](constraints.md#assumptions) |
 | US-007 | As a Project Participant, I want to view projects in which I participate, so that I can find my work without seeing others' projects. | Must (proposed) | [FR-001](requirements.md#functional-requirements) | [Assumption A-002](constraints.md#assumptions), [Assumption A-011](constraints.md#assumptions) |
-| US-008 | As a Project Owner, I want to rename a project, so that its name stays accurate. | Must (proposed) | [FR-003](requirements.md#functional-requirements) | [Assumption A-001](constraints.md#assumptions), [Assumption A-003](constraints.md#assumptions), [Assumption A-011](constraints.md#assumptions) |
+| US-008 | As a Project Owner, I want to rename a project and change its description, so that they stay accurate. *Changed on 2026-11-02 by team decision (the conversation “Implement project management”, question 14): previously “…to rename a project, so that its name stays accurate.”* | Must (proposed) | [FR-003](requirements.md#functional-requirements) | [Assumption A-001](constraints.md#assumptions), [Assumption A-003](constraints.md#assumptions), [Assumption A-011](constraints.md#assumptions), [Assumption A-031](constraints.md#assumptions) |
 | US-009 | As a Project Owner, I want to remove a non-owner Project Participant from a project, so that I can update who can view the work. | Must (proposed) | [FR-005](requirements.md#functional-requirements) | [Assumption A-002](constraints.md#assumptions), [Assumption A-009](constraints.md#assumptions) |
 | US-010 | As a Project Owner, I want to complete a project with no unfinished tasks, so that completed work is distinguished from active work. | Must (proposed) | [FR-007](requirements.md#functional-requirements) | [Assumption A-003](constraints.md#assumptions), [Assumption A-007](constraints.md#assumptions), [Assumption A-011](constraints.md#assumptions) |
 | US-011 | As a Project Owner, I want to change a task's title, so that I can correct how the work is identified. | Must (proposed) | [FR-009](requirements.md#functional-requirements) | [Assumption A-001](constraints.md#assumptions), [Assumption A-004](constraints.md#assumptions) |
@@ -43,6 +43,8 @@ The following are **proposed** test outcomes, dependent on the assumptions liste
 
 1. **Given** a person is authorized to create projects, **When** they create “Project Alpha”, **Then** it is visible to them under that name with state Active.
 2. **Given** that person created “Project Alpha”, **When** they view its details, **Then** they appear as both Project Owner and a member of the project ([Assumption A-008](constraints.md#assumptions)).
+3. **Given** a person is authorized to create projects, **When** they create “Project Alpha” with the description “First release”, **Then** its details show that description; **and When** they create another project without a description, **Then** its details show no description ([Assumption A-031](constraints.md#assumptions)). *Added on 2026-11-02.*
+4. **Given** a person is authorized to create projects, **When** they create projects whose names have 1 and 100 characters, and a description of 1000 characters, **Then** all are created; **and When** they submit a name of 101 characters, a name of only spaces, or a description of 1001 characters, **Then** no project is created and they are told which text is invalid and why ([Assumption A-031](constraints.md#assumptions)). *Added on 2026-11-02.*
 
 ### US-002 — Add participant
 
@@ -73,10 +75,15 @@ The Project Owner's ability to change the state of any task in an Active project
 
 1. **Given** a person participates in project A but not project B, **When** they view their accessible projects, **Then** A appears and B does not.
 2. **Given** a person is a member of a Completed project, **When** they view their accessible projects, **Then** it remains visible with state Completed ([Assumption A-011](constraints.md#assumptions)).
+3. **Given** a person participates in 25 projects, **When** they view their accessible projects without choosing a page size, **Then** the first 20 are listed, ordered by name ignoring letter case, with the total of 25; **and When** they view page 2, **Then** the remaining 5 are listed; **and When** they view page 3, **Then** no project is listed and no error is shown ([Assumption A-032](constraints.md#assumptions)). *Added on 2026-11-02.*
+4. **Given** a person views their accessible projects, **When** they ask for page 0, a page size of 0, or a page size above 100, **Then** the request is refused with a message saying which value is invalid, and nothing changes ([Assumption A-032](constraints.md#assumptions)). *Added on 2026-11-02.*
 
 ### US-008 — Rename project
 
 1. **Given** an Active project named “Project Alpha” and its Project Owner, **When** the owner renames it “Project Beta”, **Then** it displays “Project Beta”.
+2. **Given** an Active project and its Project Owner, **When** the owner changes the description to “Second release”, and later removes it, **Then** the details show “Second release”, and then no description; the name is unchanged ([Assumption A-031](constraints.md#assumptions)). *Added on 2026-11-02.*
+3. **Given** an Active project and its Project Owner, **When** the owner renames it to a name of 101 characters or to only spaces, or sets a description of 1001 characters, **Then** the project is unchanged and the owner is told which text is invalid and why; **and When** the new name has 100 characters, **Then** the project is renamed ([Assumption A-031](constraints.md#assumptions)). *Added on 2026-11-02.*
+4. **Given** a Project Participant who is not the Project Owner, **When** they attempt to rename the project or change its description, **Then** the project is unchanged ([Assumption A-001](constraints.md#assumptions)). *Added on 2026-11-02.*
 
 ### US-009 — Remove participant
 
@@ -148,6 +155,7 @@ The Project Owner's ability to change the state of any task in an Active project
 ### US-023 — Search projects
 
 1. **Given** Ana is a member of “Website Redesign” and “Mobile App”, and not of “Website Audit”, **When** she searches her projects for “web”, **Then** only “Website Redesign” is listed ([Assumption A-024](constraints.md#assumptions)).
+2. **Given** Ana is a member of a project named “Café Menu”, **When** she searches for “cafe”, **Then** it is not listed, and when she searches for “CAFÉ” it is listed; the search combines with paging: the total counts only the matching projects ([Assumption A-024](constraints.md#assumptions), [Assumption A-032](constraints.md#assumptions)). *Added on 2026-11-02.*
 
 ### US-024 — Filter tasks
 
@@ -205,6 +213,7 @@ Client decisions that may change these tests, including naming rules (OQ-003), a
 | Version | Date | Entry | Change | Basis |
 |---|---|---|---|---|
 | v0.2 | 2026-10-29 | US-013–US-026, EX-014–EX-027 | Added as team decisions. | [ADR-002](adr/ADR-002-phase-scope-and-implementation-authorization.md) |
+| v0.2 | 2026-11-02 | US-001, US-007, US-008, US-023 | Criteria for the project description, text limits, paging, and accents added; US-001 and US-008 wording extended. No new EX; EX-001 and EX-010 stay as written. Decided by the project team in the conversation “Implement project management”. | [Assumption A-031](constraints.md#assumptions), [Assumption A-032](constraints.md#assumptions), [Assumption A-024](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-001 | Assumptions add who may create projects. | [Assumption A-018](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-005 | Assumptions add several assignees; acceptance criterion 3 added. | [Assumption A-019](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-012 | Story extended to one or more members; criterion 1 no longer says “single assignee”; criteria 2 and 3 added. | [Assumption A-019](constraints.md#assumptions) |
