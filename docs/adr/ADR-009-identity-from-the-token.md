@@ -2,7 +2,7 @@
 
 - **Status:** Accepted (provisional)
 - **Date:** 2026-11-02
-- **Decided by:** the project team, in a working session with the AI assistant on 2026-11-02 (the conversation “Lab Worksheet 03 — access to the application”, questions 14–16, and question 31 during implementation). For each question, the AI assistant presented two or three options with their trade-offs and a recommendation [Proposal]. The team chose an option for every question and confirmed the summary. The AI assistant decided nothing.
+- **Decided by:** the project team, in a working session with the AI assistant on 2026-11-02 (the conversation “Lab Worksheet 03 — access to the application”, questions 14–16, and question 31 during implementation; and, for the points flagged as added or extended, the conversation “I2 review and acceptance”, questions 7 and 12). For each question, the AI assistant presented two or three options with their trade-offs and a recommendation [Proposal]. The team chose an option for every question and confirmed the summary. The AI assistant decided nothing.
 - **Related:** [FR-013–FR-015](../requirements.md#functional-requirements); [US-013–US-015](../user-stories.md#stories); [EX-012](../user-stories.md#edge-cases-and-exceptions), [EX-014](../user-stories.md#edge-cases-and-exceptions); [NFR-001](../requirements.md#non-functional-requirements-and-unresolved-quality-criteria), [NFR-002](../requirements.md#non-functional-requirements-and-unresolved-quality-criteria); [Assumption A-016](../constraints.md#assumptions), [Assumption A-017](../constraints.md#assumptions), [Assumption A-028](../constraints.md#assumptions); [OQ-013](../constraints.md#open-questions), [OQ-027](../constraints.md#open-questions); [ADR-004](ADR-004-rest-api-single-entry-point.md), [ADR-005](ADR-005-authentication-with-jwt.md), [ADR-008](ADR-008-domain-driven-design.md); [implementation plan](../implementation-plan.md#i2--identity) (I2)
 
 ## Context
@@ -34,6 +34,12 @@
   - Signing out discards the token and shows “You have signed out.” even if the request fails.
   - The sign-in form has `noValidate`: the browser shows none of its own validation messages, only the User interface's texts.
   - The User interface has no router and adds no dependency.
+- *Accepted on 2026-11-02 by team decision (the conversation “I2 review and acceptance”, question 7), previously proposals of the I2 verification record:*
+  - a sign-in answered with a status other than 200, 401, or 422 shows “Matriz could not be reached. Please try again.”;
+  - the password field is cleared after an incorrect attempt, and a message is hidden when the form is sent again;
+  - empty fields send no request, and the form shows “A login name and a password are required.”;
+  - incorrect credentials show “The login name or password is incorrect.”, without saying which is wrong;
+  - signing out waits for the server's answer.
 
 ### 2. The identity comes only from the token (question 15)
 
@@ -55,6 +61,8 @@
    - `personId` appears only in `AddParticipantRequest` and `AssignTaskRequest`.
 
    A schema that changes fails the test until its list is reviewed.
+
+   *Extended on 2026-11-02 by team decision (the conversation “I2 review and acceptance”, question 12): the test also reviews every parameter of the contract and every path that names a person (`RequestSchemaTests`). Previously, decision 3 asked only for the request schemas. A new parameter or path needs a reviewed change to the test.*
 3. **One way to learn the acting person.** A controller learns who is acting only through a parameter of type `SignedInPerson`. It is a record in Identity's API package, `com.matriz.identity`, that holds the person's `PersonId`. Identity's web layer resolves it from the verified token. An ArchUnit test fails the build when a class outside the Identity module uses Spring Security.
 
    *Clarified on 2026-11-02 by team decision (Lab Worksheet 03, question 31, asked during implementation): previously, the rule had no exception.* The rule does not apply to password hashing, `org.springframework.security.crypto`. Since I1, the demonstration data hashes its passwords with it, outside Identity ([Assumption A-016](../constraints.md#assumptions)). Password hashing cannot learn or set who is acting.
