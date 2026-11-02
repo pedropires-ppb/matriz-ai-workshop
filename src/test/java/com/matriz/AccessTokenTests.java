@@ -7,6 +7,7 @@ import java.time.ZoneOffset;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
@@ -136,8 +137,11 @@ class AccessTokenTests extends DatabaseTestSupport {
 	@Test
 	void aSignedOutTokenCannotSignOutAgain() throws Exception {
 		TestAccess.signOut(this.mvc, this.anaToken);
+		List<String> endedBefore = endedTokens();
 
 		assertInvalidToken(this.mvc.perform(delete(SESSION).header(HttpHeaders.AUTHORIZATION, bearer(this.anaToken))));
+
+		assertThat(endedTokens()).as("a refused sign-out changes nothing").isEqualTo(endedBefore);
 	}
 
 	@Test
@@ -166,8 +170,12 @@ class AccessTokenTests extends DatabaseTestSupport {
 
 	@Test
 	void withoutATokenThereIsNoCurrentPersonAndNoSessionToEnd() throws Exception {
+		List<String> endedBefore = endedTokens();
+
 		assertNoToken(this.mvc.perform(get(ME)));
 		assertNoToken(this.mvc.perform(delete(SESSION)));
+
+		assertThat(endedTokens()).as("a refused sign-out changes nothing").isEqualTo(endedBefore);
 	}
 
 	@ParameterizedTest
@@ -240,11 +248,13 @@ class AccessTokenTests extends DatabaseTestSupport {
 	@MethodSource("forgedTokens")
 	void aForgedTokenIsRefused(Forgery forgery) throws Exception {
 		String forged = forgery.forge(this.ana.id(), this.anaToken);
+		List<String> endedBefore = endedTokens();
 
 		MvcResult me = assertInvalidToken(me(forged));
 		MvcResult signOut = assertInvalidToken(
 				this.mvc.perform(delete(SESSION).header(HttpHeaders.AUTHORIZATION, bearer(forged))));
 
+		assertThat(endedTokens()).as("a refused sign-out changes nothing").isEqualTo(endedBefore);
 		assertThat(me.getResponse().getContentAsString()).doesNotContain(forged);
 		assertThat(signOut.getResponse().getContentAsString()).doesNotContain(forged);
 		assertCurrentPerson(this.anaToken, this.ana);
@@ -313,6 +323,13 @@ class AccessTokenTests extends DatabaseTestSupport {
 		this.jdbc.sql("INSERT INTO ended_access_token (token_id, expires_at) VALUES (?, ?)")
 			.params(tokenId, OffsetDateTime.ofInstant(expiresAt, ZoneOffset.UTC))
 			.update();
+	}
+
+	/** Every recorded ended token, with its expiry. */
+	private List<String> endedTokens() {
+		return this.jdbc.sql("SELECT token_id || ' ' || expires_at FROM ended_access_token ORDER BY token_id")
+			.query(String.class)
+			.list();
 	}
 
 	private boolean isRecordedAsEnded(UUID tokenId) {
