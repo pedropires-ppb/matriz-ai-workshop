@@ -5,6 +5,7 @@
  * Persistence only the mapping annotations and the enumerations they take. Other modules are used
  * only through their top-level packages (module rule 2).
  * <p>
- * Empty in I1. First classes in I2 (ADR-008).
+ * Since I2: the Person aggregate and its value objects, and the interfaces for checking passwords,
+ * issuing access tokens, and recording ended tokens (ADR-005).
  */
 package com.matriz.identity.domain;

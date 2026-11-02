@@ -67,7 +67,12 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-actuator</artifactId>
         </dependency>
-        <!-- Password hashing only (ADR-005 decision 5); signing in comes in I2. -->
+        <!-- Signed access tokens with Nimbus JOSE+JWT (ADR-005, open point "Signing"). -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security-oauth2-resource-server</artifactId>
+        </dependency>
+        <!-- Password hashing (ADR-005 decision 5); the demonstration data migration uses it directly. -->
         <dependency>
             <groupId>org.springframework.security</groupId>
             <artifactId>spring-security-crypto</artifactId>
@@ -112,6 +117,12 @@
             <groupId>com.networknt</groupId>
             <artifactId>json-schema-validator</artifactId>
             <version>${json-schema-validator.version}</version>
+            <scope>test</scope>
+        </dependency>
+        <!-- Reads openapi.yaml in the guards of ADR-009 decision 3; json-schema-validator already brings it. -->
+        <dependency>
+            <groupId>tools.jackson.dataformat</groupId>
+            <artifactId>jackson-dataformat-yaml</artifactId>
             <scope>test</scope>
         </dependency>
         <!-- The layering check (ADR-008). -->
