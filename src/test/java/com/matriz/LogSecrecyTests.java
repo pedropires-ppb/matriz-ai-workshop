@@ -6,14 +6,19 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.logging.LogLevel;
+import org.springframework.boot.logging.LoggingSystem;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.jdbc.core.simple.JdbcClient;
+import org.springframework.security.web.FilterChainProxy;
+import org.springframework.security.web.access.intercept.RequestMatcherDelegatingAuthorizationManager;
 import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.web.servlet.DispatcherServlet;
 
 import static com.matriz.TestAccess.ME;
 import static com.matriz.TestAccess.SESSION;
@@ -26,7 +31,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 /**
  * No password, password hash, access token, or signing key reaches the logs, from start-up to
  * signing out, even with the most detailed logs of Spring Security, Spring MVC, and Matriz on, and
- * even for a password sent without quotes (ADR-005; Lab Worksheet 03, decision on logging).
+ * even for a password sent without quotes (ADR-005; Lab Worksheet 03, decision on logging). The
+ * same holds for a password or a token that a client wrongly sends in the query string, which
+ * Matriz never reads (Lab Worksheet 03, question 32).
  */
 @AutoConfigureMockMvc
 @ExtendWith(OutputCaptureExtension.class)
@@ -43,6 +50,9 @@ class LogSecrecyTests extends DatabaseTestSupport {
 
 	@Autowired
 	private JdbcClient jdbc;
+
+	@Autowired
+	private LoggingSystem loggingSystem;
 
 	@Test
 	void noPasswordHashTokenOrKeyIsLogged(CapturedOutput output) throws Exception {
@@ -65,6 +75,12 @@ class LogSecrecyTests extends DatabaseTestSupport {
 		this.mvc.perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(token))).andExpect(status().isOk());
 		this.mvc.perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(TestAccess.withAlteredSignature(token))))
 			.andExpect(status().isUnauthorized());
+		this.mvc
+			.perform(post(SESSION + "?loginName=" + rui.loginName() + "&password=" + rui.password())
+				.contentType(MediaType.APPLICATION_JSON)
+				.content("{\"loginName\": \"" + rui.loginName() + "\", \"password\": \"fictitious-wrong-password\"}"))
+			.andExpect(status().isUnauthorized());
+		this.mvc.perform(get(ME + "?access_token=" + token)).andExpect(status().isUnauthorized());
 		TestAccess.signOut(this.mvc, token);
 		this.mvc.perform(get(ME).header(HttpHeaders.AUTHORIZATION, bearer(token)))
 			.andExpect(status().isUnauthorized());
@@ -88,6 +104,25 @@ class LogSecrecyTests extends DatabaseTestSupport {
 			.doesNotContain(SIGNING_KEY)
 			.doesNotContain(urlSafeKey)
 			.doesNotContainIgnoringCase("generated security password");
+	}
+
+	/**
+	 * The loggers that write each request's address, with its query string, stay at INFO while
+	 * their parents are at TRACE (question 32). The test above cannot show it for
+	 * {@code DispatcherServlet}: MockMvc's servlet logs under another name.
+	 */
+	@Test
+	void theLoggersThatWriteTheRequestAddressStayAtInfo() {
+		assertThat(effectiveLevel("org.springframework.security")).isEqualTo(LogLevel.TRACE);
+		assertThat(effectiveLevel("org.springframework.web")).isEqualTo(LogLevel.TRACE);
+		assertThat(effectiveLevel(FilterChainProxy.class.getName())).isEqualTo(LogLevel.INFO);
+		assertThat(effectiveLevel(RequestMatcherDelegatingAuthorizationManager.class.getName()))
+			.isEqualTo(LogLevel.INFO);
+		assertThat(effectiveLevel(DispatcherServlet.class.getName())).isEqualTo(LogLevel.INFO);
+	}
+
+	private LogLevel effectiveLevel(String loggerName) {
+		return this.loggingSystem.getLoggerConfiguration(loggerName).getEffectiveLevel();
 	}
 
 	private void signIn(String content, String mediaType, int expectedStatus) throws Exception {

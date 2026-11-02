@@ -1,7 +1,7 @@
 # ADR-005 — Authentication with signed access tokens (JWT)
 
 - **Status:** Accepted (provisional)
-- **Date:** 2026-10-29; open points resolved on 2026-11-02 by team decision (Lab Worksheet 03, questions 2–9 and 17)
+- **Date:** 2026-10-29; open points resolved on 2026-11-02 by team decision (Lab Worksheet 03, questions 2–9 and 17); a consequence added the same day (question 32)
 - **Decided by:** the project team ([ADR-002](ADR-002-phase-scope-and-implementation-authorization.md), question 14). The AI assistant had recommended server-side sessions in a cookie instead.
 - **Related:** [FR-013–FR-015](../requirements.md#functional-requirements); [US-013–US-015](../user-stories.md#stories); [EX-012](../user-stories.md#edge-cases-and-exceptions), [EX-014](../user-stories.md#edge-cases-and-exceptions); [NFR-001](../requirements.md#non-functional-requirements-and-unresolved-quality-criteria), [NFR-003](../requirements.md#non-functional-requirements-and-unresolved-quality-criteria); [Assumption A-014](../constraints.md#assumptions), [Assumption A-016](../constraints.md#assumptions), [Assumption A-017](../constraints.md#assumptions); [OQ-001](../constraints.md#open-questions), [OQ-011](../constraints.md#open-questions), [OQ-018](../constraints.md#open-questions), [OQ-027](../constraints.md#open-questions); [ADR-003](ADR-003-technology-stack.md), [ADR-004](ADR-004-rest-api-single-entry-point.md); [ADR-007](ADR-007-build-persistence-and-demonstration-data.md), [ADR-009](ADR-009-identity-from-the-token.md) (added on 2026-11-02)
 
@@ -34,6 +34,10 @@
 - **No limit on password guessing.** *Added on 2026-11-02 by team decision (Lab Worksheet 03, question 9).* Nothing slows down repeated failed sign-ins. The project team accepts this risk while only fictitious demonstration accounts exist ([Assumption A-016](../constraints.md#assumptions)). It must be revisited before Matriz is used with real people ([OQ-001](../constraints.md#open-questions), [OQ-011](../constraints.md#open-questions)).
 - **Signing in again.** *Added on 2026-11-02 by team decision (Lab Worksheet 03, questions 2, 4, and 5).* The token is kept only in the User interface's memory, and there is no refresh token. A person therefore signs in again after 8 hours, after reloading the page, and in each new tab.
 - **Stored identifiers of ended tokens.** *Added on 2026-11-02 by the same decision (question 3).* The database keeps the identifier and expiry of each token ended by signing out, but no token, until the token expires. Each request that carries a token reads this list once.
+- **Request addresses kept out of the logs.** *Added on 2026-11-02 by team decision (Lab Worksheet 03, question 32, asked during the verification of I2).*
+  - The API never reads a password or a token from the query string. Even so, three framework loggers write each request's address, including its query string, at DEBUG or TRACE: Spring Security's `FilterChainProxy` and `RequestMatcherDelegatingAuthorizationManager`, and Spring MVC's `DispatcherServlet`. If a client wrongly put a secret in the query string, it would be logged at those levels.
+  - `application.properties` keeps these three loggers at INFO, whatever the level of their parents. `LogSecrecyTests` checks this (decision 5).
+  - As a result, raising the level of `org.springframework.security` or `org.springframework.web` no longer logs each request's address. Setting one of these loggers by name brings the address back, and the risk with it.
 
 ## Alternatives considered
 
