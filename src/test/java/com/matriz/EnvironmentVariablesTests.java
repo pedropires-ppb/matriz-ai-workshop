@@ -85,7 +85,7 @@ class EnvironmentVariablesTests {
 	@Test
 	void theSigningKeyMustBeABase64KeyOfAtLeast256Bits() throws IOException {
 		String[] rejected = { exampleValue("MATRIZ_JWT_SIGNING_KEY"), "not a Base64 key",
-				DatabaseTestSupport.randomKey(32).replace('+', '-').replace('/', '-'), DatabaseTestSupport.randomKey(31) };
+				"-" + DatabaseTestSupport.randomKey(32).substring(1), DatabaseTestSupport.randomKey(31) };
 		for (String key : rejected) {
 			MockEnvironment environment = requiredVariables().withProperty("MATRIZ_JWT_SIGNING_KEY", key);
 			assertThatThrownBy(() -> EnvironmentCheck.check(environment)).as("key %s", key)
