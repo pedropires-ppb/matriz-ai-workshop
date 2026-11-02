@@ -1,5 +1,7 @@
 package com.matriz;
 
+import java.time.OffsetDateTime;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 
@@ -22,7 +24,7 @@ import static org.assertj.core.api.Assertions.catchThrowable;
 
 /**
  * The versioned migrations create the whole data model with the constraints of ADR-007 decision 8,
- * and nothing else changes the schema.
+ * and the technical table of ended access tokens (ADR-005); nothing else changes the schema.
  */
 class SchemaMigrationTests extends DatabaseTestSupport {
 
@@ -36,6 +38,8 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 
 	private static final String NOT_NULL_VIOLATION = "23502";
 
+	private static final String[] SCHEMA_VERSIONS = { "1", "2", "3" };
+
 	@Autowired
 	private JdbcClient jdbc;
 
@@ -46,17 +50,19 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 	private EntityManagerFactory entityManagerFactory;
 
 	@Test
-	void theFirstMigrationCreatesTheWholeDataModel() {
+	void theMigrationsCreateTheWholeDataModel() {
 		assertThat(this.jdbc.sql("""
 				SELECT table_name FROM information_schema.tables
 				WHERE table_schema = 'public' AND table_type = 'BASE TABLE'
 				""").query(String.class).list())
 			.containsExactlyInAnyOrder("flyway_schema_history", "person", "project", "membership", "task",
-					"assignment", "comment");
+					"assignment", "comment", "ended_access_token");
 		assertThat(this.jdbc.sql("SELECT version, description, success FROM flyway_schema_history ORDER BY installed_rank")
 			.query()
 			.listOfRows())
-			.containsExactly(Map.of("version", "1", "description", "create schema", "success", true));
+			.containsExactly(Map.of("version", "1", "description", "create schema", "success", true),
+					Map.of("version", "2", "description", "create ended access token", "success", true),
+					Map.of("version", "3", "description", "require lower case login names", "success", true));
 		// information_schema.sequences omits identity sequences, so pg_class is queried instead.
 		assertThat(this.jdbc.sql("""
 				SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
@@ -69,7 +75,8 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 		assertThat(this.entityManagerFactory.getProperties()).containsEntry("hibernate.hbm2ddl.auto", "validate");
 		assertThat(this.flyway.getConfiguration().isCleanDisabled()).isTrue();
 		assertThatThrownBy(this.flyway::clean).isInstanceOf(FlywayException.class);
-		assertThat(this.jdbc.sql("SELECT count(*) FROM flyway_schema_history").query(Integer.class).single()).isOne();
+		assertThat(this.jdbc.sql("SELECT count(*) FROM flyway_schema_history").query(Integer.class).single())
+			.isEqualTo(SCHEMA_VERSIONS.length);
 	}
 
 	@Test
@@ -78,7 +85,7 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 			.containsExactly("classpath:db/migration");
 		assertThat(this.jdbc.sql("SELECT version FROM flyway_schema_history ORDER BY installed_rank")
 			.query(String.class)
-			.list()).containsExactly("1");
+			.list()).containsExactly(SCHEMA_VERSIONS);
 		assertThat(this.jdbc.sql("SELECT count(*) FROM person WHERE login_name IN ('ana', 'rui', 'eva', 'daniel')")
 			.query(Integer.class)
 			.single()).isZero();
@@ -158,12 +165,22 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 	}
 
 	@Test
-	void loginNamesAreUniqueAndCaseSensitive() {
+	void loginNamesAreUniqueAndInLowerCase() {
 		String login = uniqueLogin();
 		insertPerson(UUID.randomUUID(), login, "First");
 		assertRejected(() -> insertPerson(UUID.randomUUID(), login, "Second"), UNIQUE_VIOLATION,
 				"person_login_name_uk");
-		insertPerson(UUID.randomUUID(), login.toUpperCase(), "Third");
+		assertRejected(() -> insertPerson(UUID.randomUUID(), login.toUpperCase(Locale.ROOT), "Third"),
+				CHECK_VIOLATION, "person_login_name_lower_case_ck");
+	}
+
+	@Test
+	void anEndedAccessTokenIsRecordedOnceWithItsExpiry() {
+		UUID token = UUID.randomUUID();
+		endedAccessToken(token, OffsetDateTime.now());
+		assertRejected(() -> endedAccessToken(token, OffsetDateTime.now()), UNIQUE_VIOLATION,
+				"ended_access_token_pk");
+		assertRejectedAsNull(() -> endedAccessToken(UUID.randomUUID(), null), "expires_at");
 	}
 
 	@Test
@@ -285,6 +302,13 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 
 	private static String uniqueLogin() {
 		return "person-" + UUID.randomUUID();
+	}
+
+	private void endedAccessToken(UUID token, OffsetDateTime expiresAt) {
+		this.jdbc.sql("INSERT INTO ended_access_token (token_id, expires_at) VALUES (:token, :expiresAt)")
+			.param("token", token)
+			.param("expiresAt", expiresAt)
+			.update();
 	}
 
 	private UUID project() {
