@@ -774,7 +774,7 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: A project name is required.
+                    detail: The project is invalid.
                     errors:
                       - pointer: /name
                         detail: A name is required.

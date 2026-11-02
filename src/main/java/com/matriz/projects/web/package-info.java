@@ -3,6 +3,6 @@
  * types of openapi.yaml (ADR-004). Uses the application layer; never the infrastructure layer. No
  * other layer depends on it.
  * <p>
- * Empty in I1. First classes in I3 (ADR-008).
+ * Since I3: project management (create, list, view, edit, delete).
  */
 package com.matriz.projects.web;
