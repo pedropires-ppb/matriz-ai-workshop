@@ -3,6 +3,7 @@
  * repository interfaces, with Spring Data JPA, and the implementations of interfaces that other
  * modules define. Never uses the web layer. Only Flyway migrations create or change the schema.
  * <p>
- * Empty in I1. First classes in I2 (ADR-008).
+ * Since I2: the person repository, password checking with BCrypt, and the signed access tokens:
+ * their signing key, issuing, verification, and the table of ended tokens (ADR-005).
  */
 package com.matriz.identity.infrastructure;

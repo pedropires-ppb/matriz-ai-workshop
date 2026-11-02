@@ -30,11 +30,11 @@ All features below are proposed Must priorities, subject to client approval; the
 - **Implementation:** provisionally authorized by the project team on 2026-10-29, at the team's risk, while the client's approval stays open (OQ-016). Work proceeds in increments I1–I12 of the [implementation plan](docs/implementation-plan.md); the team approved the matching update of the current phase in [AGENTS.md](AGENTS.md#current-phase-and-next-steps) on 2026-10-30. *Changed in v0.2: previously, implementation was not to start before the MVP scope was approved.*
 - **MVP release criteria (proposed):** see [MVP scope](docs/requirements.md#mvp-scope); business success measures are still open (OQ-009).
 - **Pending:** client answers to the [open questions](docs/constraints.md#open-questions) (OQ-001–OQ-027) and validation of the [assumptions](docs/constraints.md#assumptions) (A-001–A-030). The team's [interim answers](docs/constraints.md#interim-team-answers-2026-10-29) apply until the client answers.
-- **Next phase:** the project team's review of increment I1, the walking skeleton, with the changes requested in its first review: demonstration data through a Flyway migration ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md), decision 10, amended) and domain-driven design ([ADR-008](docs/adr/ADR-008-domain-driven-design.md)). I1's status is in the [implementation plan](docs/implementation-plan.md#increments). Then increment I2. Client validation continues in parallel. *Changed on 2026-10-30: previously “increment I1, the walking skeleton; client validation continues in parallel”. Changed again on 2026-10-30 after the team's review of I1: previously “the project team's review of increment I1, the walking skeleton, which is awaiting review in the implementation plan; then increment I2”.*
+- **Next phase:** the project team's review of increment I2: signing in, signing out, and seeing the signed-in person. I2 is Awaiting review; its evidence is in the [I2 verification record](docs/evidence/I2-verification.md), and its status in the [implementation plan](docs/implementation-plan.md#increments). Then increment I3, once I2 is accepted. Client validation continues in parallel. *Changed on 2026-10-30: previously “increment I1, the walking skeleton; client validation continues in parallel”. Changed again on 2026-10-30 after the team's review of I1: previously “the project team's review of increment I1, the walking skeleton, which is awaiting review in the implementation plan; then increment I2”. Changed on 2026-11-02 (Lab Worksheet 03, Step 4), after I1 was accepted on 2026-10-31: previously “the project team's review of increment I1, the walking skeleton, with the changes requested in its first review: demonstration data through a Flyway migration ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md), decision 10, amended) and domain-driven design ([ADR-008](docs/adr/ADR-008-domain-driven-design.md)). I1's status is in the [implementation plan](docs/implementation-plan.md#increments). Then increment I2. Client validation continues in parallel.”*
 
 ## Run Matriz locally
 
-*Added on 2026-10-30 with increment I1 ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md)).* Increment I1 has no features yet. The application starts, creates the database schema, loads the demonstration data when asked, reports its health, and serves an empty User interface shell. Run the commands from the repository root in a macOS or Linux shell; they were verified on macOS.
+*Added on 2026-10-30 with increment I1 ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md)).* The application starts, creates the database schema, loads the demonstration data when asked, and reports its health. Since increment I2, a person signs in, sees who is signed in, and signs out, in the User interface or through the API ([Sign in, use the API, and sign out](#sign-in-use-the-api-and-sign-out)). *Changed on 2026-11-02 with increment I2: previously “Increment I1 has no features yet. The application starts, creates the database schema, loads the demonstration data when asked, reports its health, and serves an empty User interface shell.”* Run the commands from the repository root in a macOS or Linux shell; they were verified on macOS.
 
 **Prerequisites:** JDK 25 (`java -version` reports 25), and Docker with Docker Compose, running. The build downloads Maven, Node.js, npm, and the other dependencies at their pinned versions. The tests also download Chromium.
 
@@ -45,6 +45,14 @@ All features below are proposed Must priorities, subject to client approval; the
    ```
 
    git ignores `.env`; never commit it. Matriz and Docker Compose read it when started from the repository root, and real environment variables take precedence over it. If a variable that Matriz needs is missing or blank, Matriz refuses to start and names the variable.
+
+   Generate your own key for signing the access tokens, and put the output in `MATRIZ_JWT_SIGNING_KEY`:
+
+   ```sh
+   openssl rand -base64 32
+   ```
+
+   Matriz refuses to start with the example's placeholder, or with a key that is not Base64 or is shorter than 32 bytes once decoded. Changing the key signs everyone out at the next start ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points)). *Added on 2026-11-02 with increment I2.*
 
 2. **Start the database.** PostgreSQL 18.6 listens on `127.0.0.1:5432` and keeps its data in the Docker volume `matriz_matriz-db`:
 
@@ -67,13 +75,13 @@ All features below are proposed Must priorities, subject to client approval; the
    curl http://localhost:8080/actuator/health
    ```
 
-   The answer includes `"status":"UP"` and `"db":{"status":"UP"}`. The User interface shell is at <http://localhost:8080/>. Stop the application with Ctrl+C.
+   The answer includes `"status":"UP"` and `"db":{"status":"UP"}`; the health check needs no sign-in. The User interface is at <http://localhost:8080/> and asks you to sign in. Stop the application with Ctrl+C. *Changed on 2026-11-02 with increment I2: previously “The User interface shell is at <http://localhost:8080/>.”*
 
-4. **Add the demonstration data.** In `.env`, set `MATRIZ_DEMO_DATA=true`, and choose a password for each demonstration account: `MATRIZ_DEMO_PASSWORD_ANA`, `MATRIZ_DEMO_PASSWORD_RUI`, `MATRIZ_DEMO_PASSWORD_EVA`, and `MATRIZ_DEMO_PASSWORD_DANIEL`. Then start the application as in step 3. At that start, a database migration adds the demonstration people, projects, tasks, and comments, once for this database. A demonstration row that you later change or delete stays so; the next start does not restore it.
+4. **Add the demonstration data.** In `.env`, set `MATRIZ_DEMO_DATA=true`, and choose a password for each demonstration account: `MATRIZ_DEMO_PASSWORD_ANA`, `MATRIZ_DEMO_PASSWORD_RUI`, `MATRIZ_DEMO_PASSWORD_EVA`, and `MATRIZ_DEMO_PASSWORD_DANIEL`. Each needs at least 15 characters and at most 72 bytes in UTF-8, or Matriz refuses to start and names the variable, never the value ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points); *added on 2026-11-02 with increment I2*). Then start the application as in step 3. At that start, a database migration adds the demonstration people, projects, tasks, and comments, once for this database. A demonstration row that you later change or delete stays so; the next start does not restore it.
    - The setting is fixed for each database. Keep `MATRIZ_DEMO_DATA=true` and the passwords in `.env` while you use this database: Matriz requires them at every start, but uses the passwords only when the migration runs, so changing a password later does not change the account.
    - If the setting does not match the database, for example `false` for a database that has the demonstration data, or if existing rows conflict with the demonstration data, Matriz refuses to start, adds nothing, and names the remedy.
    - To get fresh demonstration data or new passwords, reset the database (step 6).
-   - The people, projects, tasks, and comments are listed in [ADR-007, decision 10](docs/adr/ADR-007-build-persistence-and-demonstration-data.md#10-demonstration-data). Signing in arrives in increment I2.
+   - The people, projects, tasks, and comments are listed in [ADR-007, decision 10](docs/adr/ADR-007-build-persistence-and-demonstration-data.md#10-demonstration-data). Each person signs in with the login name `ana`, `rui`, `eva`, or `daniel` and the password you chose ([Sign in, use the API, and sign out](#sign-in-use-the-api-and-sign-out)). *Changed on 2026-11-02 with increment I2: previously “Signing in arrives in increment I2.”*
 
    *Changed on 2026-10-30 by team decision in the I1 review ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md), decision 10, amended): previously this step was “Load the demonstration data”; each start added only the demonstration rows that were missing, so a deleted demonstration row came back, and a password was used only when its account was first added.*
 
@@ -95,6 +103,44 @@ All features below are proposed Must priorities, subject to client approval; the
    The next start of the application (step 3) creates the schema again and, if requested, the demonstration data. Resetting is also the way to get fresh demonstration data, to apply new demonstration passwords, or to change `MATRIZ_DEMO_DATA` for the database. *Added on 2026-10-30 in the I1 review.*
 
 **Troubleshooting.** If Maven cannot download because of a certificate error, such as `PKIX path building failed`, on a network that uses a private certificate authority, point the JDK at a trust store that contains that authority: `export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/path/to/truststore"`. Never commit trust stores or registry settings.
+
+### Sign in, use the API, and sign out
+
+*Added on 2026-11-02 with increment I2 ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points), [ADR-009](docs/adr/ADR-009-identity-from-the-token.md)).* With the demonstration data, open <http://localhost:8080/> and sign in with a demonstration login name and the password you chose in `.env`. Letter case in the login name does not matter. The [API contract](openapi.yaml) specifies the access token's life cycle under “Token life cycle”; in short:
+
+1. **Sign-in.** `POST /api/session` with the login name and password returns an access token, `expiresIn` (28800 seconds, that is, 8 hours), and the person's identifier and display name. A wrong password and an unknown login name get the same 401.
+2. **Use.** Every other request under `/api` sends the token in the header `Authorization: Bearer <token>`. The User interface keeps the token only in memory, so reloading the page or opening a new tab asks you to sign in again.
+3. **Expiry.** The token is refused 8 hours after sign-in, whatever its use. There is no refresh token: sign in again.
+4. **Sign-out.** `DELETE /api/session` ends only that token. It stays refused, also after Matriz restarts. Changing `MATRIZ_JWT_SIGNING_KEY` ends every token.
+5. **Refusal.** A request without a token, or with an altered, expired, or ended token, gets 401 with Problem Details and the header `WWW-Authenticate: Bearer` (`Bearer error="invalid_token"` when a token was sent). The User interface then shows the sign-in screen with “Your session has ended. Please sign in again.”
+
+The same steps with curl, as Ana. The commands never show the password or the token, and keep the password out of the shell history and the list of processes; they need no other tool. They assume that the password contains no `"` or `\`.
+
+```sh
+# Type Ana's password from .env; it is not shown.
+printf 'Password: '; read -rs PASSWORD; echo
+
+# Sign in, and keep the token in a shell variable without printing it.
+TOKEN=$(printf '{"loginName":"ana","password":"%s"}' "$PASSWORD" |
+  curl -s http://localhost:8080/api/session -H 'Content-Type: application/json' --data-binary @- |
+  sed -n 's/.*"accessToken":"\([^"]*\)".*/\1/p')
+
+# See who is signed in: {"personId":"10000000-0000-4000-8000-000000000001","displayName":"Ana Silva"}
+curl -s http://localhost:8080/api/me -H "Authorization: Bearer $TOKEN"
+
+# Sign out (204); afterwards the same token gets 401 with Bearer error="invalid_token".
+curl -s -o /dev/null -w '%{http_code}\n' -X DELETE http://localhost:8080/api/session -H "Authorization: Bearer $TOKEN"
+curl -si http://localhost:8080/api/me -H "Authorization: Bearer $TOKEN"
+
+# Without a token: 401 with WWW-Authenticate: Bearer.
+curl -si http://localhost:8080/api/me
+
+# A wrong password and an unknown login name get the same 401: "The login name or password is incorrect."
+curl -si http://localhost:8080/api/session -H 'Content-Type: application/json' -d '{"loginName":"ana","password":"not-the-right-password"}'
+curl -si http://localhost:8080/api/session -H 'Content-Type: application/json' -d '{"loginName":"nobody","password":"not-the-right-password"}'
+
+unset PASSWORD TOKEN
+```
 
 ## Review log (human-in-the-loop)
 
@@ -128,9 +174,10 @@ The AI reviewed the documentation for six categories (R-01–R-13). From R-14 on
 - [MVP user stories and acceptance criteria](docs/user-stories.md): testable scenarios and exceptional situations.
 - [Constraints, assumptions and open questions](docs/constraints.md): known and unknown constraints, assumption register, security/privacy, and decisions awaiting the client.
 - [Architecture definition](docs/architecture.md): comparison of a monolith, a modular monolith, and microservices for the proposed MVP; the chosen modular monolith (provisional until OQ-016), its main trade-offs, and its logical modules.
-- [Architecture decision records](docs/adr/README.md): the project team's decisions (ADR-001–ADR-008): modular monolith, phase scope and provisional implementation authorization, technology stack, REST API, authentication, simultaneous changes, build, persistence, and demonstration data, and domain-driven design; all provisional until OQ-016. *Changed on 2026-10-30: ADR-007 added; then ADR-008, after the team's review of I1.*
+- [Architecture decision records](docs/adr/README.md): the project team's decisions (ADR-001–ADR-009): modular monolith, phase scope and provisional implementation authorization, technology stack, REST API, authentication, simultaneous changes, build, persistence, and demonstration data, domain-driven design, and identity from the token; all provisional until OQ-016. *Changed on 2026-10-30: ADR-007 added; then ADR-008, after the team's review of I1. Changed on 2026-11-02: ADR-009 added.*
 - [Implementation plan](docs/implementation-plan.md): increments I0–I12, each with its status, goal, components, dependencies, acceptance criteria (US/EX), and verification, and the rule for updating the status.
 - [Verification record of increment I1](docs/evidence/I1-verification.md): the checks run on 2026-10-30 and their trimmed outputs, the evidence to which I1's status links. *Added on 2026-10-30; the re-verification after the team's review of I1 was added the same day.*
+- [Verification record of increment I2](docs/evidence/I2-verification.md): the checks run on 2026-11-02 and their trimmed outputs, the evidence to which I2's status links. *Added on 2026-11-02.*
 - [Data model](docs/database.md): proposed logical data model for the MVP (entities, relationships, ER diagram, stored and derived data, and consistency review); a proposal pending validation (OQ-016), not an approved design.
 - [API contract (draft)](openapi.yaml): OpenAPI 3.1 contract (0.2.0-draft) for the operations of the proposed MVP, FR-001–FR-025; REST is the single entry point by team decision (ADR-004), and the contract is a draft pending validation (OQ-016).
 - [Wireframe: project dashboard](docs/ui/project-dashboard.md): low-fidelity wireframe of one proposed MVP screen (a single project's progress, tasks, and members) with its FR/US traceability, the open questions affecting it, and the changes required by the team decisions of 2026-10-29; a proposal pending MVP approval (OQ-016).

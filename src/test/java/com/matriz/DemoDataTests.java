@@ -54,6 +54,14 @@ class DemoDataTests {
 
 	private static final Map<String, String> DEMO_DATA_OFF = Map.of("MATRIZ_DEMO_DATA", "false");
 
+	/** A database created by I1, before the schema migrations that followed the demonstration data. */
+	private static final Map<String, String> I1_DATABASE = Map.of("MATRIZ_DEMO_DATA", "false",
+			"spring.flyway.target", "1");
+
+	private static final String[] WITH_DEMONSTRATION_DATA = { "1", "1.1", "2", "3" };
+
+	private static final String[] WITHOUT_DEMONSTRATION_DATA = { "1", "2", "3" };
+
 	private static final Map<String, Integer> DEMONSTRATION_COUNTS = counts(4, 4, 8, 9, 3, 2);
 
 	private static final Map<String, Integer> NO_ROWS = counts(0, 0, 0, 0, 0, 0);
@@ -66,10 +74,10 @@ class DemoDataTests {
 		JdbcClient jdbc = jdbc(url);
 
 		start(url, PASSWORDS);
-		assertThat(history(jdbc)).containsExactly("1", "1.1");
+		assertThat(history(jdbc)).containsExactly(WITH_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(DEMONSTRATION_COUNTS);
 		assertTheDemonstrationContents(jdbc);
-		assertThat(output).contains("Demonstration data is on").contains("now at version v1.1");
+		assertThat(output).contains("Demonstration data is on").contains("now at version v3");
 		String anaHash = passwordHash(jdbc, ANA);
 
 		UUID handAdded = UUID.randomUUID();
@@ -85,7 +93,7 @@ class DemoDataTests {
 		int firstStart = output.getAll().length();
 		start(url, CHANGED_PASSWORDS);
 		assertThat(output.getAll().substring(firstStart)).contains("is up to date. No migration necessary.");
-		assertThat(history(jdbc)).containsExactly("1", "1.1");
+		assertThat(history(jdbc)).containsExactly(WITH_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(counts(5, 4, 8, 9, 3, 1));
 		assertThat(jdbc.sql("SELECT display_name FROM person WHERE person_id = :id")
 			.param("id", handAdded)
@@ -118,15 +126,30 @@ class DemoDataTests {
 	}
 
 	@Test
+	void aDemonstrationPasswordThatBreaksThePasswordRulesStopsStartUpBeforeTheDatabaseIsUsed(CapturedOutput output) {
+		String url = SharedPostgres.newDatabase();
+		Map<String, String> variables = new HashMap<>(PASSWORDS);
+		variables.put("MATRIZ_DEMO_PASSWORD_EVA", "fictitious-eva");
+
+		assertThatThrownBy(() -> start(url, variables)).isInstanceOf(EnvironmentVariablesException.class)
+			.hasMessage("These environment variables must have at least 15 characters and at most 72 bytes in UTF-8: "
+					+ "MATRIZ_DEMO_PASSWORD_EVA.");
+		assertThat(output).contains("Matriz cannot start. These environment variables must have at least 15 "
+				+ "characters").doesNotContain("fictitious-eva");
+		assertThat(tables(jdbc(url))).isEmpty();
+		assertNoPasswordOrHash(output);
+	}
+
+	@Test
 	void aDatabaseStartedWithoutTheDemonstrationDataCanGetItWhileAtItsSchemaVersion(CapturedOutput output) {
 		String url = SharedPostgres.newDatabase();
 		JdbcClient jdbc = jdbc(url);
-		start(url, DEMO_DATA_OFF);
+		start(url, I1_DATABASE);
 		assertThat(history(jdbc)).containsExactly("1");
 		assertThat(counts(jdbc)).isEqualTo(NO_ROWS);
 
 		start(url, PASSWORDS);
-		assertThat(history(jdbc)).containsExactly("1", "1.1");
+		assertThat(history(jdbc)).containsExactly(WITH_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(DEMONSTRATION_COUNTS);
 		assertNoPasswordOrHash(output);
 	}
@@ -135,7 +158,7 @@ class DemoDataTests {
 	void rowsThatConflictWithTheDemonstrationDataStopStartUpAndNoneOfItIsAdded(CapturedOutput output) {
 		String url = SharedPostgres.newDatabase();
 		JdbcClient jdbc = jdbc(url);
-		start(url, DEMO_DATA_OFF);
+		start(url, I1_DATABASE);
 		jdbc.sql("""
 				INSERT INTO person (person_id, login_name, display_name, password_hash)
 				VALUES (:id, 'eva', 'Another person', 'not-a-real-hash')
@@ -165,7 +188,7 @@ class DemoDataTests {
 			.hasMessage("The demonstration data (migration 1.1) was added to this database, but MATRIZ_DEMO_DATA is not "
 					+ "true. The setting is fixed for each database.");
 		assertThat(output).contains("Set MATRIZ_DEMO_DATA=true and the demonstration passwords");
-		assertThat(history(jdbc)).containsExactly("1", "1.1");
+		assertThat(history(jdbc)).containsExactly(WITH_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(DEMONSTRATION_COUNTS);
 	}
 
@@ -174,19 +197,14 @@ class DemoDataTests {
 		String url = SharedPostgres.newDatabase();
 		JdbcClient jdbc = jdbc(url);
 		start(url, DEMO_DATA_OFF);
-		// Stands in for a later schema migration, which I1 does not have.
-		jdbc.sql("""
-				INSERT INTO flyway_schema_history (installed_rank, version, description, type, script, checksum,
-				    installed_by, execution_time, success)
-				VALUES (2, '2', 'later schema', 'SQL', 'V2__later_schema.sql', 0, 'test', 0, true)
-				""").update();
+		assertThat(history(jdbc)).containsExactly(WITHOUT_DEMONSTRATION_DATA);
 
 		assertThatThrownBy(() -> start(url, PASSWORDS)).rootCause()
 			.isInstanceOf(DemoDataException.class)
 			.hasMessage("The demonstration data (migration 1.1) cannot be added to this database, because its schema "
-					+ "is already at version 2. The setting is fixed for each database.");
+					+ "is already at version 3. The setting is fixed for each database.");
 		assertThat(output).contains("Set MATRIZ_DEMO_DATA=false, or reset the local database as described in README.md");
-		assertThat(history(jdbc)).containsExactly("1", "2");
+		assertThat(history(jdbc)).containsExactly(WITHOUT_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(NO_ROWS);
 		assertNoPasswordOrHash(output);
 	}
@@ -258,9 +276,9 @@ class DemoDataTests {
 					tuple("Review proposal", "Second", "rui", OffsetDateTime.parse("2026-10-29T10:05:00Z").toInstant()));
 	}
 
-	/** Neither the passwords nor the hashes that the migration receives reach the output. */
+	/** Neither the passwords nor the hashes that the migration receives, nor the key, reach the output. */
 	private static void assertNoPasswordOrHash(CapturedOutput output) {
-		assertThat(output).doesNotContain("{bcrypt}").doesNotContain("$2a$");
+		assertThat(output).doesNotContain("{bcrypt}").doesNotContain("$2a$").doesNotContain(DatabaseTestSupport.SIGNING_KEY);
 		PASSWORDS.values().forEach((password) -> assertThat(output).doesNotContain(password));
 		CHANGED_PASSWORDS.values().forEach((password) -> assertThat(output).doesNotContain(password));
 	}
@@ -319,6 +337,7 @@ class DemoDataTests {
 		arguments.put("MATRIZ_DB_URL", url);
 		arguments.put("MATRIZ_DB_USER", SharedPostgres.username());
 		arguments.put("MATRIZ_DB_PASSWORD", SharedPostgres.password());
+		arguments.put("MATRIZ_JWT_SIGNING_KEY", DatabaseTestSupport.SIGNING_KEY);
 		arguments.put("MATRIZ_DEMO_DATA", "true");
 		arguments.put("spring.datasource.hikari.maximum-pool-size", "2");
 		arguments.putAll(variables);

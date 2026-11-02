@@ -1,7 +1,7 @@
 # ADR-004 — REST API as the single entry point
 
 - **Status:** Accepted (provisional)
-- **Date:** 2026-10-29; amended on 2026-10-30 (status 415 in decision 5; health check exception to decision 1, and text lengths, in [ADR-007](ADR-007-build-persistence-and-demonstration-data.md)); amended again on 2026-10-30 (decision 9, unsupported methods, by team decision in the conversation “I1 review: remaining decisions”)
+- **Date:** 2026-10-29; amended on 2026-10-30 (status 415 in decision 5; health check exception to decision 1, and text lengths, in [ADR-007](ADR-007-build-persistence-and-demonstration-data.md)); amended again on 2026-10-30 (decision 9, unsupported methods, by team decision in the conversation “I1 review: remaining decisions”); open point on the place of `405` resolved on 2026-11-02 (decision 5, by team decision in Lab Worksheet 03, question 12)
 - **Decided by:** the project team ([ADR-002](ADR-002-phase-scope-and-implementation-authorization.md), question 4)
 - **Related:** [NFR-001](../requirements.md#non-functional-requirements-and-unresolved-quality-criteria), [NFR-002](../requirements.md#non-functional-requirements-and-unresolved-quality-criteria); [Assumption A-001](../constraints.md#assumptions), [Assumption A-002](../constraints.md#assumptions), [Assumption A-022](../constraints.md#assumptions); [EX-003](../user-stories.md#edge-cases-and-exceptions), [EX-012](../user-stories.md#edge-cases-and-exceptions); [OQ-012](../constraints.md#open-questions), [OQ-019](../constraints.md#open-questions); [ADR-001](ADR-001-modular-monolith.md), [ADR-003](ADR-003-technology-stack.md), [ADR-005](ADR-005-authentication-with-jwt.md)
 
@@ -24,6 +24,7 @@
    | Status | Meaning |
    |---|---|
    | 401 | The person is not signed in. |
+   | 405 | The path does not define the request's method (decision 9). |
    | 404 | The project or task does not exist, is deleted, or the person is not a member. |
    | 403 | A member without permission for the action. |
    | 415 | The request content is not in the operation's media type. |
@@ -32,6 +33,8 @@
    | 409 | A conflict with the current state, for example a Completed project. |
 
    *415 added on 2026-10-30 by team decision, chosen over the 400 that the 0.2.0-draft contract had proposed for this case; Spring Boot returns 415 by default ([ADR-003](ADR-003-technology-stack.md)). Its place, just before 400, is a proposal [Proposal]: the media type is checked before the content is read.*
+
+   *405 placed on 2026-11-02 by team decision (Lab Worksheet 03, question 12), which resolved the open point “Place of `405` in the status order”. The token is checked before the method, so a request without a valid token gets 401 whatever its method. 405 reveals only the methods that the contract already publishes.*
 
    Signing in is the first documented exception: 415, then 400, then 422, then 401. Assigning a task is a second exception, proposed in [openapi.yaml](../../openapi.yaml) and not yet decided by the team [Proposal]. Whether a Project Participant may assign depends on the person named in the request ([Assumption A-020](../constraints.md#assumptions)), so the order is 401, 404, 415, 400, 422 for invalid content, 403, 422 for a person who is not a member, then 409.
 6. **No disclosure to non-members.** Non-members receive 404, never 403, so the API discloses nothing about projects they cannot access ([EX-003](../user-stories.md#edge-cases-and-exceptions)). Deleted projects and tasks also return 404 ([Assumption A-022](../constraints.md#assumptions)).
@@ -56,4 +59,4 @@ The alternative was a server-rendered User interface, with the REST API deferred
 - **Lengths and sizes.** Maximum lengths of names, titles, and comment text, and the maximum request size. These are part of [OQ-003](../constraints.md#open-questions) and [OQ-024](../constraints.md#open-questions). *Updated on 2026-10-30 by team decision ([ADR-007](ADR-007-build-persistence-and-demonstration-data.md), decision 8): the I1 schema checks only that text is nonempty; the maximum lengths are agreed in I3 and added by a new migration. The maximum request size is still open.*
 - **Pagination.** Whether lists are paginated. No volumes are known ([OQ-010](../constraints.md#open-questions)).
 - **Unsupported methods.** Resolved on 2026-10-30 by team decision (the conversation “I1 review: remaining decisions”, decision 3): decision 9. An unknown API path gets `404` for every method. *Previously: “An unknown API path gets `404` for every method, and a path of an existing operation called with a method it does not support gets `405`, which the contract does not define. Whether the contract documents `405` is to be decided by the team [Proposal].” That text was added on 2026-10-30 and corrected the same day after the I1 tests; before the correction, it said that methods other than GET on unknown API paths get `405`.*
-- **Place of `405` in the status order.** Decision 9 does not place `405` in the order of decision 5, for example before or after `401`. [Proposal] Decide it in I2, when signing in is added. *Added on 2026-10-30 with decision 9.*
+- **Place of `405` in the status order.** Resolved on 2026-11-02 by team decision (Lab Worksheet 03, question 12): just after `401` (decision 5). For example, `GET /api/session` gets `401` without a valid token, and `405` with `Allow: DELETE, POST` with one. *Previously: “Decision 9 does not place `405` in the order of decision 5, for example before or after `401`. [Proposal] Decide it in I2, when signing in is added.” That text was added on 2026-10-30 with decision 9.*
