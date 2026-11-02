@@ -17,6 +17,7 @@ This folder holds the architecture decision records (ADRs) of Matriz. Each ADR r
 | [ADR-006](ADR-006-simultaneous-changes.md) | Simultaneous changes | Accepted (provisional) | 2026-10-29 |
 | [ADR-007](ADR-007-build-persistence-and-demonstration-data.md) | Build, persistence, and demonstration data | Accepted (provisional) | 2026-10-30 |
 | [ADR-008](ADR-008-domain-driven-design.md) | Domain-driven design in the backend | Accepted (provisional) | 2026-10-30 |
+| [ADR-009](ADR-009-identity-from-the-token.md) | Identity from the token, and ended sessions in the User interface | Accepted (provisional) | 2026-11-02 |
 
 ## Template
 

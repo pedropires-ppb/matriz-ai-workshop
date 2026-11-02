@@ -1,7 +1,7 @@
 # ADR-003 — Technology stack
 
 - **Status:** Accepted (provisional)
-- **Date:** 2026-10-29; amended on 2026-10-30 (build tool; open points due in I1, decided in [ADR-007](ADR-007-build-persistence-and-demonstration-data.md)); amended again on 2026-10-30 (a test library for the layering check, decided in [ADR-008](ADR-008-domain-driven-design.md)); a consequence removed on 2026-10-30 (IDE configuration, by team decision in the conversation “I1 review: remaining decisions”)
+- **Date:** 2026-10-29; amended on 2026-10-30 (build tool; open points due in I1, decided in [ADR-007](ADR-007-build-persistence-and-demonstration-data.md)); amended again on 2026-10-30 (a test library for the layering check, decided in [ADR-008](ADR-008-domain-driven-design.md)); a consequence removed on 2026-10-30 (IDE configuration, by team decision in the conversation “I1 review: remaining decisions”); a cross-reference added on 2026-11-02 (the token library, decided in [ADR-005](ADR-005-authentication-with-jwt.md))
 - **Decided by:** the project team ([ADR-002](ADR-002-phase-scope-and-implementation-authorization.md), question 3). The team chose among three options that the AI assistant presented at the team's request.
 - **Related:** [ADR-001](ADR-001-modular-monolith.md), [ADR-004](ADR-004-rest-api-single-entry-point.md), [ADR-005](ADR-005-authentication-with-jwt.md), [ADR-006](ADR-006-simultaneous-changes.md), [ADR-008](ADR-008-domain-driven-design.md) (added on 2026-10-30); [NFR-004–NFR-007](../requirements.md#non-functional-requirements-and-unresolved-quality-criteria); [OQ-010](../constraints.md#open-questions), [OQ-020](../constraints.md#open-questions), [OQ-021](../constraints.md#open-questions)
 
@@ -24,7 +24,7 @@ The team chose option A:
 | User interface | A single-page application written in React and TypeScript and built with Vite. The same deployable unit serves it, from the same origin as the API ([ADR-004](ADR-004-rest-api-single-entry-point.md)). |
 | Automated tests | JUnit for unit tests; Spring's test support with MockMvc for API tests; Testcontainers to run PostgreSQL in integration tests; Playwright for end-to-end tests through the User interface. *Added on 2026-10-30 by team decision in the I1 review ([ADR-008](ADR-008-domain-driven-design.md), decision 5): ArchUnit checks the layers inside each module.* |
 | Build tool | Maven. *Added on 2026-10-30 by team decision, chosen over Gradle; this was an open point of this ADR.* |
-| Authentication | Signed access tokens ([ADR-005](ADR-005-authentication-with-jwt.md)). Option A had proposed server-side sessions. |
+| Authentication | Signed access tokens ([ADR-005](ADR-005-authentication-with-jwt.md)). Option A had proposed server-side sessions. *Added on 2026-11-02 as a cross-reference to [ADR-005](ADR-005-authentication-with-jwt.md#open-points) (“Signing”, resolved by team decision in Lab Worksheet 03, question 7): the tokens are issued and verified with Spring Security's OAuth2 resource server support (`spring-boot-starter-security-oauth2-resource-server`), which uses Nimbus JOSE+JWT. Spring Boot manages its version.* |
 
 Exact versions are chosen and pinned in increment I1 ([implementation plan](../implementation-plan.md)). This ADR fixes only the Java release. *Added on 2026-10-30: the versions chosen are listed in [ADR-007](ADR-007-build-persistence-and-demonstration-data.md) (decision 1).*
 
