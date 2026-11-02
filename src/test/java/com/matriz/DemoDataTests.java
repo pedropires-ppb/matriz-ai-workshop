@@ -126,6 +126,21 @@ class DemoDataTests {
 	}
 
 	@Test
+	void aDemonstrationPasswordThatBreaksThePasswordRulesStopsStartUpBeforeTheDatabaseIsUsed(CapturedOutput output) {
+		String url = SharedPostgres.newDatabase();
+		Map<String, String> variables = new HashMap<>(PASSWORDS);
+		variables.put("MATRIZ_DEMO_PASSWORD_EVA", "fictitious-eva");
+
+		assertThatThrownBy(() -> start(url, variables)).isInstanceOf(EnvironmentVariablesException.class)
+			.hasMessage("These environment variables must have at least 15 characters and at most 72 bytes in UTF-8: "
+					+ "MATRIZ_DEMO_PASSWORD_EVA.");
+		assertThat(output).contains("Matriz cannot start. These environment variables must have at least 15 "
+				+ "characters").doesNotContain("fictitious-eva");
+		assertThat(tables(jdbc(url))).isEmpty();
+		assertNoPasswordOrHash(output);
+	}
+
+	@Test
 	void aDatabaseStartedWithoutTheDemonstrationDataCanGetItWhileAtItsSchemaVersion(CapturedOutput output) {
 		String url = SharedPostgres.newDatabase();
 		JdbcClient jdbc = jdbc(url);
@@ -261,9 +276,9 @@ class DemoDataTests {
 					tuple("Review proposal", "Second", "rui", OffsetDateTime.parse("2026-10-29T10:05:00Z").toInstant()));
 	}
 
-	/** Neither the passwords nor the hashes that the migration receives reach the output. */
+	/** Neither the passwords nor the hashes that the migration receives, nor the key, reach the output. */
 	private static void assertNoPasswordOrHash(CapturedOutput output) {
-		assertThat(output).doesNotContain("{bcrypt}").doesNotContain("$2a$");
+		assertThat(output).doesNotContain("{bcrypt}").doesNotContain("$2a$").doesNotContain(DatabaseTestSupport.SIGNING_KEY);
 		PASSWORDS.values().forEach((password) -> assertThat(output).doesNotContain(password));
 		CHANGED_PASSWORDS.values().forEach((password) -> assertThat(output).doesNotContain(password));
 	}
@@ -322,6 +337,7 @@ class DemoDataTests {
 		arguments.put("MATRIZ_DB_URL", url);
 		arguments.put("MATRIZ_DB_USER", SharedPostgres.username());
 		arguments.put("MATRIZ_DB_PASSWORD", SharedPostgres.password());
+		arguments.put("MATRIZ_JWT_SIGNING_KEY", DatabaseTestSupport.SIGNING_KEY);
 		arguments.put("MATRIZ_DEMO_DATA", "true");
 		arguments.put("spring.datasource.hikari.maximum-pool-size", "2");
 		arguments.putAll(variables);
