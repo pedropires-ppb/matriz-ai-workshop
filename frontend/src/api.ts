@@ -80,7 +80,7 @@ export async function signOut(session: Session): Promise<void> {
 }
 
 /** A request made with the access token. Every 401 to it means that the session has ended. */
-async function withToken(session: Session, path: string, init: RequestInit = {}): Promise<Response> {
+export async function withToken(session: Session, path: string, init: RequestInit = {}): Promise<Response> {
   const headers = new Headers(init.headers);
   headers.set('Authorization', `Bearer ${session.accessToken}`);
   const response = await fetch(path, { ...init, headers });
