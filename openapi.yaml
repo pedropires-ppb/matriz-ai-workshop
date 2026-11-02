@@ -82,11 +82,49 @@ info:
     accepted. A missing, malformed, invalid, expired, or revoked token
     receives `401` with a `WWW-Authenticate: Bearer` challenge (RFC 6750);
     nothing is disclosed or changed
-    ([EX-012](docs/user-stories.md#edge-cases-and-exceptions)). The token
-    lifetime, password rules, and the response to repeated failed attempts
-    are open ([OQ-027](docs/constraints.md#open-questions)), and so is how
-    identity will finally be established
+    ([EX-012](docs/user-stories.md#edge-cases-and-exceptions)). The server
+    takes the acting person only from the token, never from the request: no
+    request schema has an owner or author property, and one sent anyway
+    receives `422` like any unknown property; query parameters and headers
+    never set the identity
+    ([ADR-009](docs/adr/ADR-009-identity-from-the-token.md), decision 2;
+    added on 2026-11-02 by team decision, Lab Worksheet 03, question 15).
+    How identity will finally be established is open
     ([OQ-018](docs/constraints.md#open-questions)).
+
+    **Token life cycle.** *Added on 2026-11-02 by team decision (Lab
+    Worksheet 03, questions 2–6, 9, 10, 12, 14, and 17); previously “The token
+    lifetime, password rules, and the response to repeated failed attempts
+    are open (OQ-027)”.* These are the team's provisional answers to
+    [OQ-027](docs/constraints.md#open-questions), recorded in
+    [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points); the
+    client's answer prevails.
+    1. *Sign-in.* `signIn` checks the login name, ignoring letter case, and
+       the password of a prepared account. It returns a new access token,
+       `expiresIn` (the token's lifetime in seconds: 28800, that is,
+       8 hours), and the signed-in person. A wrong password and an unknown
+       login name receive the same `401`. No limit applies to failed
+       attempts.
+    2. *Use.* The client keeps the token and sends it with every other
+       operation as `Authorization: Bearer <token>`. It treats the token as
+       opaque. Using the token does not extend it, and no idle timeout
+       applies.
+    3. *Expiry.* The token is refused from `expiresIn` seconds after it was
+       issued, with no clock tolerance. There is no refresh token and no
+       renewal operation: the person signs in again.
+    4. *Sign-out.* `signOut` ends only the presented token. That token stays
+       refused until it would have expired, also after the server restarts.
+       Other tokens of the same person are not affected. Replacing the
+       server's signing key ends every token.
+    5. *Refusal.* Any operation except `signIn`, sent with no token or with
+       a token that is malformed, altered, signed with another key, expired,
+       or ended, receives `401` with problem details and a
+       `WWW-Authenticate` challenge: `Bearer` when no token was sent, and
+       `Bearer error="invalid_token"` otherwise. The token is checked before
+       anything else, so this `401` comes before `405` and `404`. The User
+       interface then discards the token and asks the person to sign in
+       again ([ADR-009](docs/adr/ADR-009-identity-from-the-token.md),
+       decision 1).
 
     **Access.** Project membership and role permissions apply to every
     request
@@ -119,8 +157,10 @@ info:
     parameter value is invalid. `422` means well-formed content that does
     not satisfy the request schema, including unknown properties; `errors`
     points to each invalid member. If a request fails several checks, the
-    first applicable status in this order is returned: `401`, `404`, `403`,
-    `415`, `400`, `422`, `409`. The exceptions are stated where they apply:
+    first applicable status in this order is returned: `401`, `405`, `404`,
+    `403`, `415`, `400`, `422`, `409` (`405` placed on 2026-11-02 by team
+    decision, Lab Worksheet 03, question 12; previously absent from this
+    order). The exceptions are stated where they apply:
     `signIn` is public, so its order is `415`, `400`, `422`, `401`; and in `assignTask` the
     `403` check needs the content. A refused request changes nothing. Texts
     are in English, the proposed user-facing language
@@ -134,8 +174,12 @@ info:
     ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md), decision 9;
     decided by the project team on 2026-10-30). This rule applies to every
     path and is stated only here, because OpenAPI cannot attach a response
-    to a method that a path does not define. Its place in the order of
-    checks above is not decided.
+    to a method that a path does not define. It comes just after `401` in
+    the order of checks above, so a request without a valid token receives
+    `401` whatever its method; for example, `GET /session` receives `401`
+    without a valid token, and `405` with `Allow: DELETE, POST` with one.
+    *Changed on 2026-11-02 by team decision (Lab Worksheet 03, question 12):
+    previously “Its place in the order of checks above is not decided.”*
 
     **Lists.** Lists are returned whole; this draft defines no pagination,
     because no volumes are known
@@ -177,6 +221,18 @@ info:
     - Content that is not in the operation's media type receives `415`, not
       `400`
       ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)).
+
+    **Changes on 2026-11-02 (increment I2; the version stays 0.2.0-draft).**
+    Decided by the project team (Lab Worksheet 03); no request or response
+    schema changes.
+    - The token life cycle is documented, with the team's provisional
+      answers to [OQ-027](docs/constraints.md#open-questions) (questions
+      2–6, 9, 14, and 17); the `signIn` example's `expiresIn` changes from 3600
+      to 28800.
+    - `405` is placed just after `401` in the order of checks (question 12).
+    - Login names are compared ignoring letter case (question 10), and the
+      password rules apply to the prepared accounts (question 8).
+    - The acting person is taken only from the token (question 15).
 
     **Other open questions reflected, not answered:**
     - who may create projects and how people receive access
@@ -260,12 +316,22 @@ paths:
         - Each successful sign-in issues a new, independent token; an
           `Authorization` header sent with this request is ignored
           (proposal of this draft).
+        - The login name is compared ignoring letter case: “Ana” and “ana”
+          sign in the same person
+          ([ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md#open-points);
+          team decision of 2026-11-02, Lab Worksheet 03, question 10).
+        - Any nonempty password is checked against the account; a wrong one,
+          including one longer than 72 bytes in UTF-8, receives the `401`
+          below (team decision of 2026-11-02, question 8).
         - Clients treat the token as opaque and use `expiresIn` to know
-          when to sign in again; there is no renewal operation (proposal of
+          when to sign in again. The token lasts 8 hours; there is no refresh
+          token and no renewal operation, and no limit applies to failed
+          attempts (team decisions of 2026-11-02, Lab Worksheet 03, questions
+          2, 5, and 9; previously “there is no renewal operation (proposal of
           this draft). The token lifetime, password rules, and the response
-          to repeated failed attempts are open
-          ([OQ-027](docs/constraints.md#open-questions)); this draft limits
-          no attempts.
+          to repeated failed attempts are open (OQ-027); this draft limits no
+          attempts.”). See the token life cycle in the description of this
+          contract.
       requestBody:
         required: true
         content:
@@ -298,11 +364,11 @@ paths:
                 $ref: '#/components/schemas/SignInResponse'
               examples:
                 ana:
-                  summary: US-013 — Ana is signed in (illustrative token and lifetime)
+                  summary: US-013 — Ana is signed in (illustrative token)
                   value:
                     accessToken: example-access-token
                     tokenType: Bearer
-                    expiresIn: 3600
+                    expiresIn: 28800
                     person:
                       personId: 'c95e0a27'
                       displayName: Ana Silva
@@ -371,14 +437,22 @@ paths:
         **Rules (proposed, not client-approved):**
         - Only the presented token is ended; other sign-ins of the same
           person are not affected (proposal of this draft).
-        - The token is refused from then on, until it would have expired;
-          [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md) proposes that
-          the server keeps the identifiers of ended tokens until then, and
-          records this as an open point.
+        - The token is refused from then on, until it would have expired,
+          also after the server restarts: the server keeps the identifier
+          and expiry of each ended token, never the token itself, until then
+          ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points);
+          team decision of 2026-11-02, Lab Worksheet 03, question 3;
+          previously “ADR-005 proposes that the server keeps the identifiers
+          of ended tokens until then, and records this as an open point.”).
         - Signing out again with the same token receives `401`, because the
           token is no longer accepted.
-        - The effect of signing out is part of the open session policy
-          ([OQ-027](docs/constraints.md#open-questions)).
+        - The User interface discards the token even if this request fails
+          ([ADR-009](docs/adr/ADR-009-identity-from-the-token.md), decision 1;
+          team decision of 2026-11-02, question 17).
+        - This session policy is the team's provisional answer to
+          [OQ-027](docs/constraints.md#open-questions); the client's answer
+          prevails. *Changed on 2026-11-02: previously “The effect of
+          signing out is part of the open session policy (OQ-027).”*
       responses:
         '204':
           description: |
@@ -2808,9 +2882,16 @@ components:
         request in the `Authorization` header with the `Bearer` scheme
         (RFC 6750), a provisional team decision
         ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)). Clients
-        treat the token as opaque. It is refused once it has expired or after
-        `signOut`; its lifetime is open
-        ([OQ-027](docs/constraints.md#open-questions)).
+        treat the token as opaque. It lasts 8 hours from `signIn`, with no
+        idle timeout and no renewal, and it is refused once it has expired or
+        after `signOut` (team decisions of 2026-11-02, Lab Worksheet 03,
+        questions 2, 3, and 5; previously “its lifetime is open (OQ-027)”).
+        The server signs tokens with HS256; a token's header holds only `alg`
+        and `typ`, and its claims are exactly `sub` (the person's
+        identifier), `jti`, `iat`, and `exp`
+        ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points),
+        question 17). Clients must not depend on this content. See the token
+        life cycle in the description of this contract.
   parameters:
     ProjectId:
       name: projectId
@@ -2838,7 +2919,9 @@ components:
       description: |
         Bearer challenge (RFC 6750): `Bearer` when no token was sent, and
         `Bearer error="invalid_token"` when the token is malformed, invalid,
-        expired, or no longer accepted.
+        expired, or no longer accepted. The `401` of `signIn` carries
+        `Bearer`, because it concerns no token. The challenge has no
+        `error_description`.
       required: true
       schema:
         type: string
@@ -2903,7 +2986,10 @@ components:
         ([EX-012](docs/user-stories.md#edge-cases-and-exceptions);
         [NFR-001](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria);
         [Assumption A-014](docs/constraints.md#assumptions);
-        [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)).
+        [ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)). The User
+        interface then discards the token and asks the person to sign in
+        again ([ADR-009](docs/adr/ADR-009-identity-from-the-token.md),
+        decision 1; added on 2026-11-02).
       headers:
         WWW-Authenticate:
           $ref: '#/components/headers/WWWAuthenticate'
@@ -3059,7 +3145,9 @@ components:
         ([glossary](docs/requirements.md#glossary);
         [Assumption A-017](docs/constraints.md#assumptions)). It is sent only
         to `signIn` and is never returned by any operation (proposal of this
-        draft).
+        draft). It is compared ignoring letter case: Matriz keeps login names
+        in lower case (team decision of 2026-11-02, Lab Worksheet 03,
+        question 10).
     Password:
       type: string
       format: password
@@ -3068,9 +3156,15 @@ components:
       description: |
         The person's password, sent only to `signIn` and never returned;
         Matriz keeps only a hash of it
-        ([Assumption A-017](docs/constraints.md#assumptions)). Password rules
-        are open ([OQ-027](docs/constraints.md#open-questions)); this draft
-        requires only a nonempty value.
+        ([Assumption A-017](docs/constraints.md#assumptions)). `signIn`
+        requires only a nonempty value; a wrong password, including one
+        longer than 72 bytes in UTF-8, receives `401`. The password rules,
+        at least 15 characters and at most 72 bytes in UTF-8, apply to the
+        passwords of the prepared demonstration accounts, which are checked
+        when the server starts, because there is no registration and no
+        password change. *Changed on 2026-11-02 by team decision (Lab
+        Worksheet 03, question 8): previously “Password rules are open
+        (OQ-027); this draft requires only a nonempty value.”*
     ProjectState:
       type: string
       enum: [ACTIVE, COMPLETED]
@@ -3342,8 +3436,11 @@ components:
           type: integer
           minimum: 1
           description: |
-            Number of seconds until the token expires. The lifetime is open
-            ([OQ-027](docs/constraints.md#open-questions)).
+            Number of seconds until the token expires: 28800 (8 hours).
+            Clients compute the expiry from their own clock when they receive
+            the response, and read this value rather than assume it. *Changed
+            on 2026-11-02 by team decision (Lab Worksheet 03, question 2):
+            previously “The lifetime is open (OQ-027).”*
         person:
           $ref: '#/components/schemas/PersonSummary'
           description: The signed-in person.

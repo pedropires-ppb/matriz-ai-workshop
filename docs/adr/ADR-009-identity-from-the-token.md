@@ -30,6 +30,10 @@
 - When the page becomes visible again, the User interface checks the token with `GET /api/me`.
 - After signing in again, the person sees My projects.
 - The texts are in English ([Assumption A-028](../constraints.md#assumptions)). They are kept in [`frontend/src/messages.ts`](../../frontend/src/messages.ts).
+- *Added on 2026-11-02 by team decision (Lab Worksheet 03, question 17), recorded during implementation:*
+  - Signing out discards the token and shows “You have signed out.” even if the request fails.
+  - The sign-in form has `noValidate`: the browser shows none of its own validation messages, only the User interface's texts.
+  - The User interface has no router and adds no dependency.
 
 ### 2. The identity comes only from the token (question 15)
 
