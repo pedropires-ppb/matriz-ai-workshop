@@ -2950,15 +2950,19 @@ paths:
           ([EX-024](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-011](docs/constraints.md#assumptions),
           [Assumption A-023](docs/constraints.md#assumptions)).
-        - The text is required and nonempty; an empty text adds no comment
+        - The text is required and has 1 to 2000 characters after trimming;
+          a missing, empty, whitespace-only, or longer text adds no comment
           and returns `422` with an error for `/text`
-          ([EX-023](docs/user-stories.md#edge-cases-and-exceptions)). Length
-          limits and whitespace-only text are open
-          ([OQ-024](docs/constraints.md#open-questions)) and are not
-          enforced.
+          ([EX-023](docs/user-stories.md#edge-cases-and-exceptions),
+          [EX-031](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-036](docs/constraints.md#assumptions);
+          [OQ-024](docs/constraints.md#open-questions)).
         - The author is the signed-in person and the date and time are
-          recorded by Matriz; neither can be chosen
-          ([Assumption A-023](docs/constraints.md#assumptions)).
+          recorded by Matriz; neither can be chosen, and a request that names
+          either gets `422`
+          ([EX-032](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-023](docs/constraints.md#assumptions),
+          [Assumption A-036](docs/constraints.md#assumptions)).
         - A comment cannot be edited or deleted, and no notification is sent
           ([Assumption A-023](docs/constraints.md#assumptions)).
       requestBody:
@@ -3323,12 +3327,16 @@ components:
     CommentText:
       type: string
       minLength: 1
+      maxLength: 2000
       description: |
-        Required, nonempty comment text
-        ([Assumption A-023](docs/constraints.md#assumptions)). Whether
-        whitespace-only text is accepted and any length limits are open
-        ([OQ-024](docs/constraints.md#open-questions)); this draft enforces
-        neither. The text may contain personal data
+        Required comment text of 1 to 2000 characters, counted as Unicode
+        characters and trimmed by the service; text that is empty after
+        trimming, including text of only no-break spaces, is refused, and the
+        trimmed text is stored
+        ([Assumption A-036](docs/constraints.md#assumptions);
+        [Assumption A-033](docs/constraints.md#assumptions) for the
+        whitespace; [OQ-024](docs/constraints.md#open-questions)). The text
+        may contain personal data
         ([OQ-011](docs/constraints.md#open-questions)).
     DisplayName:
       type: string

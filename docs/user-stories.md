@@ -151,11 +151,14 @@ The Project Owner's ability to change the state of any task in an Active project
 ### US-021 — Add comment
 
 1. **Given** a task in a project of which Ana is a Member, **When** Ana adds the comment “Draft sent to the client”, **Then** the comment appears on the task with Ana's display name and the date and time it was added ([Assumption A-023](constraints.md#assumptions)).
+2. **Given** a task in a project of which Ana is a Member, **When** she adds a comment of 2000 characters, **Then** it is added; **When** she adds one of 2001 characters, or one with only spaces or no-break spaces, **Then** no comment is added and she is told what is wrong ([Assumption A-036](constraints.md#assumptions); [EX-023](#edge-cases-and-exceptions), [EX-031](#edge-cases-and-exceptions)).
+3. **Given** a task in a project of which Ana is a Member, **When** she adds a comment, **Then** it is shown at once, without reloading the page, with her display name as author and the date and time the server recorded, whatever she sent ([Assumption A-036](constraints.md#assumptions); [EX-032](#edge-cases-and-exceptions)).
 
 ### US-022 — Read comments
 
 1. **Given** a task with the comment “First” added by Ana and a later comment “Second” added by Rui, **When** a Member of its project views the task's comments, **Then** “First” is shown before “Second”, each with its author's display name and the date and time it was added ([Assumption A-023](constraints.md#assumptions)).
 2. **Given** a task with no comments, **When** a Member of its project views the task's comments, **Then** they are told there are no comments yet.
+3. **Given** a task with comments, **When** a Member closes the task and opens it again, or Matriz restarts, **Then** the same comments are shown ([Assumption A-036](constraints.md#assumptions)).
 
 ### US-023 — Search projects
 
@@ -218,6 +221,8 @@ All are proposed; none grants permissions beyond its linked requirement. Each ou
 | EX-028 | US-012 | **Given** an Active project and a task already assigned to Ana, **When** its Project Owner assigns Ana again, **Then** the task still shows Ana once and nothing else changes ([Assumption A-035](constraints.md#assumptions)). |
 | EX-029 | US-012 | **Given** an Active project, **When** its Project Owner attempts to assign a task to a person who does not exist, **Then** the task's assignees are unchanged and the owner is told the person must be a member, exactly as for a person who is not a member ([Assumption A-035](constraints.md#assumptions)). |
 | EX-030 | US-019 | **Given** an Active project and a task not assigned to Rui, **When** its Project Owner attempts to unassign Rui, **Then** the task's assignees are unchanged and the owner is told the assignee was not found ([Assumption A-035](constraints.md#assumptions)). |
+| EX-031 | US-021 | **Given** a task in a project of which Ana is a Member, **When** she submits a comment of 2001 characters, or one that is only spaces or no-break spaces, **Then** no comment is added and she is told the text must have 1 to 2000 characters ([Assumption A-036](constraints.md#assumptions)). |
+| EX-032 | US-021 | **Given** a task in a project of which Ana is a Member, **When** a request to add a comment also names an author or a date, **Then** no comment is added, and the author and the date of a comment are never taken from the request ([Assumption A-036](constraints.md#assumptions)). |
 
 Client decisions that may change these tests, including naming rules (OQ-003), access provisioning (OQ-001), simultaneous edits (OQ-017), and the team's provisional decisions (OQ-022–OQ-027), are listed in the [open questions](constraints.md#open-questions).
 
@@ -229,6 +234,7 @@ Client decisions that may change these tests, including naming rules (OQ-003), a
 | v0.2 | 2026-11-02 | US-001, US-007, US-008, US-023 | Criteria for the project description, text limits, paging, and accents added; US-001 and US-008 wording extended. No new EX; EX-001 and EX-010 stay as written. Decided by the project team in the conversation “Implement project management”. | [Assumption A-031](constraints.md#assumptions), [Assumption A-032](constraints.md#assumptions), [Assumption A-024](constraints.md#assumptions) |
 | v0.2 | 2026-11-05 | US-003, US-004, US-011, US-024, EX-002, EX-011, EX-026 | Criteria for the task description, title limits, whitespace, paging, and filter details added; US-003 and US-011 wording extended. No new EX. Decided by the project team in the conversation “Implement task management”. | [Assumption A-033](constraints.md#assumptions), [Assumption A-032](constraints.md#assumptions), [Assumption A-024](constraints.md#assumptions) |
 | v0.2 | 2026-11-05 | EX-028–EX-030 | Added: a repeated assignment, a person who does not exist, and the removal of a person who is not an assignee. The assistant's proposal in the conversation “Implement assignees and comments”, confirmed by the user; the team's review is pending. | [Assumption A-035](constraints.md#assumptions) |
+| v0.2 | 2026-11-05 | US-021, US-022, EX-031, EX-032 | Criteria for the comment limits, the whitespace rule, the server-recorded author and date, no reload, and persistence added; EX-031 (too long or only whitespace) and EX-032 (an author or date in the request) added. The assistant's proposal in the conversation “Implement assignees and comments”, confirmed by the user; the team's review is pending. | [Assumption A-036](constraints.md#assumptions) |
 | v0.2 | 2026-11-05 | US-026 | Criteria 2 and 3 added: a Completed project, and the order and fields of the list. No new EX. The assistant's proposal in the conversation “Implement assignees and comments”, confirmed by the user; the team's review is pending. | [Assumption A-034](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-001 | Assumptions add who may create projects. | [Assumption A-018](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-005 | Assumptions add several assignees; acceptance criterion 3 added. | [Assumption A-019](constraints.md#assumptions) |
