@@ -1667,9 +1667,9 @@ paths:
       operationId: listTasks
       summary: List or filter the tasks of a project
       description: |
-        Returns the tasks of an accessible project, each with its title,
-        state, Task priority, and assignees. With `state` or `priority`, only
-        the matching tasks are returned.
+        Returns a page of the tasks of an accessible project, each with its
+        title, state, Task priority, and assignees. With `state` or
+        `priority`, only the matching tasks are returned.
 
         **Traceability:**
         [FR-006](docs/requirements.md#functional-requirements),
@@ -1704,8 +1704,38 @@ paths:
         - An empty list is a successful response: the client then says that
           the project has no tasks, or that no tasks match the filters
           ([EX-026](docs/user-stories.md#edge-cases-and-exceptions)).
-        - Order: by creation, oldest first (proposal of this draft).
+        - Filters and paging combine: the page is taken from the matching
+          tasks, and `totalItems` counts them
+          ([Assumption A-032](docs/constraints.md#assumptions), as amended
+          for tasks). A page past the last is empty; a `page` or `size`
+          outside its range receives `400`.
+        - Order: by creation, oldest first, from a technical order that is
+          never exposed
+          ([ADR-008](docs/adr/ADR-008-domain-driven-design.md)).
       parameters:
+        - name: page
+          in: query
+          required: false
+          description: |
+            Number of the page, starting at 1
+            ([Assumption A-032](docs/constraints.md#assumptions)).
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: size
+          in: query
+          required: false
+          description: |
+            Number of tasks in a page, at most 100
+            ([Assumption A-032](docs/constraints.md#assumptions)).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
         - name: state
           in: query
           required: false
@@ -1736,49 +1766,62 @@ paths:
           example: [HIGH]
       responses:
         '200':
-          description: The tasks of the project that match the filters, possibly none.
+          description: A page of the tasks of the project that match the filters, possibly empty.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/Task'
+                $ref: '#/components/schemas/TaskPage'
               examples:
                 allTasks:
                   summary: US-004 — "Prepare proposal" unassigned and "Review proposal" assigned to Ana
                   value:
-                    - taskId: '41b2d8e0'
-                      projectId: '7f3a9c1e'
-                      title: Prepare proposal
-                      state: TO_DO
-                      priority: MEDIUM
-                      assignees: []
-                    - taskId: '9d07c3f5'
-                      projectId: '7f3a9c1e'
-                      title: Review proposal
-                      state: IN_PROGRESS
-                      priority: HIGH
-                      assignees:
-                        - personId: 'c95e0a27'
-                          displayName: Ana Silva
+                    items:
+                      - taskId: '41b2d8e0'
+                        projectId: '7f3a9c1e'
+                        title: Prepare proposal
+                        state: TO_DO
+                        priority: MEDIUM
+                        assignees: []
+                      - taskId: '9d07c3f5'
+                        projectId: '7f3a9c1e'
+                        title: Review proposal
+                        state: IN_PROGRESS
+                        priority: HIGH
+                        assignees:
+                          - personId: 'c95e0a27'
+                            displayName: Ana Silva
+                    page: 1
+                    size: 20
+                    totalItems: 2
+                    totalPages: 1
                 filtered:
                   summary: US-024 — response to ?state=TO_DO&state=IN_PROGRESS&priority=HIGH
                   value:
-                    - taskId: 'e1f7b2c9'
-                      projectId: '7f3a9c1e'
-                      title: T1
-                      state: TO_DO
-                      priority: HIGH
-                      assignees: []
-                    - taskId: '4d8a0c63'
-                      projectId: '7f3a9c1e'
-                      title: T2
-                      state: IN_PROGRESS
-                      priority: HIGH
-                      assignees: []
+                    items:
+                      - taskId: 'e1f7b2c9'
+                        projectId: '7f3a9c1e'
+                        title: T1
+                        state: TO_DO
+                        priority: HIGH
+                        assignees: []
+                      - taskId: '4d8a0c63'
+                        projectId: '7f3a9c1e'
+                        title: T2
+                        state: IN_PROGRESS
+                        priority: HIGH
+                        assignees: []
+                    page: 1
+                    size: 20
+                    totalItems: 2
+                    totalPages: 1
                 noMatch:
                   summary: EX-026 — no task matches the filters
-                  value: []
+                  value:
+                    items: []
+                    page: 1
+                    size: 20
+                    totalItems: 0
+                    totalPages: 0
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -1790,7 +1833,7 @@ paths:
       operationId: createTask
       summary: Create a task in a project
       description: |
-        Creates a task with a nonempty title in an Active project. The task
+        Creates a task with a title in an Active project. The task
         starts in To do with no assignee and, unless another is chosen, with
         Task priority Medium.
 
@@ -1817,12 +1860,19 @@ paths:
           and `409` is returned
           ([FR-008](docs/requirements.md#functional-requirements);
           [Assumption A-011](docs/constraints.md#assumptions)).
-        - The title is required and nonempty; an empty title creates no task
-          and returns `422` with an error for `/title`
+        - The title is required. It is trimmed, and then has 1 to 150
+          characters; a title that is empty after trimming, including one made
+          only of spaces or no-break spaces, creates no task and returns
+          `422` with an error for `/title`
           ([EX-002](docs/user-stories.md#edge-cases-and-exceptions);
-          [Assumption A-004](docs/constraints.md#assumptions)). Other naming
-          rules are open ([OQ-003](docs/constraints.md#open-questions)) and
-          are not enforced.
+          [Assumption A-004](docs/constraints.md#assumptions)). Lengths count
+          Unicode code points
+          ([OQ-003](docs/constraints.md#open-questions): the limits are the
+          team's interim answer, not the client's).
+        - `description` is optional: trimmed, up to 2000 characters, and
+          empty or `null` means none
+          ([Assumption A-033](docs/constraints.md#assumptions);
+          [OQ-030](docs/constraints.md#open-questions)).
         - The task belongs to this project only, and its initial state is To
           do and cannot be chosen
           ([Assumption A-004](docs/constraints.md#assumptions),
@@ -1935,7 +1985,8 @@ paths:
         '422':
           description: |
             The content does not satisfy `CreateTaskRequest`: it is not a JSON
-            object, `title` is missing, empty, or not a string, `priority` is
+            object, `title` is missing, empty after trimming, too long, or not
+            a string, `description` is too long or not a string, `priority` is
             not one of the codes of `TaskPriority`, or another property is
             present. No task is created, and `errors` identifies each invalid
             member ([EX-002](docs/user-stories.md#edge-cases-and-exceptions)).
@@ -2005,6 +2056,7 @@ paths:
                     taskId: '9d07c3f5'
                     projectId: '7f3a9c1e'
                     title: Review proposal
+                    description: Check the numbers and the schedule.
                     state: IN_PROGRESS
                     priority: HIGH
                     assignees:
@@ -2017,10 +2069,10 @@ paths:
     patch:
       tags: [Tasks]
       operationId: updateTask
-      summary: Change the title or Task priority of a task
+      summary: Change the title, description, or Task priority of a task
       description: |
-        Changes the title, the Task priority, or both, of a task in an Active
-        project. The content is a JSON Merge Patch
+        Changes the title, the description, the Task priority, or any of them,
+        of a task in an Active project. The content is a JSON Merge Patch
         ([RFC 7396](https://www.rfc-editor.org/rfc/rfc7396)); members that
         are absent are left unchanged.
 
@@ -2040,20 +2092,26 @@ paths:
         [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
 
         **Rules (proposed, not client-approved):**
-        - Only the project's Project Owner may change a task's title or Task
-          priority; any other member receives `403`, and nothing changes
+        - Only the project's Project Owner may change a task's title,
+          description, or Task priority; any other member receives `403`, and
+          nothing changes
           ([EX-019](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-001](docs/constraints.md#assumptions),
           [Assumption A-021](docs/constraints.md#assumptions)).
-        - At least one of `title` and `priority` is required. `title` must be
-          a nonempty string
+        - At least one of `title`, `description`, and `priority` is required.
+          `title` must be a string that has 1 to 150 characters after
+          trimming, so one made only of spaces or no-break spaces is refused
           ([EX-011](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-004](docs/constraints.md#assumptions);
-          [OQ-003](docs/constraints.md#open-questions)), and `priority` one
-          of the codes of `TaskPriority`
-          ([OQ-022](docs/constraints.md#open-questions)). Neither can be
-          removed, so `null`, which would remove a member under JSON Merge
-          Patch, receives `422`. If any member is invalid, nothing changes.
+          [OQ-003](docs/constraints.md#open-questions)). `description` is
+          a string of up to 2000 characters after trimming, and `null` or an
+          empty one removes it
+          ([Assumption A-033](docs/constraints.md#assumptions)). `priority`
+          is one of the codes of `TaskPriority`
+          ([OQ-022](docs/constraints.md#open-questions)). `title` and
+          `priority` cannot be removed, so `null`, which would remove a
+          member under JSON Merge Patch, receives `422`. If any member is
+          invalid, nothing changes.
         - The task's state and assignees are not changed here, but with
           `changeTaskState`, `assignTask`, and `unassignTask`.
         - Tasks of a Completed project cannot be changed
@@ -2123,8 +2181,9 @@ paths:
         '422':
           description: |
             The content does not satisfy `UpdateTaskRequest`: it is not a
-            JSON object or is an empty one, `title` is `null`, empty, or not
-            a string, `priority` is `null` or not one of the codes of
+            JSON object or is an empty one, `title` is `null`, empty after
+            trimming, too long, or not a string, `description` is too long or
+            not a string, `priority` is `null` or not one of the codes of
             `TaskPriority`, or another property is present. Nothing changes,
             and `errors` identifies each invalid member
             ([EX-011](docs/user-stories.md#edge-cases-and-exceptions)).
@@ -2156,10 +2215,10 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: Nothing to change; give a title, a Task priority, or both.
+                    detail: Nothing to change; give a title, a description, a Task priority, or any of them.
                     errors:
                       - pointer: ''
-                        detail: At least one of title and priority is required.
+                        detail: At least one of title, description, and priority is required.
     delete:
       tags: [Tasks]
       operationId: deleteTask
@@ -2259,14 +2318,16 @@ paths:
         [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
 
         **Rules (proposed, not client-approved):**
-        - Allowed for the project's Project Owner, whether or not they are
-          an assignee ([EX-013](docs/user-stories.md#edge-cases-and-exceptions)),
-          and for any assignee of the task
+        - Until assignees exist (increment I7), only the Project Owner may
+          change the state; any other member receives `403` and the state is
+          unchanged. From I7, also any assignee of the task
           ([FR-011](docs/requirements.md#functional-requirements);
           [Assumption A-001](docs/constraints.md#assumptions),
           [Assumption A-019](docs/constraints.md#assumptions);
-          [OQ-025](docs/constraints.md#open-questions)). Any other member
-          receives `403` and the state is unchanged
+          [OQ-025](docs/constraints.md#open-questions)). The Project Owner
+          may, whether or not they are an assignee
+          ([EX-013](docs/user-stories.md#edge-cases-and-exceptions)).
+          Any other member then receives `403` and the state is unchanged
           ([EX-004](docs/user-stories.md#edge-cases-and-exceptions)); a
           Project Participant can first assign themselves with `assignTask`
           ([Assumption A-020](docs/constraints.md#assumptions)).
@@ -2382,8 +2443,10 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           description: |
-            The person is a member of the project but neither its Project
-            Owner nor an assignee of the task; the state is unchanged
+            The person is a member of the project but may not change the
+            state: until assignees exist (I7), only the Project Owner may; from
+            I7, the Project Owner or an assignee of the task. The state is
+            unchanged
             ([EX-004](docs/user-stories.md#edge-cases-and-exceptions);
             [Assumption A-001](docs/constraints.md#assumptions),
             [Assumption A-019](docs/constraints.md#assumptions)).
@@ -3239,13 +3302,24 @@ components:
     TaskTitle:
       type: string
       minLength: 1
+      maxLength: 150
       description: |
-        Required, nonempty task title
-        ([Assumption A-004](docs/constraints.md#assumptions)). Whether
-        whitespace-only titles are accepted, any maximum length, and whether
-        titles must be unique are open
-        ([OQ-003](docs/constraints.md#open-questions)); this draft enforces
-        none of them.
+        Required task title: after trimming, 1 to 150 characters, counted as
+        Unicode characters ([Assumption A-004](docs/constraints.md#assumptions),
+        [Assumption A-031](docs/constraints.md#assumptions)). The service trims
+        the text before it checks the length, so a title of only whitespace,
+        including no-break spaces, receives `422`. Whether titles must be
+        unique is open ([OQ-003](docs/constraints.md#open-questions)); they
+        are not.
+    TaskDescription:
+      type: string
+      maxLength: 2000
+      description: |
+        Optional task description of at most 2000 characters, counted as
+        Unicode characters and trimmed by the service; one that is empty after
+        trimming means no description
+        ([Assumption A-033](docs/constraints.md#assumptions);
+        [OQ-030](docs/constraints.md#open-questions)).
     CommentText:
       type: string
       minLength: 1
@@ -3521,6 +3595,39 @@ components:
         [FR-012](docs/requirements.md#functional-requirements);
         [Assumption A-031](docs/constraints.md#assumptions)). Its members
         are returned by `listProjectMembers`, and its tasks by `listTasks`.
+    TaskPage:
+      type: object
+      required: [items, page, size, totalItems, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/Task'
+          description: The tasks of this page, possibly none.
+        page:
+          type: integer
+          minimum: 1
+          description: Number of this page, starting at 1.
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Maximum number of tasks in a page.
+        totalItems:
+          type: integer
+          minimum: 0
+          description: |
+            Number of tasks that match the filters, across all pages; the
+            count a client shows next to the list.
+        totalPages:
+          type: integer
+          minimum: 0
+          description: Number of pages; 0 when no task matches.
+      description: |
+        One page of the tasks of a project, oldest first, from a technical
+        order that is never exposed
+        ([Assumption A-032](docs/constraints.md#assumptions), as amended for
+        tasks).
     Task:
       type: object
       required: [taskId, projectId, title, state, priority, assignees]
@@ -3533,6 +3640,9 @@ components:
           description: Identifier of the single project the task belongs to.
         title:
           $ref: '#/components/schemas/TaskTitle'
+        description:
+          $ref: '#/components/schemas/TaskDescription'
+          description: Omitted when the task has no description.
         state:
           $ref: '#/components/schemas/TaskState'
         priority:
@@ -3685,6 +3795,11 @@ components:
       properties:
         title:
           $ref: '#/components/schemas/TaskTitle'
+        description:
+          oneOf:
+            - $ref: '#/components/schemas/TaskDescription'
+            - type: 'null'
+          description: '`null` or empty after trimming means no description.'
         priority:
           $ref: '#/components/schemas/TaskPriority'
           default: MEDIUM
@@ -3692,8 +3807,8 @@ components:
             Task priority of the new task; `MEDIUM` if absent
             ([Assumption A-021](docs/constraints.md#assumptions)).
       description: |
-        Content for creating a task. Only `title` and `priority` are
-        accepted: the initial state is always To do
+        Content for creating a task. Only `title`, `description`, and
+        `priority` are accepted: the initial state is always To do
         ([Assumption A-010](docs/constraints.md#assumptions)), and assignees
         are added afterwards with `assignTask`. Any other property receives
         `422`.
@@ -3704,11 +3819,17 @@ components:
       properties:
         title:
           $ref: '#/components/schemas/TaskTitle'
+        description:
+          oneOf:
+            - $ref: '#/components/schemas/TaskDescription'
+            - type: 'null'
+          description: '`null` or empty after trimming removes the description.'
         priority:
           $ref: '#/components/schemas/TaskPriority'
       description: |
-        JSON Merge Patch for changing a task: at least one of `title` and
-        `priority`; an absent member is unchanged. Neither can be `null`, and
+        JSON Merge Patch for changing a task: at least one of `title`,
+        `description`, and `priority`; an absent member is unchanged. `title`
+        and `priority` cannot be `null`, and
         any other property receives `422`. The state and the assignees are
         changed by other operations.
     ChangeTaskStateRequest:

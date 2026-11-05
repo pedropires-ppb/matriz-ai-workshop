@@ -462,6 +462,248 @@ class UserInterfaceTests extends DatabaseTestSupport {
 		}, UNAUTHORIZED_RESOURCE);
 	}
 
+	@Test
+	void theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Website Redesign", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			String token = tab.signIn(ana);
+			tab.button("Website Redesign").click();
+			assertThat(tab.heading("Tasks")).isVisible();
+			assertThat(tab.page().getByText("This project has no tasks yet.")).isVisible();
+			assertThat(tab.taskCount()).hasText("0 tasks");
+			tab.page().evaluate("() => { window.sameDocument = true; }");
+
+			tab.button("New task").click();
+			tab.page().getByLabel("Title", exact()).fill("  Write the report ");
+			tab.page().getByLabel("Description (optional)", exact()).fill("Quarterly numbers");
+			tab.page().getByLabel("Priority", exact()).selectOption("HIGH");
+			Response created = tab.page()
+				.waitForResponse((response) -> response.url().endsWith("/tasks")
+						&& "POST".equals(response.request().method()), () -> tab.button("Create task").click());
+			assertThat(created.status()).isEqualTo(201);
+			assertThat(tab.page().getByText("The task has been created.")).isVisible();
+			assertThat(tab.tasks()).hasCount(1);
+			assertThat(tab.tasks().first()).containsText("Write the report");
+			assertThat(tab.tasks().first()).containsText("To do");
+			assertThat(tab.tasks().first()).containsText("High");
+			assertThat(tab.taskCount()).hasText("1 task");
+			assertThat(tab.page().getByText("Quarterly numbers")).isVisible();
+
+			tab.button("New task").click();
+			tab.page().getByLabel("Title", exact()).fill("Review the report");
+			tab.button("Create task").click();
+			assertThat(tab.tasks()).hasCount(2);
+			assertThat(tab.taskCount()).hasText("2 tasks");
+			assertThat(tab.tasks().last()).containsText("Medium");
+
+			tab.button("Write the report").click();
+			Response stateChanged = tab.page()
+				.waitForResponse((response) -> response.url().endsWith("/state")
+						&& "PUT".equals(response.request().method()),
+						() -> tab.page().getByLabel("State", exact()).selectOption("IN_PROGRESS"));
+			assertThat(stateChanged.status()).isEqualTo(200);
+			assertThat(tab.tasks().first()).containsText("In progress");
+			Response priorityChanged = tab.page()
+				.waitForResponse((response) -> "PATCH".equals(response.request().method()),
+						() -> tab.page().getByLabel("Priority", exact()).selectOption("LOW"));
+			assertThat(priorityChanged.status()).isEqualTo(200);
+			assertThat(tab.tasks().first()).containsText("Low");
+
+			tab.filter("Filter by state", "Done").check();
+			assertThat(tab.page().getByText("No task matches the filters.")).isVisible();
+			assertThat(tab.taskCount()).hasText("0 tasks");
+			tab.filter("Filter by state", "Done").uncheck();
+			tab.filter("Filter by state", "In progress").check();
+			assertThat(tab.tasks()).hasCount(1);
+			assertThat(tab.taskCount()).hasText("1 task");
+			tab.filter("Filter by state", "To do").check();
+			assertThat(tab.tasks()).hasCount(2);
+			tab.filter("Filter by priority", "Medium").check();
+			assertThat(tab.tasks()).hasCount(1);
+			assertThat(tab.tasks().first()).containsText("Review the report");
+			tab.button("Clear filters").click();
+			assertThat(tab.tasks()).hasCount(2);
+
+			tab.button("Write the report").click();
+			tab.button("Delete task").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERTDIALOG))
+				.containsText("Delete \"Write the report\"? Its assignments will be removed.");
+			tab.button("Cancel").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERTDIALOG)).hasCount(0);
+			assertThat(tab.tasks()).hasCount(2);
+			assertThat(tab.requests().stream().filter((request) -> request.startsWith("DELETE ") && request.contains("/tasks/")))
+				.isEmpty();
+
+			tab.button("Delete task").click();
+			Response deleted = tab.page()
+				.waitForResponse((response) -> "DELETE".equals(response.request().method())
+						&& response.url().contains("/tasks/"), () -> tab.button("Delete").click());
+			assertThat(deleted.status()).isEqualTo(204);
+			assertThat(tab.page().getByText("The task has been deleted.")).isVisible();
+			assertThat(tab.tasks()).hasCount(1);
+			assertThat(tab.taskCount()).hasText("1 task");
+			assertThat(tab.button("Write the report")).hasCount(0);
+			assertThat(apiStatus("GET", "/api/projects/" + project + "/tasks?state=TO_DO", token)).isEqualTo(200);
+
+			assertThat(tab.page().evaluate("() => window.sameDocument")).isEqualTo(true);
+		});
+		assertThat(this.jdbc.sql("SELECT count(*) FROM task WHERE project_id = ? AND deleted_at IS NULL")
+			.param(project)
+			.query(Integer.class)
+			.single()).isEqualTo(1);
+		assertThat(this.jdbc.sql("SELECT count(*) FROM task WHERE project_id = ? AND deleted_at IS NOT NULL")
+			.param(project)
+			.query(Integer.class)
+			.single()).isEqualTo(1);
+	}
+
+	@Test
+	void aTaskCanBeEditedAndItsDescriptionCleared() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Website Redesign", null, ana, "PROJECT_OWNER");
+		addTask(project, "Old title", "TO_DO", "MEDIUM");
+		this.jdbc.sql("UPDATE task SET description = 'Old text' WHERE project_id = ?").param(project).update();
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Website Redesign").click();
+			tab.button("Old title").click();
+			assertThat(tab.page().getByText("Old text")).isVisible();
+
+			tab.button("Edit task").click();
+			tab.page().getByLabel("Title", exact()).fill("New title");
+			tab.page().getByLabel("Description (optional)", exact()).fill("");
+			tab.button("Save changes").click();
+
+			assertThat(tab.page().getByText("The task has been saved.")).isVisible();
+			assertThat(tab.heading("New title")).isVisible();
+			assertThat(tab.page().locator("section[aria-labelledby='task-heading']")).containsText("No description.");
+			assertThat(tab.tasks().first()).containsText("New title");
+		});
+	}
+
+	@Test
+	void invalidTitlesAndDescriptionsAreExplainedWithoutARequest() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Website Redesign", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Website Redesign").click();
+			tab.button("New task").click();
+			long requests = tab.requests().size();
+
+			tab.button("Create task").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("A title is required.");
+			tab.page().getByLabel("Title", exact()).fill("   ");
+			tab.button("Create task").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("A title is required.");
+			tab.page().getByLabel("Title", exact()).fill("\u00A0\u00A0");
+			tab.button("Create task").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("A title is required.");
+			tab.page().getByLabel("Title", exact()).fill("a".repeat(151));
+			tab.button("Create task").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("The title must have at most 150 characters.");
+			tab.page().getByLabel("Title", exact()).fill("a".repeat(150));
+			tab.page().getByLabel("Description (optional)", exact()).fill("d".repeat(2001));
+			tab.button("Create task").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT))
+				.hasText("The description must have at most 2000 characters.");
+			assertThat(tab.requests()).hasSize((int) requests);
+
+			tab.page().getByLabel("Description (optional)", exact()).fill("d".repeat(2000));
+			tab.button("Create task").click();
+			assertThat(tab.tasks()).hasCount(1);
+		});
+		assertThat(this.jdbc.sql("SELECT count(*) FROM task WHERE project_id = ?")
+			.param(project)
+			.query(Integer.class)
+			.single()).isEqualTo(1);
+	}
+
+	@Test
+	void aProjectParticipantSeesTheTasksButCannotChangeThem() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Shared", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Visible task", "DONE", "HIGH");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Shared").click();
+
+			assertThat(tab.tasks()).hasCount(1);
+			assertThat(tab.page().getByText("Only the Project Owner can change the tasks of this project."))
+				.isVisible();
+			assertThat(tab.button("New task")).hasCount(0);
+			tab.button("Visible task").click();
+			assertThat(tab.page().getByText("Done", new Page.GetByTextOptions().setExact(true)).first()).isVisible();
+			assertThat(tab.button("Edit task")).hasCount(0);
+			assertThat(tab.button("Delete task")).hasCount(0);
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+		});
+	}
+
+	@Test
+	void aProjectsTasksArePagedAndTheLastPageIsLeftWhenItsOnlyTaskIsDeleted() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Busy", null, ana, "PROJECT_OWNER");
+		for (int i = 1; i <= 21; i++) {
+			addTask(project, String.format("Task %02d", i), "TO_DO", "MEDIUM");
+		}
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Busy").click();
+
+			assertThat(tab.taskCount()).hasText("21 tasks");
+			assertThat(tab.page().getByText("Page 1 of 2")).isVisible();
+			assertThat(tab.tasks()).hasCount(20);
+			assertThat(tab.button("Previous")).isDisabled();
+			tab.button("Next").click();
+			assertThat(tab.page().getByText("Page 2 of 2")).isVisible();
+			assertThat(tab.tasks()).hasCount(1);
+			assertThat(tab.button("Task 21")).isVisible();
+			assertThat(tab.button("Next")).isDisabled();
+
+			tab.button("Task 21").click();
+			tab.button("Delete task").click();
+			tab.button("Delete").click();
+
+			assertThat(tab.taskCount()).hasText("20 tasks");
+			assertThat(tab.tasks()).hasCount(20);
+			assertThat(tab.page().getByText("Page 1 of 2")).hasCount(0);
+			assertThat(tab.button("Previous")).hasCount(0);
+		});
+	}
+
+	@Test
+	void aSessionEndedElsewhereSendsThePersonToSignInWhenTheyUseTheTasks() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Mine", null, ana, "PROJECT_OWNER");
+		addTask(project, "A task", "TO_DO", "MEDIUM");
+		inATab((tab) -> {
+			tab.open();
+			String token = tab.signIn(ana);
+			tab.button("Mine").click();
+			assertThat(tab.tasks()).hasCount(1);
+			assertThat(apiStatus("DELETE", SIGN_IN_PATH, token)).isEqualTo(204);
+
+			tab.filter("Filter by state", "Done").check();
+
+			assertThat(tab.page().getByRole(AriaRole.STATUS)).hasText("Your session has ended. Please sign in again.");
+			tab.assertSignInScreen();
+		}, UNAUTHORIZED_RESOURCE);
+	}
+
+	private void addTask(UUID project, String title, String state, String priority) {
+		this.jdbc.sql("INSERT INTO task (task_id, project_id, title, state, priority) VALUES (?, ?, ?, ?, ?)")
+			.params(UUID.randomUUID(), project, title, state, priority)
+			.update();
+	}
+
 	private static Page.GetByLabelOptions exact() {
 		return new Page.GetByLabelOptions().setExact(true);
 	}
@@ -588,6 +830,24 @@ class UserInterfaceTests extends DatabaseTestSupport {
 
 		Locator button(String name) {
 			return this.page.getByRole(AriaRole.BUTTON, new Page.GetByRoleOptions().setName(name).setExact(true));
+		}
+
+		/** The rows of the list of tasks. */
+		Locator tasks() {
+			return this.page
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Tasks").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+		}
+
+		Locator taskCount() {
+			return this.page.locator("#task-count");
+		}
+
+		/** One checkbox of a group of filters. */
+		Locator filter(String group, String label) {
+			return this.page
+				.getByRole(AriaRole.GROUP, new Page.GetByRoleOptions().setName(group).setExact(true))
+				.getByRole(AriaRole.CHECKBOX, new Locator.GetByRoleOptions().setName(label).setExact(true));
 		}
 
 	}

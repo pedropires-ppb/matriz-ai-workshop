@@ -3,6 +3,6 @@
  * of openapi.yaml (ADR-004). Uses the application layer; never the infrastructure layer. No other
  * layer depends on it.
  * <p>
- * Empty in I1. First classes in I4 (ADR-008).
+ * First classes in I4 (ADR-008): the task controller and its request and response types.
  */
 package com.matriz.tasks.web;

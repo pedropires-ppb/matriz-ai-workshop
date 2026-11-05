@@ -79,4 +79,14 @@ GET /api/projects/186ad1a8-…                   -> 404
 - A reload signs the person out, because the token is kept in memory (A-028, [ADR-005](../adr/ADR-005-authentication-with-jwt.md)).
 - A name made only of no-break spaces (U+00A0) is accepted, because trimming follows Java's definition of whitespace. The team should decide whether to treat it as empty.
 - Continuous integration for this branch has not run; nothing was pushed.
-- `progress` and `taskCounts` are omitted until I5 (decision 2).
+## 7. Review of 2026-11-05
+
+*Added on 2026-11-05 by the assistant, in the conversation “Lab Worksheet 03 — Implement task management”. The project team accepted I3 and the project parts of I10 and I11 on that day ([implementation plan](../implementation-plan.md#increments)); the status line at the top of this record describes the state before the review.*
+
+Follow-ups requested by the I2 review and by the I3 review:
+
+- **Ended token.** `ProjectApiTests.aTokenEndedBySigningOutIsRefused` checks that a token ended by signing out is refused with 401 on a project operation, and `EveryOperationRequiresATokenTests.withASignedOutTokenAnOperationIsRefused` checks every operation. Both passed in the build of section 1.
+- **Local database password.** The search was repeated on 2026-11-05: the value in the ignored `.env` file occurs in no tracked file and in no commit of any branch (`git grep` and `git log --all -S`; the value was not printed). `.env.example` holds only a placeholder. The point in section 5 about replacing a short common word stays with the team.
+- **No-break space (U+00A0).** Still open; the question is asked again for projects and tasks in the next increment.
+- **Client validation** of A-031 and A-032 is pending.
+- **Continuous integration** passed, as reported by the team on 2026-11-05; there is no run link.

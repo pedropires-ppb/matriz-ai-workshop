@@ -62,9 +62,9 @@ class DemoDataTests {
 	private static final Map<String, String> I1_DATABASE = Map.of("MATRIZ_DEMO_DATA", "false",
 			"spring.flyway.target", "1", "spring.jpa.hibernate.ddl-auto", "none");
 
-	private static final String[] WITH_DEMONSTRATION_DATA = { "1", "1.1", "2", "3", "4" };
+	private static final String[] WITH_DEMONSTRATION_DATA = { "1", "1.1", "2", "3", "4", "5" };
 
-	private static final String[] WITHOUT_DEMONSTRATION_DATA = { "1", "2", "3", "4" };
+	private static final String[] WITHOUT_DEMONSTRATION_DATA = { "1", "2", "3", "4", "5" };
 
 	private static final Map<String, Integer> DEMONSTRATION_COUNTS = counts(4, 4, 8, 9, 3, 2);
 
@@ -81,7 +81,7 @@ class DemoDataTests {
 		assertThat(history(jdbc)).containsExactly(WITH_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(DEMONSTRATION_COUNTS);
 		assertTheDemonstrationContents(jdbc);
-		assertThat(output).contains("Demonstration data is on").contains("now at version v4");
+		assertThat(output).contains("Demonstration data is on").contains("now at version v5");
 		String anaHash = passwordHash(jdbc, ANA);
 
 		UUID handAdded = UUID.randomUUID();
@@ -206,7 +206,7 @@ class DemoDataTests {
 		assertThatThrownBy(() -> start(url, PASSWORDS)).rootCause()
 			.isInstanceOf(DemoDataException.class)
 			.hasMessage("The demonstration data (migration 1.1) cannot be added to this database, because its schema "
-					+ "is already at version 4. The setting is fixed for each database.");
+					+ "is already at version 5. The setting is fixed for each database.");
 		assertThat(output).contains("Set MATRIZ_DEMO_DATA=false, or reset the local database as described in README.md");
 		assertThat(history(jdbc)).containsExactly(WITHOUT_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(NO_ROWS);

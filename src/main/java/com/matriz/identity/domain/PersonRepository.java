@@ -1,5 +1,7 @@
 package com.matriz.identity.domain;
 
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 
 import com.matriz.identity.PersonId;
@@ -10,5 +12,8 @@ public interface PersonRepository {
 	Optional<Person> findById(PersonId id);
 
 	Optional<Person> findByLoginName(LoginName loginName);
+
+	/** The people with these identifiers who are known; an unknown identifier is left out. */
+	List<Person> findAllByIdIn(Collection<PersonId> ids);
 
 }

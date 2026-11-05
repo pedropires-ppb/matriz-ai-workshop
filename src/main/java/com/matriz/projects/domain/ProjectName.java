@@ -22,7 +22,7 @@ public record ProjectName(@Column(name = "name") String value) {
 		if (value == null) {
 			throw new IllegalArgumentException(REQUIRED);
 		}
-		value = value.strip();
+		value = Whitespace.trim(value);
 		if (value.isEmpty()) {
 			throw new IllegalArgumentException(REQUIRED);
 		}

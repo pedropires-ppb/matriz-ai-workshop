@@ -4,6 +4,7 @@ import java.util.List;
 
 import com.matriz.identity.PersonId;
 import com.matriz.projects.domain.ProjectListing;
+import com.matriz.projects.domain.Whitespace;
 import com.matriz.projects.domain.ProjectRepository;
 import com.matriz.projects.domain.ProjectRepository.ProjectListingPage;
 
@@ -32,7 +33,7 @@ public class ListProjects {
 	 */
 	@Transactional(readOnly = true)
 	public ProjectsPage list(PersonId person, String nameContains, int page, int size) {
-		String text = nameContains == null ? null : nameContains.strip();
+		String text = nameContains == null ? null : Whitespace.trim(nameContains);
 		ProjectListingPage found = this.projects.findAccessible(person, text, page, size);
 		List<ProjectSummary> items = found.items().stream().map(ListProjects::summary).toList();
 		long totalPages = (found.totalItems() + size - 1) / size;

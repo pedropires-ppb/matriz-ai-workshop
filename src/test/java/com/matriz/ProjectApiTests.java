@@ -149,7 +149,7 @@ class ProjectApiTests extends DatabaseTestSupport {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "", "   ", " \t\n " })
+	@ValueSource(strings = { "", "   ", " \t\n ", "\u00A0", " \u00A0\u202F " })
 	void aNameThatIsEmptyAfterTrimmingIsRefused(String name) throws Exception {
 		assertInvalid(create(this.anaToken, json(name, null)), "/name", "A name is required.");
 		assertThat(count("SELECT count(*) FROM membership WHERE person_id = ?", this.ana.id())).isZero();

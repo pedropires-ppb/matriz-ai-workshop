@@ -39,10 +39,17 @@ class ProjectDomainTests {
 	}
 
 	@ParameterizedTest
-	@ValueSource(strings = { "", " ", "\t", "\n ", "\u2003" })
+	@ValueSource(strings = { "", " ", "\t", "\n ", "\u2003", "\u00A0", " \u00A0\u2007\u202F " })
 	void aNameThatIsEmptyAfterTrimmingIsRefused(String text) {
 		assertThatIllegalArgumentException().isThrownBy(() -> new ProjectName(text))
 			.withMessage("A name is required.");
+	}
+
+	@Test
+	void noBreakSpacesAreTrimmedLikeAnyOtherWhitespace() {
+		assertThat(new ProjectName("\u00A0Matriz\u00A0\u202F").value()).isEqualTo("Matriz");
+		assertThat(ProjectDescription.ofNullable("\u00A0\u00A0")).isNull();
+		assertThat(ProjectDescription.ofNullable("\u00A0About\u2007").value()).isEqualTo("About");
 	}
 
 	@Test

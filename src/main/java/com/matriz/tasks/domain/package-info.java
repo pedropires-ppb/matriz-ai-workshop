@@ -5,6 +5,6 @@
  * Persistence only the mapping annotations and the enumerations they take. Other modules are used
  * only through their top-level packages (module rule 2).
  * <p>
- * Empty in I1. First classes in I4 (ADR-008).
+ * First classes in I4 (ADR-008): the Task aggregate, with its Assignments read-only until I7.
  */
 package com.matriz.tasks.domain;
