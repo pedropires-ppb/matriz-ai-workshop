@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type Session, SessionEndedError } from './api';
+import CommentsSection from './CommentsSection';
 import type { Member } from './membersApi';
 import { messages } from './messages';
 import TaskForm from './TaskForm';
@@ -471,6 +472,13 @@ export default function TasksSection({
                   </p>
                 )}
               </div>
+              <CommentsSection
+                key={selected.taskId}
+                session={session}
+                projectId={projectId}
+                taskId={selected.taskId}
+                onSessionEnded={onSessionEnded}
+              />
               {canChange && !confirming && (
                 <p>
                   <button type="button" onClick={() => { setEditing(true); setNotice(null); setFailure(null); }}>

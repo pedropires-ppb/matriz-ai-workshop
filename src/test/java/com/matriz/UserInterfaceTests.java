@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import com.microsoft.playwright.APIRequest;
 import com.microsoft.playwright.APIRequestContext;
@@ -767,6 +768,98 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.page().getByLabel("Person to assign", exact())).hasCount(0);
 			assertThat(tab.button("Assign me")).hasCount(0);
 			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+		});
+	}
+
+	@Test
+	void aMemberAddsCommentsSeesTheirAuthorAndDateAndKeepsThemWhenTheTaskIsOpenedAgain() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Website Redesign", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Write the report", "TO_DO", "MEDIUM");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Website Redesign").click();
+			tab.button("Write the report").click();
+			tab.page().evaluate("() => { window.sameDocument = true; }");
+			assertThat(tab.page().getByText("No comments yet.")).isVisible();
+			assertThat(tab.page().getByText("0 of 2000 characters")).isVisible();
+
+			tab.page().getByLabel("Add a comment", exact()).fill("\u00A0 \u00A0");
+			tab.button("Add comment").click();
+			assertThat(tab.page().getByText("The comment text is required.")).isVisible();
+			tab.page().getByLabel("Add a comment", exact()).fill("x".repeat(2001));
+			assertThat(tab.page().getByText("2001 of 2000 characters")).isVisible();
+			tab.button("Add comment").click();
+			assertThat(tab.page().getByText("The comment must have at most 2000 characters.")).isVisible();
+			assertThat(tab.page().getByText("No comments yet.")).isVisible();
+
+			tab.page().getByLabel("Add a comment", exact()).fill("Draft sent to the client");
+			Response added = tab.page()
+				.waitForResponse((response) -> response.url().endsWith("/comments")
+						&& "POST".equals(response.request().method()), () -> tab.button("Add comment").click());
+			assertThat(added.status()).isEqualTo(201);
+			assertThat(added.request().postData()).isEqualTo("{\"text\":\"Draft sent to the client\"}");
+			assertThat(tab.page().getByText("The comment has been added.")).isVisible();
+			assertThat(tab.page().getByLabel("Add a comment", exact())).hasValue("");
+
+			Locator comments = tab.page()
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Comments").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+			assertThat(comments).hasCount(1);
+			assertThat(comments.first()).containsText("Ana Silva");
+			assertThat(comments.first()).containsText("Draft sent to the client");
+			assertThat(comments.first().locator("time")).hasAttribute("datetime",
+					Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"));
+			assertThat(tab.page().evaluate("() => window.sameDocument")).isEqualTo(true);
+
+			tab.button("Close").click();
+			tab.button("Write the report").click();
+			assertThat(comments).hasCount(1);
+			assertThat(comments.first()).containsText("Draft sent to the client");
+		});
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Website Redesign").click();
+			tab.button("Write the report").click();
+			tab.page().getByLabel("Add a comment", exact()).fill("Reviewed");
+			tab.button("Add comment").click();
+
+			Locator comments = tab.page()
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Comments").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+			assertThat(comments).hasCount(2);
+			assertThat(comments.first()).containsText("Ana Silva");
+			assertThat(comments.last()).containsText("Rui Martins");
+			assertThat(comments.last()).containsText("Reviewed");
+		});
+		assertThat(this.jdbc.sql("SELECT count(*) FROM comment").query(Integer.class).single()).isEqualTo(2);
+	}
+
+	@Test
+	void aCompletedProjectStillAllowsComments() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Finished", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Old task", "DONE", "LOW");
+		this.jdbc.sql("UPDATE project SET state = 'COMPLETED' WHERE project_id = ?").param(project).update();
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Finished").click();
+			tab.button("Old task").click();
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+
+			tab.page().getByLabel("Add a comment", exact()).fill("Final report approved by the team");
+			tab.button("Add comment").click();
+
+			assertThat(tab.page().getByText("The comment has been added.")).isVisible();
+			assertThat(tab.page().getByText("Final report approved by the team")).isVisible();
+			assertThat(tab.page()
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Comments").setExact(true))
+				.getByRole(AriaRole.LISTITEM)).containsText("Rui Martins");
 		});
 	}
 
