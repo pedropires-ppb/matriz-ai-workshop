@@ -177,6 +177,10 @@ The Project Owner's ability to change the state of any task in an Active project
 ### US-026 — View members
 
 1. **Given** a project with Project Owner Ana and Project Participants Rui and Eva, **When** Rui views the project's members, **Then** Ana is shown as Project Owner, and Rui and Eva as Project Participants ([Assumption A-027](constraints.md#assumptions)).
+2. **Given** a Completed project with Project Owner Ana and Project Participant Rui, **When** Rui views the project's members, **Then** the list is shown, with Ana first, as for an Active project ([Assumption A-034](constraints.md#assumptions)).
+3. **Given** a project with Project Owner Ana and Project Participants Rui and Eva, **When** Ana views the members, **Then** each person appears once, with the display name and the role, no login name is shown, Ana comes first, and Eva comes before Rui ([Assumption A-034](constraints.md#assumptions)). *Added on 2026-11-05 (the conversation “Implement assignees and comments”).*
+
+A person who is not a member asks for the members: see [EX-003](#edge-cases-and-exceptions).
 
 ## Edge cases and exceptions
 
@@ -221,6 +225,7 @@ Client decisions that may change these tests, including naming rules (OQ-003), a
 | v0.2 | 2026-10-29 | US-013–US-026, EX-014–EX-027 | Added as team decisions. | [ADR-002](adr/ADR-002-phase-scope-and-implementation-authorization.md) |
 | v0.2 | 2026-11-02 | US-001, US-007, US-008, US-023 | Criteria for the project description, text limits, paging, and accents added; US-001 and US-008 wording extended. No new EX; EX-001 and EX-010 stay as written. Decided by the project team in the conversation “Implement project management”. | [Assumption A-031](constraints.md#assumptions), [Assumption A-032](constraints.md#assumptions), [Assumption A-024](constraints.md#assumptions) |
 | v0.2 | 2026-11-05 | US-003, US-004, US-011, US-024, EX-002, EX-011, EX-026 | Criteria for the task description, title limits, whitespace, paging, and filter details added; US-003 and US-011 wording extended. No new EX. Decided by the project team in the conversation “Implement task management”. | [Assumption A-033](constraints.md#assumptions), [Assumption A-032](constraints.md#assumptions), [Assumption A-024](constraints.md#assumptions) |
+| v0.2 | 2026-11-05 | US-026 | Criteria 2 and 3 added: a Completed project, and the order and fields of the list. No new EX. The assistant's proposal in the conversation “Implement assignees and comments”, confirmed by the user; the team's review is pending. | [Assumption A-034](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-001 | Assumptions add who may create projects. | [Assumption A-018](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-005 | Assumptions add several assignees; acceptance criterion 3 added. | [Assumption A-019](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-012 | Story extended to one or more members; criterion 1 no longer says “single assignee”; criteria 2 and 3 added. | [Assumption A-019](constraints.md#assumptions) |
