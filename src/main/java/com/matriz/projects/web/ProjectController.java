@@ -12,6 +12,7 @@ import com.matriz.projects.application.GetProject;
 import com.matriz.projects.application.ListProjects;
 import com.matriz.projects.application.ProjectNotFoundException;
 import com.matriz.projects.application.UpdateProject;
+import com.matriz.projects.domain.Whitespace;
 
 import jakarta.servlet.http.HttpServletRequest;
 import tools.jackson.core.JacksonException;
@@ -94,7 +95,7 @@ class ProjectController {
 	ProjectPageResponse list(SignedInPerson person, @RequestParam(name = "name", required = false) String name,
 			@RequestParam(name = "page", required = false) String page,
 			@RequestParam(name = "size", required = false) String size) {
-		if (name != null && name.isBlank()) {
+		if (name != null && Whitespace.isBlank(name)) {
 			throw badRequest("The query parameter name must not be empty.");
 		}
 		int pageNumber = integer("page", page, 1, 1, Integer.MAX_VALUE, "an integer of at least 1");

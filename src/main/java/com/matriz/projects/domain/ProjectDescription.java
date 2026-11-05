@@ -20,7 +20,7 @@ public record ProjectDescription(@Column(name = "description") String value) {
 		if (value == null) {
 			throw new IllegalArgumentException("A description cannot be absent; use no description instead.");
 		}
-		value = value.strip();
+		value = Whitespace.trim(value);
 		if (value.isEmpty()) {
 			throw new IllegalArgumentException("A description cannot be empty; use no description instead.");
 		}
@@ -35,7 +35,7 @@ public record ProjectDescription(@Column(name = "description") String value) {
 	 * @throws IllegalArgumentException with the text to show, if the text is too long
 	 */
 	public static ProjectDescription ofNullable(String text) {
-		if (text == null || text.isBlank()) {
+		if (text == null || Whitespace.isBlank(text)) {
 			return null;
 		}
 		return new ProjectDescription(text);
