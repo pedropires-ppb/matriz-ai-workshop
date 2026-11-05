@@ -34,7 +34,8 @@ class RequestSchemaTests {
 	private static final Map<String, Set<String>> REVIEWED_SCHEMAS = Map.of("SignInRequest",
 			Set.of("loginName", "password"), "CreateProjectRequest", Set.of("name", "description"),
 			"UpdateProjectRequest", Set.of("name", "description"), "CompleteProjectRequest", Set.of("state"), "AddParticipantRequest", Set.of("personId"),
-			"CreateTaskRequest", Set.of("title", "priority"), "UpdateTaskRequest", Set.of("title", "priority"),
+			"CreateTaskRequest", Set.of("title", "description", "priority"), "UpdateTaskRequest",
+			Set.of("title", "description", "priority"),
 			"ChangeTaskStateRequest", Set.of("state"), "AssignTaskRequest", Set.of("personId"),
 			"CreateCommentRequest", Set.of("text"));
 
