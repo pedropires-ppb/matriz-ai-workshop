@@ -1,6 +1,6 @@
 # Matriz — Verification record for the assignees and comments exercise (2026-11-05)
 
-**Status:** Evidence for the project team's review of the member list of increment [I6](../implementation-plan.md#i6--members), and later of [I7](../implementation-plan.md#i7--several-assignees-and-self-assignment) and [I9](../implementation-plan.md#i9--comments). Nothing here is accepted: only the project team accepts an increment ([plan rule 4](../implementation-plan.md#increment-status)). Every decision below is the assistant's proposal, confirmed by the user's blanket confirmation in the conversation “Implement assignees and comments”; the team's own review and the client's validation are pending.
+**Status:** Evidence for the project team's review of the member list of increment [I6](../implementation-plan.md#i6--members), and of [I7](../implementation-plan.md#i7--several-assignees-and-self-assignment) and [I9](../implementation-plan.md#i9--comments). Nothing here is accepted: only the project team accepts an increment ([plan rule 4](../implementation-plan.md#increment-status)). Every decision below is the assistant's proposal, confirmed by the user's blanket confirmation in the conversation “Implement assignees and comments”; the team's own review and the client's validation are pending.
 
 **Environment:** macOS on arm64; JDK 25 (Temurin); Maven through the wrapper; Node.js installed by the build; Playwright with Chromium; Docker; PostgreSQL 18 in the tests. `gh` is not authenticated on this machine, so no continuous integration run is linked.
 
@@ -95,4 +95,60 @@ secrets in log: 0
 
 The Completed-project `409` is checked by the automated tests with a fixture, not in this run. The assignments of a deleted task are removed with it ([A-022](../constraints.md#assumptions)).
 
-**Known points.** [OQ-025](../constraints.md#open-questions) (self-assignment) stays high risk: any member can make themselves an assignee and then change the state. The removal check of `removeParticipant` and [EX-007](../user-stories.md#edge-cases-and-exceptions) stay with the rest of I6. The comments (I9) are not built yet.
+**Known points.** [OQ-025](../constraints.md#open-questions) (self-assignment) stays high risk: any member can make themselves an assignee and then change the state. The removal check of `removeParticipant` and [EX-007](../user-stories.md#edge-cases-and-exceptions) stay with the rest of I6.
+
+## 3. I9 — task comments (`addTaskComment`, `listTaskComments`, US-021, US-022)
+
+**Decisions** ([Assumption A-036](../constraints.md#assumptions), [A-023](../constraints.md#assumptions) as amended; EX-031, EX-032; [ADR-004](../adr/ADR-004-rest-api-single-entry-point.md); [ADR-006](../adr/ADR-006-simultaneous-changes.md); [ADR-008](../adr/ADR-008-domain-driven-design.md)):
+
+- the text has 1 to 2000 Unicode characters after trimming, with the whitespace rule of [A-033](../constraints.md#assumptions) (no-break spaces included); the trimmed text is stored ([OQ-024](../constraints.md#open-questions) interim answer);
+- an empty, whitespace-only, missing, non-string, or too long text, or any other property (an author or a date), gets `422` with the error at `/text` (or at the extra property);
+- the author comes from the token and the date from a server `Clock` (UTC, milliseconds, RFC 3339 `Z`); the client sends only `text`;
+- the list is whole, with no paging, oldest first (date, then the technical `creation_order`);
+- no edit and no delete: `DELETE`, `PUT`, and `PATCH` on the collection give `405`;
+- every member comments and reads, also in a Completed project (the only change such a project allows); a non-member, a deleted task, or a deleted project gets `404`, never `403`; the project row is locked on adding;
+- a comment keeps its author after the person leaves the project.
+
+**Code.** Tasks module: `Comment` (entity, with `CommentId` in the API package and `CommentText` as an embeddable value), `CommentRepository`, `AddTaskComment`, `ListTaskComments`, `CommentViews`, the `COMMENT` action of the access policy, `CommentResponse`, two operations in `TaskController`, and a `Clock` bean. Migration `V6__add_comment_text_limit_and_order.sql` (new; no applied migration was edited) adds the 2000-character check, `creation_order`, and an index on `(task_id, created_at, creation_order)`; [database.md](../database.md) is at v0.8. `openapi.yaml`: `CommentText` has `minLength` 1 and `maxLength` 2000, and `addTaskComment` states the `422` rules.
+
+| Check | Result |
+|---|---|
+| `./mvnw -B clean verify` | Passed: 523 tests, 0 failures (baseline 472), including `LayeringTests` (5), `ModuleBoundaryTests` (4), and the contract check |
+| `CommentApiTests` (36) | Boundary values 1, 2000, and 2001; empty, spaces, and no-break spaces; a client-sent author or date refused; author and date from the server; order; a Completed project allows comments (fixture); `401`, `404` (non-member, deleted task, deleted project, unknown and malformed ids), `405`; the stored text is trimmed |
+| `CommentTextTests` (11), `TaskAccessRulesTests`, `SchemaMigrationTests`, `DemoDataTests` | The value rules; the `COMMENT` row of the policy; the V6 migration and the length check; the demonstration data at version 6 |
+| `UserInterfaceTests` (30, two new) | See below |
+
+**End to end** (Chromium, **no page reload**: a marker on the page's `window` survives): a member adds comments and sees the author and the date at once; a whitespace-only text and a 2001-character text show an error and send no request; the request body is exactly `{"text": …}`; reopening the task shows the comments again; a second person sees them with the right author; in a Completed project the form is still there and a comment can be added.
+
+**Direct requests and restart.** The packaged application, with the demonstration data, on a throwaway PostgreSQL 18 database, and curl; two runs on the same database and the same signing key. Passwords and key were generated for the run and not recorded; the database and the temporary files were removed. Long bodies are cut.
+
+```text
+== run 1
+Rui adds (padded text)                -> 201, author Rui Martins, createdAt 2026-11-05T20:33:54.246Z
+Ana adds 2000 characters              -> 201
+Eva adds 1 character                  -> 201
+2001 characters                       -> 422 (/text)
+empty                                 -> 422 (/text)
+spaces only                           -> 422 (/text)
+no-break spaces only                  -> 422 (/text)
+client-sent author                    -> 422 (/authorId)
+client-sent date                      -> 422 (/createdAt)
+Daniel (member of no project) add     -> 404
+Daniel list                           -> 404
+no token: add, list                   -> 401, 401
+Completed project (Project Gamma): Ana adds -> 201
+DELETE, PUT on the collection         -> 405, 405
+list Website Redesign task: Rui Martins (27, trimmed), Ana Silva (2000), Eva Santos (1), oldest first
+list Project Gamma task: Ana Silva "Closing remark"
+orphan comments: 0; total comments: 6
+== run 2 (restart, same database and key)
+the same three comments with the same authors and dates; the Project Gamma comment; orphan comments: 0; total comments: 6
+```
+
+**Points to flag.**
+
+- **[ADR-008](../adr/ADR-008-domain-driven-design.md) is inconsistent about the Comment.** Its aggregates table makes Comment an aggregate of its own in Tasks; a later line says “Comment inside the Task aggregate”; the plan says “the Comment aggregate in Tasks”. I built it as an aggregate of its own, referring to `TaskId` and `PersonId`, with a `CommentRepository`, because the list must not load the task and comments are never changed. The team should confirm which reading holds.
+- The list has no paging, so a task with very many comments returns a long answer ([A-036](../constraints.md#assumptions)).
+- Comments in a Completed project are checked with a fixture and in the direct run on the demonstration project; I8 repeats the check once projects can be completed.
+- The display time in the screen is the browser's local time; the contract value is UTC.
+- Process: some edits in this exercise were made with scripts and a heredoc instead of the edit tool (the plan, ADR, `openapi.yaml`, and `database.md` edits, and one test clean-up). The diff was reviewed afterwards; the content is as intended.
