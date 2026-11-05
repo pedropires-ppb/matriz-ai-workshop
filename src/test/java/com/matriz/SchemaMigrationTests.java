@@ -38,7 +38,7 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 
 	private static final String NOT_NULL_VIOLATION = "23502";
 
-	private static final String[] SCHEMA_VERSIONS = { "1", "2", "3" };
+	private static final String[] SCHEMA_VERSIONS = { "1", "2", "3", "4" };
 
 	@Autowired
 	private JdbcClient jdbc;
@@ -62,7 +62,9 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 			.listOfRows())
 			.containsExactly(Map.of("version", "1", "description", "create schema", "success", true),
 					Map.of("version", "2", "description", "create ended access token", "success", true),
-					Map.of("version", "3", "description", "require lower case login names", "success", true));
+					Map.of("version", "3", "description", "require lower case login names", "success", true),
+					Map.of("version", "4", "description", "add project description and text limits", "success",
+							true));
 		// information_schema.sequences omits identity sequences, so pg_class is queried instead.
 		assertThat(this.jdbc.sql("""
 				SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace

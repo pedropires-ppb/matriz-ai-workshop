@@ -32,8 +32,8 @@ class RequestSchemaTests {
 
 	/** The request schemas and the properties each one allows, as reviewed. */
 	private static final Map<String, Set<String>> REVIEWED_SCHEMAS = Map.of("SignInRequest",
-			Set.of("loginName", "password"), "CreateProjectRequest", Set.of("name"), "RenameProjectRequest",
-			Set.of("name"), "CompleteProjectRequest", Set.of("state"), "AddParticipantRequest", Set.of("personId"),
+			Set.of("loginName", "password"), "CreateProjectRequest", Set.of("name", "description"),
+			"UpdateProjectRequest", Set.of("name", "description"), "CompleteProjectRequest", Set.of("state"), "AddParticipantRequest", Set.of("personId"),
 			"CreateTaskRequest", Set.of("title", "priority"), "UpdateTaskRequest", Set.of("title", "priority"),
 			"ChangeTaskStateRequest", Set.of("state"), "AssignTaskRequest", Set.of("personId"),
 			"CreateCommentRequest", Set.of("text"));
@@ -43,7 +43,7 @@ class RequestSchemaTests {
 
 	/** The parameters of all operations, as reviewed: {@code in} and {@code name}. */
 	private static final Set<String> REVIEWED_PARAMETERS = Set.of("path projectId", "path taskId", "path personId",
-			"query name", "query state", "query priority");
+			"query name", "query state", "query priority", "query page", "query size");
 
 	/** The only paths with a person's identifier: the participant to remove, and the person to unassign. */
 	private static final Set<String> PATHS_WITH_A_PERSON = Set.of("/projects/{projectId}/members/{personId}",

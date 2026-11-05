@@ -4,6 +4,7 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import java.util.function.Consumer;
 
 import com.microsoft.playwright.APIRequest;
@@ -215,6 +216,7 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			// From here on, the page's time moves only when the test moves it.
 			clock.pauseAt(CLOCK_START + Duration.ofMinutes(1).toMillis());
 			tab.signIn(eva);
+			assertThat(tab.page().getByText("No projects yet.")).isVisible();
 			int requestsWhenSignedIn = tab.requests().size();
 
 			clock.runFor(TestAccess.LIFETIME.toMillis() - 1);
@@ -254,6 +256,238 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(evasTab.page().getByText("Signed in as Eva Santos")).isVisible();
 			assertThat(evasTab.heading("My projects")).isVisible();
 		}));
+	}
+
+	@Test
+	void signInCreateAProjectSeeItInTheListAndSeeItAgainAfterSigningInAfterAReload() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			assertThat(tab.page().getByText("No projects yet.")).isVisible();
+
+			tab.button("New project").click();
+			tab.page().getByLabel("Name", exact()).fill("  Website Redesign ");
+			tab.page().getByLabel("Description (optional)", exact()).fill("A new look");
+			Response created = tab.page()
+				.waitForResponse((response) -> response.url().endsWith("/api/projects")
+						&& "POST".equals(response.request().method()), () -> tab.button("Create project").click());
+			assertThat(created.status()).isEqualTo(201);
+			assertThat(tab.heading("Website Redesign")).isVisible();
+			assertThat(tab.page().getByText("A new look")).isVisible();
+
+			tab.button("Back to My projects").click();
+			assertThat(tab.button("Website Redesign")).isVisible();
+			assertThat(tab.page().getByText("Active, Project Owner")).isVisible();
+
+			tab.page().reload();
+			tab.assertSignInScreen();
+			tab.signIn(ana);
+			assertThat(tab.button("Website Redesign")).isVisible();
+			tab.button("Website Redesign").click();
+			assertThat(tab.heading("Website Redesign")).isVisible();
+			assertThat(tab.page().getByText("A new look")).isVisible();
+		});
+		assertThat(this.jdbc.sql("SELECT count(*) FROM membership WHERE person_id = ? AND role = 'PROJECT_OWNER'")
+			.param(ana.id())
+			.query(Integer.class)
+			.single()).isEqualTo(1);
+	}
+
+	@Test
+	void invalidNamesAndDescriptionsAreExplainedWithoutARequest() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("New project").click();
+			int requestsBefore = tab.requests().size();
+
+			tab.button("Create project").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("Name is required.");
+			tab.page().getByLabel("Name", exact()).fill("   ");
+			tab.button("Create project").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("Name is required.");
+			tab.page().getByLabel("Name", exact()).fill("n".repeat(101));
+			tab.button("Create project").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("Name must be at most 100 characters.");
+			tab.page().getByLabel("Name", exact()).fill("n".repeat(100));
+			tab.page().getByLabel("Description (optional)", exact()).fill("d".repeat(1001));
+			tab.button("Create project").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT))
+				.hasText("Description must be at most 1000 characters.");
+
+			assertThat(tab.requests()).hasSize(requestsBefore);
+			tab.page().getByLabel("Description (optional)", exact()).fill("d".repeat(1000));
+			tab.button("Create project").click();
+			assertThat(tab.heading("n".repeat(100))).isVisible();
+		});
+	}
+
+	@Test
+	void theProjectOwnerRenamesAProjectAndCanClearItsDescription() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Old name", "Old text", ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Old name").click();
+
+			tab.button("Edit project").click();
+			tab.page().getByLabel("Name", exact()).fill("New name");
+			tab.page().getByLabel("Description (optional)", exact()).fill("");
+			tab.button("Save changes").click();
+
+			assertThat(tab.heading("New name")).isVisible();
+			assertThat(tab.page().getByRole(AriaRole.STATUS)).hasText("The project has been saved.");
+			assertThat(tab.page().getByText("No description.")).isVisible();
+		});
+		assertThat(this.jdbc.sql("SELECT name FROM project WHERE project_id = ?")
+			.param(project)
+			.query(String.class)
+			.single()).isEqualTo("New name");
+	}
+
+	@Test
+	void deletingAsksForConfirmationAndCancellingChangesNothing() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Doomed", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Doomed").click();
+
+			tab.button("Delete project").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERTDIALOG)).containsText(
+					"Delete \"Doomed\"? Its tasks, comments and assignments will no longer be visible. "
+							+ "This cannot be undone.");
+			tab.button("Cancel").click();
+
+			assertThat(tab.page().getByRole(AriaRole.ALERTDIALOG)).hasCount(0);
+			assertThat(tab.heading("Doomed")).isVisible();
+			assertThat(tab.requests().stream().filter((request) -> request.startsWith("DELETE /") && request.contains("/api/projects"))).isEmpty();
+		});
+		assertThat(isDeleted(project)).isFalse();
+	}
+
+	@Test
+	void confirmingTheDeletionRemovesTheProjectFromTheListAndEverywhere() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Doomed", null, ana, "PROJECT_OWNER");
+		addProject("Kept", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			String token = tab.signIn(ana);
+			tab.button("Doomed").click();
+			tab.button("Delete project").click();
+
+			Response deleted = tab.page()
+				.waitForResponse((response) -> "DELETE".equals(response.request().method())
+						&& response.url().endsWith("/api/projects/" + project), () -> tab.button("Delete").click());
+
+			assertThat(deleted.status()).isEqualTo(204);
+			assertThat(tab.button("Kept")).isVisible();
+			assertThat(tab.button("Doomed")).hasCount(0);
+			assertThat(apiStatus("GET", "/api/projects/" + project, token)).isEqualTo(404);
+		});
+		assertThat(isDeleted(project)).isTrue();
+	}
+
+	@Test
+	void aProjectParticipantSeesTheProjectButCannotEditOrDeleteIt() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		addProject("Shared", "Shared text", ana, "PROJECT_OWNER", rui);
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Shared").click();
+
+			assertThat(tab.heading("Shared")).isVisible();
+			assertThat(tab.page().getByText("Project Participant")).isVisible();
+			assertThat(tab.button("Edit project")).hasCount(0);
+			assertThat(tab.button("Delete project")).hasCount(0);
+		});
+	}
+
+	@Test
+	void theListIsPagedAndSearchableByName() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		for (int i = 1; i <= 25; i++) {
+			addProject(String.format("Project %02d", i), null, ana, "PROJECT_OWNER");
+		}
+		addProject("Other", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+
+			assertThat(tab.page().getByText("Page 1 of 2")).isVisible();
+			assertThat(tab.button("Previous")).isDisabled();
+			assertThat(tab.page().getByRole(AriaRole.LISTITEM)).hasCount(20);
+			tab.button("Next").click();
+			assertThat(tab.page().getByText("Page 2 of 2")).isVisible();
+			assertThat(tab.page().getByRole(AriaRole.LISTITEM)).hasCount(6);
+			assertThat(tab.button("Next")).isDisabled();
+
+			tab.page().getByLabel("Search by name", exact()).fill("  PROJECT 2 ");
+			tab.button("Search").click();
+			assertThat(tab.page().getByText("Page 1 of 1")).hasCount(0);
+			assertThat(tab.page().getByRole(AriaRole.LISTITEM)).hasCount(6);
+			assertThat(tab.button("Project 25")).isVisible();
+			assertThat(tab.button("Project 05")).hasCount(0);
+
+			tab.page().getByLabel("Search by name", exact()).fill("nothing like this");
+			tab.button("Search").click();
+			assertThat(tab.page().getByText("No project matches your search.")).isVisible();
+
+			tab.button("Clear search").click();
+			assertThat(tab.page().getByText("Page 1 of 2")).isVisible();
+		});
+	}
+
+	@Test
+	void aSessionEndedElsewhereSendsThePersonToSignInWhenTheyUseTheProjects() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		addProject("Mine", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			String token = tab.signIn(ana);
+			assertThat(tab.button("Mine")).isVisible();
+			assertThat(apiStatus("DELETE", SIGN_IN_PATH, token)).isEqualTo(204);
+
+			tab.button("Mine").click();
+
+			assertThat(tab.page().getByRole(AriaRole.STATUS)).hasText("Your session has ended. Please sign in again.");
+			tab.assertSignInScreen();
+		}, UNAUTHORIZED_RESOURCE);
+	}
+
+	private static Page.GetByLabelOptions exact() {
+		return new Page.GetByLabelOptions().setExact(true);
+	}
+
+	private UUID addProject(String name, String description, TestAccess.TestPerson owner, String ownerRole,
+			TestAccess.TestPerson... participants) {
+		UUID id = UUID.randomUUID();
+		this.jdbc.sql("INSERT INTO project (project_id, name, description) VALUES (?, ?, ?)")
+			.params(id, name, description)
+			.update();
+		this.jdbc.sql("INSERT INTO membership (project_id, person_id, role) VALUES (?, ?, ?)")
+			.params(id, owner.id(), ownerRole)
+			.update();
+		for (TestAccess.TestPerson participant : participants) {
+			this.jdbc.sql("INSERT INTO membership (project_id, person_id, role) VALUES (?, ?, 'PROJECT_PARTICIPANT')")
+				.params(id, participant.id())
+				.update();
+		}
+		return id;
+	}
+
+	private boolean isDeleted(UUID project) {
+		return this.jdbc.sql("SELECT count(*) FROM project WHERE project_id = ? AND deleted_at IS NOT NULL")
+			.param(project)
+			.query(Integer.class)
+			.single() == 1;
 	}
 
 	/** Sends a direct API request, outside the User interface, and returns its status. */

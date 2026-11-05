@@ -1,13 +1,16 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { getCurrentPerson, type Session, SessionEndedError, signOut } from './api';
 import { messages } from './messages';
+import ProjectScreen from './ProjectScreen';
+import ProjectsScreen from './ProjectsScreen';
 import SignInScreen, { type Notice } from './SignInScreen';
 
 /**
- * Signed in, with the token in memory only, or signed out, with the reason to show (ADR-005;
- * ADR-009 decision 1). Reloading the page therefore starts signed out, with no message.
+ * Signed in, with the token in memory only, and the project shown (none: My projects), or signed
+ * out, with the reason to show (ADR-005; ADR-009 decision 1). Reloading the page therefore starts
+ * signed out, with no message.
  */
-type State = { session: Session } | { session: null; notice: Notice | null };
+type State = { session: Session; projectId: string | null } | { session: null; notice: Notice | null };
 
 export default function App() {
   const [state, setState] = useState<State>({ session: null, notice: null });
@@ -18,6 +21,13 @@ export default function App() {
   function end(ended: Session, notice: Notice) {
     setState((current) => (current.session === ended ? { session: null, notice } : current));
   }
+
+  /** A 401 from any request: the session has ended, so the person signs in again. */
+  const sessionEnded = useCallback(() => {
+    if (session !== null) {
+      end(session, 'sessionEnded');
+    }
+  }, [session]);
 
   // The token is discarded when it expires, without waiting for a request.
   useEffect(() => {
@@ -76,12 +86,24 @@ export default function App() {
         {session === null ? (
           <SignInScreen
             notice={state.session === null ? state.notice : null}
-            onSignedIn={(signedIn) => setState({ session: signedIn })}
+            onSignedIn={(signedIn) => setState({ session: signedIn, projectId: null })}
           />
         ) : (
-          <section aria-labelledby="my-projects-heading">
-            <h2 id="my-projects-heading">{messages.myProjects}</h2>
-          </section>
+          state.session !== null && state.projectId !== null ? (
+            <ProjectScreen
+              key={state.projectId}
+              session={session}
+              projectId={state.projectId}
+              onBack={() => setState({ session, projectId: null })}
+              onSessionEnded={sessionEnded}
+            />
+          ) : (
+            <ProjectsScreen
+              session={session}
+              onOpen={(projectId) => setState({ session, projectId })}
+              onSessionEnded={sessionEnded}
+            />
+          )
         )}
       </main>
     </>

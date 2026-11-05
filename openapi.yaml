@@ -33,7 +33,7 @@ info:
     | `listProjects` | `GET /projects` | [FR-001](docs/requirements.md#functional-requirements), [FR-022](docs/requirements.md#functional-requirements), [FR-024](docs/requirements.md#functional-requirements) | [US-007](docs/user-stories.md#stories), [US-023](docs/user-stories.md#stories), [US-025](docs/user-stories.md#stories) |
     | `createProject` | `POST /projects` | [FR-002](docs/requirements.md#functional-requirements) | [US-001](docs/user-stories.md#stories) |
     | `getProject` | `GET /projects/{projectId}` | [FR-001](docs/requirements.md#functional-requirements), [FR-012](docs/requirements.md#functional-requirements) | [US-006](docs/user-stories.md#stories), [US-007](docs/user-stories.md#stories) |
-    | `renameProject` | `PATCH /projects/{projectId}` | [FR-003](docs/requirements.md#functional-requirements) | [US-008](docs/user-stories.md#stories) |
+    | `updateProject` | `PATCH /projects/{projectId}` | [FR-003](docs/requirements.md#functional-requirements) | [US-008](docs/user-stories.md#stories) |
     | `deleteProject` | `DELETE /projects/{projectId}` | [FR-016](docs/requirements.md#functional-requirements) | [US-016](docs/user-stories.md#stories) |
     | `completeProject` | `PUT /projects/{projectId}/state` | [FR-007](docs/requirements.md#functional-requirements) | [US-010](docs/user-stories.md#stories) |
     | `listProjectMembers` | `GET /projects/{projectId}/members` | [FR-025](docs/requirements.md#functional-requirements) | [US-026](docs/user-stories.md#stories) |
@@ -181,16 +181,18 @@ info:
     *Changed on 2026-11-02 by team decision (Lab Worksheet 03, question 12):
     previously “Its place in the order of checks above is not decided.”*
 
-    **Lists.** Lists are returned whole; this draft defines no pagination,
-    because no volumes are known
-    ([OQ-010](docs/constraints.md#open-questions);
-    [ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)).
+    **Lists.** Lists are returned whole, except `listProjects`, which is
+    paged ([Assumption A-032](docs/constraints.md#assumptions); decided by
+    the project team on 2026-11-02, closing the pagination point of
+    [ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md); *previously:
+    “Lists are returned whole; this draft defines no pagination, because no
+    volumes are known ([OQ-010](docs/constraints.md#open-questions))”*).
     Query parameters that an operation does not define are ignored. Unless a
     requirement is cited for it, the order of a list is a proposal of this
     draft. Text matching follows
     [Assumption A-024](docs/constraints.md#assumptions): the name contains
-    the search text, ignoring letter case, so partial words match; whether
-    accents are ignored is not decided
+    the search text, ignoring letter case, so partial words match; accents
+    are significant until the client decides otherwise
     ([OQ-026](docs/constraints.md#open-questions)).
 
     **Simultaneous changes.** The last change saved prevails. A change that
@@ -234,6 +236,21 @@ info:
       password rules apply to the prepared accounts (question 8).
     - The acting person is taken only from the token (question 15).
 
+    **Changes on 2026-11-02 (increments I3, I10, and I11, project part; the
+    version stays 0.2.0-draft).** Decided by the project team (the
+    conversation “Implement project management”).
+    - `renameProject` becomes `updateProject`: `name` and `description` can
+      be edited (request `UpdateProjectRequest`, previously
+      `RenameProjectRequest`).
+    - `Project`, `ProjectSummary`, `CreateProjectRequest`, and
+      `UpdateProjectRequest` get an optional `description` of at most 1000
+      characters; `ProjectName` gets a maximum of 100 characters; names and
+      descriptions are trimmed
+      ([Assumption A-031](docs/constraints.md#assumptions)).
+    - `listProjects` is paged (`page`, `size`) and returns `ProjectPage`,
+      previously an array ([Assumption A-032](docs/constraints.md#assumptions)).
+    - `progress` and `taskCounts` are optional until I5 returns them.
+    - Content of the wrong type receives `422`, not `400`.
     **Other open questions reflected, not answered:**
     - who may create projects and how people receive access
       ([OQ-001](docs/constraints.md#open-questions); interim:
@@ -502,10 +519,11 @@ paths:
       operationId: listProjects
       summary: List or search the signed-in person's projects (My projects)
       description: |
-        Returns the signed-in person's accessible projects, Active and
-        Completed, each with its name, state, the person's role, and its task
-        counts by state. With `name`, only the projects whose name contains
-        that text, ignoring letter case, are returned.
+        Returns a page of the signed-in person's accessible projects, Active
+        and Completed, each with its name, state, and the person's role. With
+        `name`, only the projects whose name contains that text, ignoring
+        letter case, are returned. The task counts of each project are added
+        by increment I5: until then, `taskCounts` is omitted.
 
         **Traceability:**
         [FR-001](docs/requirements.md#functional-requirements),
@@ -536,18 +554,26 @@ paths:
           ([Assumption A-011](docs/constraints.md#assumptions)).
         - `name` selects the projects whose name contains the text, ignoring
           letter case ([Assumption A-024](docs/constraints.md#assumptions)),
-          so partial words match; whether accents are ignored is not decided
-          ([OQ-026](docs/constraints.md#open-questions)). An empty `name`
-          receives `400` (proposal of this draft).
-        - Each project has its own task counts by state, not counting
-          deleted tasks; no totals across projects are returned
+          so partial words match; accents are significant, so `cafe` does
+          not match `Café` ([OQ-026](docs/constraints.md#open-questions)).
+          The text is trimmed before it is matched, and only the name is
+          searched. An empty `name`, or one of only whitespace, receives
+          `400` (proposal of this draft).
+        - Paging ([Assumption A-032](docs/constraints.md#assumptions)):
+          `page` starts at 1 and defaults to 1; `size` is from 1 to 100 and
+          defaults to 20. A `page` or `size` that is not an integer, or is out
+          of range, receives `400`. A page past the last one is a successful,
+          empty page. The search and the paging combine: `totalItems` counts
+          only the matching projects.
+        - Order: by name ignoring letter case, then by `projectId`, so the
+          pages are stable ([Assumption A-032](docs/constraints.md#assumptions)).
+        - An empty page is a successful response: the client then says that
+          the person has no projects yet, or that no projects match.
+        - Each project's task counts by state, not counting deleted tasks,
+          come with I5; no totals across projects are returned
           ([Assumption A-022](docs/constraints.md#assumptions),
           [Assumption A-025](docs/constraints.md#assumptions);
           [OQ-005](docs/constraints.md#open-questions)).
-        - An empty list is a successful response: the client then says that
-          the person has no projects yet, or that no projects match.
-        - Order: by name (proposal of this draft; no requirement specifies
-          an order).
       parameters:
         - name: name
           in: query
@@ -560,52 +586,81 @@ paths:
             type: string
             minLength: 1
           example: web
+        - name: page
+          in: query
+          required: false
+          description: |
+            Number of the page, starting at 1
+            ([Assumption A-032](docs/constraints.md#assumptions)).
+          schema:
+            type: integer
+            minimum: 1
+            default: 1
+          example: 1
+        - name: size
+          in: query
+          required: false
+          description: |
+            Number of projects in a page, at most 100
+            ([Assumption A-032](docs/constraints.md#assumptions)).
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
       responses:
         '200':
-          description: The person's accessible projects, possibly none.
+          description: A page of the person's accessible projects, possibly empty.
           content:
             application/json:
               schema:
-                type: array
-                items:
-                  $ref: '#/components/schemas/ProjectSummary'
+                $ref: '#/components/schemas/ProjectPage'
               examples:
                 myProjects:
-                  summary: US-025 AC1 — Active project A and Completed project B; C is not listed
+                  summary: US-007 — Active project A and Completed project B; C is not listed
                   value:
-                    - projectId: '7f3a9c1e'
-                      name: Project Alpha
-                      state: ACTIVE
-                      myRole: PROJECT_PARTICIPANT
-                      taskCounts:
-                        toDo: 2
-                        inProgress: 1
-                        done: 1
-                    - projectId: 'b4e2d6a1'
-                      name: Project Gamma
-                      state: COMPLETED
-                      myRole: PROJECT_OWNER
-                      taskCounts:
-                        toDo: 0
-                        inProgress: 0
-                        done: 3
+                    items:
+                      - projectId: '7f3a9c1e'
+                        name: Project Alpha
+                        state: ACTIVE
+                        myRole: PROJECT_PARTICIPANT
+                      - projectId: 'b4e2d6a1'
+                        name: Project Gamma
+                        state: COMPLETED
+                        myRole: PROJECT_OWNER
+                    page: 1
+                    size: 20
+                    totalItems: 2
+                    totalPages: 1
                 searchWeb:
                   summary: US-023 — response to ?name=web
                   value:
-                    - projectId: 'd3f6a8b1'
-                      name: Website Redesign
-                      state: ACTIVE
-                      myRole: PROJECT_PARTICIPANT
-                      taskCounts:
-                        toDo: 3
-                        inProgress: 1
-                        done: 0
+                    items:
+                      - projectId: 'd3f6a8b1'
+                        name: Website Redesign
+                        state: ACTIVE
+                        myRole: PROJECT_PARTICIPANT
+                    page: 1
+                    size: 20
+                    totalItems: 1
+                    totalPages: 1
                 noMatch:
                   summary: EX-025 — response to ?name=audit; a non-member project matches but is not listed
-                  value: []
-                noProjects:
-                  summary: US-025 AC3 — the person is a member of no project
-                  value: []
+                  value:
+                    items: []
+                    page: 1
+                    size: 20
+                    totalItems: 0
+                    totalPages: 0
+                pastTheLastPage:
+                  summary: US-007 — response to ?page=3 when there are 25 projects and the size is 20
+                  value:
+                    items: []
+                    page: 3
+                    size: 20
+                    totalItems: 25
+                    totalPages: 2
         '400':
           $ref: '#/components/responses/BadRequest'
         '401':
@@ -615,8 +670,8 @@ paths:
       operationId: createProject
       summary: Create a project
       description: |
-        Creates an Active project with a nonempty name. The signed-in person
-        becomes its Project Owner and a member.
+        Creates an Active project with a name and an optional description.
+        The signed-in person becomes its Project Owner and a member.
 
         **Traceability:**
         [FR-002](docs/requirements.md#functional-requirements);
@@ -636,13 +691,23 @@ paths:
           project starts Active
           ([Assumption A-003](docs/constraints.md#assumptions)); neither can
           be chosen.
-        - The name is required and nonempty; an empty name creates no
-          project and returns `422` with an error for `/name`
+        - The name is required. It is trimmed, and then has 1 to 100
+          characters; a name that is empty after trimming, or longer than
+          100 characters, creates no project and returns `422` with an error
+          for `/name`
           ([EX-001](docs/user-stories.md#edge-cases-and-exceptions);
-          [Assumption A-003](docs/constraints.md#assumptions)). Other naming
-          rules, including uniqueness, are open
-          ([OQ-003](docs/constraints.md#open-questions)) and are not
-          enforced.
+          [Assumption A-003](docs/constraints.md#assumptions),
+          [Assumption A-031](docs/constraints.md#assumptions)). Names are not
+          unique ([OQ-003](docs/constraints.md#open-questions)).
+        - The description is optional. It is trimmed; a description that is
+          absent, `null`, or empty after trimming means “no description”;
+          one longer than 1000 characters returns `422` with an error for
+          `/description` ([Assumption A-031](docs/constraints.md#assumptions);
+          [OQ-028](docs/constraints.md#open-questions)). Lengths count
+          Unicode characters.
+        - Content of the wrong type, such as a number as the name, is
+          well-formed JSON that does not satisfy the schema, so it receives
+          `422`, not `400`.
       requestBody:
         required: true
         content:
@@ -651,9 +716,14 @@ paths:
               $ref: '#/components/schemas/CreateProjectRequest'
             examples:
               projectAlpha:
-                summary: US-001 — create "Project Alpha"
+                summary: US-001 — create "Project Alpha" with a description
                 value:
                   name: Project Alpha
+                  description: First release
+              withoutDescription:
+                summary: US-001 — create a project without a description
+                value:
+                  name: Project Beta
       responses:
         '201':
           description: |
@@ -677,14 +747,9 @@ paths:
                   value:
                     projectId: '7f3a9c1e'
                     name: Project Alpha
+                    description: First release
                     state: ACTIVE
                     myRole: PROJECT_OWNER
-                    progress:
-                      taskCounts:
-                        toDo: 0
-                        inProgress: 0
-                        done: 0
-                      percentDone: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '415':
@@ -694,9 +759,10 @@ paths:
         '422':
           description: |
             The content does not satisfy `CreateProjectRequest`: it is not a
-            JSON object, `name` is missing, empty, or not a string, or another
-            property is present. No project is created, and `errors`
-            identifies each invalid member
+            JSON object, `name` is missing, empty after trimming, too long, or
+            not a string, `description` is too long or neither a string nor
+            `null`, or another property is present. No project is created,
+            and `errors` identifies each invalid member
             ([EX-001](docs/user-stories.md#edge-cases-and-exceptions)).
           content:
             application/problem+json:
@@ -704,24 +770,35 @@ paths:
                 $ref: '#/components/schemas/ValidationProblem'
               examples:
                 emptyName:
-                  summary: 'EX-001 — response to {"name": ""}'
+                  summary: 'EX-001 — response to {"name": "  "}'
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: A project name is required.
+                    detail: The project is invalid.
                     errors:
                       - pointer: /name
                         detail: A name is required.
+                longName:
+                  summary: Response to a name of 101 characters
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: The project is invalid.
+                    errors:
+                      - pointer: /name
+                        detail: The name must have at most 100 characters.
   /projects/{projectId}:
     parameters:
       - $ref: '#/components/parameters/ProjectId'
     get:
       tags: [Projects]
       operationId: getProject
-      summary: View a project and its progress
+      summary: View a project
       description: |
-        Returns an accessible project with its name, state, the person's
-        role, and its progress: task counts by state and the percentage Done.
+        Returns an accessible project with its name, description, state, and
+        the person's role. Its progress, the task counts by state and the
+        percentage Done, is added by increment I5: until then, `progress` is
+        omitted.
 
         **Traceability:**
         [FR-001](docs/requirements.md#functional-requirements),
@@ -739,7 +816,11 @@ paths:
         [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
 
         **Rules (proposed, not client-approved):**
-        - Progress counts only tasks that are not deleted
+        - A project that does not exist, is deleted, or of which the person
+          is not a member receives `404`
+          ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md);
+          [Assumption A-022](docs/constraints.md#assumptions)).
+        - Once `progress` is returned, it counts only tasks that are not deleted
           ([Assumption A-006](docs/constraints.md#assumptions),
           [Assumption A-022](docs/constraints.md#assumptions)); task filters
           never change it
@@ -758,14 +839,36 @@ paths:
           ([Assumption A-011](docs/constraints.md#assumptions)).
       responses:
         '200':
-          description: The project and its progress.
+          description: The project, with its progress once I5 is delivered.
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/Project'
               examples:
+                withDescription:
+                  summary: US-007 — an Active project with a description
+                  value:
+                    projectId: '7f3a9c1e'
+                    name: Project Alpha
+                    description: First release
+                    state: ACTIVE
+                    myRole: PROJECT_PARTICIPANT
+                withoutDescription:
+                  summary: US-007 — a project without a description omits the property
+                  value:
+                    projectId: 'a61f0d93'
+                    name: Project Delta
+                    state: ACTIVE
+                    myRole: PROJECT_PARTICIPANT
+                completed:
+                  summary: US-007 AC2 — a Completed project remains viewable
+                  value:
+                    projectId: 'b4e2d6a1'
+                    name: Project Gamma
+                    state: COMPLETED
+                    myRole: PROJECT_OWNER
                 fourTasks:
-                  summary: US-006 AC1 — 1 To do, 1 In progress, 2 Done; 50%
+                  summary: US-006 AC1, once I5 is delivered — 1 To do, 1 In progress, 2 Done; 50%
                   value:
                     projectId: '7f3a9c1e'
                     name: Project Alpha
@@ -778,7 +881,7 @@ paths:
                         done: 2
                       percentDone: 50
                 noTasks:
-                  summary: US-006 AC2 and EX-005 — zero tasks; the client shows "No tasks"
+                  summary: US-006 AC2 and EX-005, once I5 is delivered — zero tasks; the client shows "No tasks"
                   value:
                     projectId: 'a61f0d93'
                     name: Project Delta
@@ -791,7 +894,7 @@ paths:
                         done: 0
                       percentDone: null
                 oneOfThreeDone:
-                  summary: EX-027 — 1 of 3 tasks Done; 33%
+                  summary: EX-027, once I5 is delivered — 1 of 3 tasks Done; 33%
                   value:
                     projectId: 'c2d8e4f6'
                     name: Project Sigma
@@ -803,31 +906,20 @@ paths:
                         inProgress: 1
                         done: 1
                       percentDone: 33
-                completed:
-                  summary: US-007 AC2 — a Completed project remains viewable
-                  value:
-                    projectId: 'b4e2d6a1'
-                    name: Project Gamma
-                    state: COMPLETED
-                    myRole: PROJECT_OWNER
-                    progress:
-                      taskCounts:
-                        toDo: 0
-                        inProgress: 0
-                        done: 3
-                      percentDone: 100
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
           $ref: '#/components/responses/ProjectNotFound'
     patch:
       tags: [Projects]
-      operationId: renameProject
-      summary: Rename a project
+      operationId: updateProject
+      summary: Edit a project's name and description
       description: |
-        Changes the name of an Active project. The content is a JSON Merge
-        Patch ([RFC 7396](https://www.rfc-editor.org/rfc/rfc7396)) in which
-        only `name` may appear.
+        Changes the name and the description of an Active project. The
+        content is a JSON Merge Patch
+        ([RFC 7396](https://www.rfc-editor.org/rfc/rfc7396)) in which only
+        `name` and `description` may appear; a property that is absent is
+        left unchanged, so `{}` changes nothing.
 
         **Traceability:**
         [FR-003](docs/requirements.md#functional-requirements);
@@ -842,34 +934,50 @@ paths:
         [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
 
         **Rules (proposed, not client-approved):**
-        - Only the project's Project Owner may rename it
+        - Changed on 2026-11-02 by team decision (the conversation
+          “Implement project management”, decision 14): previously
+          `renameProject`, which changed only the name.
+        - Only the project's Project Owner may edit it
           ([Assumption A-001](docs/constraints.md#assumptions)).
-        - `name` is required and must be a nonempty string; `null`, which
-          would remove the name under JSON Merge Patch, and an empty name
-          are refused with `422`, and the project keeps its name
-          ([EX-010](docs/user-stories.md#edge-cases-and-exceptions);
-          [Assumption A-003](docs/constraints.md#assumptions)). Other naming
-          rules are open ([OQ-003](docs/constraints.md#open-questions)).
-        - A Completed project cannot be renamed
+        - `name`, when present, must be a string that has 1 to 100 characters
+          after trimming; `null`, which would remove the name under JSON
+          Merge Patch, an empty name, a name that is too long, and a value
+          that is not a string are refused with `422`, and the project is
+          unchanged ([EX-010](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-003](docs/constraints.md#assumptions),
+          [Assumption A-031](docs/constraints.md#assumptions)).
+        - `description`, when present, is a string of at most 1000
+          characters, trimmed, or `null`; `null`, or a description that is
+          empty after trimming, removes the description
+          ([Assumption A-031](docs/constraints.md#assumptions)).
+        - A Completed project cannot be edited
           ([EX-009](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-011](docs/constraints.md#assumptions)).
-        - Renaming to the current name succeeds and changes nothing
+        - Editing to the current values succeeds and changes nothing
           (proposal of this draft).
       requestBody:
         required: true
         content:
           application/merge-patch+json:
             schema:
-              $ref: '#/components/schemas/RenameProjectRequest'
+              $ref: '#/components/schemas/UpdateProjectRequest'
             examples:
               projectBeta:
                 summary: US-008 — rename "Project Alpha" to "Project Beta"
                 value:
                   name: Project Beta
+              newDescription:
+                summary: US-008 — change only the description
+                value:
+                  description: Second release
+              removeDescription:
+                summary: US-008 — remove the description
+                value:
+                  description: null
       responses:
         '200':
           description: |
-            The project was renamed; the updated project is returned
+            The project was edited; the updated project is returned
             ([US-008](docs/user-stories.md#us-008--rename-project)).
           content:
             application/json:
@@ -881,14 +989,9 @@ paths:
                   value:
                     projectId: '7f3a9c1e'
                     name: Project Beta
+                    description: First release
                     state: ACTIVE
                     myRole: PROJECT_OWNER
-                    progress:
-                      taskCounts:
-                        toDo: 1
-                        inProgress: 1
-                        done: 2
-                      percentDone: 50
         '400':
           $ref: '#/components/responses/BadRequest'
         '415':
@@ -902,15 +1005,16 @@ paths:
         '409':
           $ref: '#/components/responses/ProjectCompleted'
           description: |
-            The project is Completed, so it cannot be renamed; its name is
+            The project is Completed, so it cannot be edited; it is
             unchanged
             ([EX-009](docs/user-stories.md#edge-cases-and-exceptions)).
         '422':
           description: |
-            The content does not satisfy `RenameProjectRequest`: it is not a
-            JSON object, `name` is missing, `null`, empty, or not a string,
-            or another property is present. The name is unchanged, and
-            `errors` identifies each invalid member
+            The content does not satisfy `UpdateProjectRequest`: it is not a
+            JSON object, `name` is `null`, empty after trimming, too long, or
+            not a string, `description` is too long or neither a string nor
+            `null`, or another property is present. The project is unchanged,
+            and `errors` identifies each invalid member
             ([EX-010](docs/user-stories.md#edge-cases-and-exceptions)).
           content:
             application/problem+json:
@@ -922,7 +1026,7 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: A project name is required.
+                    detail: The project is invalid.
                     errors:
                       - pointer: /name
                         detail: A name is required.
@@ -931,10 +1035,19 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: A project name is required.
+                    detail: The project is invalid.
                     errors:
                       - pointer: /name
                         detail: The name cannot be removed.
+                longDescription:
+                  summary: Response to a description of 1001 characters
+                  value:
+                    title: Unprocessable Content
+                    status: 422
+                    detail: The project is invalid.
+                    errors:
+                      - pointer: /description
+                        detail: The description must have at most 1000 characters.
     delete:
       tags: [Projects]
       operationId: deleteProject
@@ -2972,6 +3085,12 @@ components:
                 title: Bad Request
                 status: 400
                 detail: The query parameter name must not be empty.
+            badPage:
+              summary: Response to ?page=0 or ?size=101 (out of range)
+              value:
+                title: Bad Request
+                status: 400
+                detail: The query parameter size must be an integer from 1 to 100.
             labelInsteadOfCode:
               summary: Response to ?state=Done, a label instead of a code
               value:
@@ -3100,13 +3219,23 @@ components:
     ProjectName:
       type: string
       minLength: 1
+      maxLength: 100
       description: |
-        Required, nonempty project name
-        ([Assumption A-003](docs/constraints.md#assumptions)). Whether
-        whitespace-only names are accepted, any maximum length, and whether
-        names must be unique are open
-        ([OQ-003](docs/constraints.md#open-questions)); this draft enforces
-        none of them.
+        Required project name: after trimming, 1 to 100 characters, counted as
+        Unicode characters ([Assumption A-003](docs/constraints.md#assumptions),
+        [Assumption A-031](docs/constraints.md#assumptions)). The service trims
+        the text before it checks the length, so a request name of only
+        whitespace receives `422`. Names are not unique
+        ([OQ-003](docs/constraints.md#open-questions)).
+    ProjectDescription:
+      type: string
+      maxLength: 1000
+      description: |
+        Optional project description of at most 1000 characters, counted as
+        Unicode characters and trimmed by the service; one that is empty after
+        trimming means no description
+        ([Assumption A-031](docs/constraints.md#assumptions);
+        [OQ-028](docs/constraints.md#open-questions)).
     TaskTitle:
       type: string
       minLength: 1
@@ -3305,13 +3434,15 @@ components:
         measure is open ([OQ-005](docs/constraints.md#open-questions)).
     ProjectSummary:
       type: object
-      required: [projectId, name, state, myRole, taskCounts]
+      required: [projectId, name, state, myRole]
       properties:
         projectId:
           $ref: '#/components/schemas/Identifier'
           description: Identifier of the project.
         name:
           $ref: '#/components/schemas/ProjectName'
+        description:
+          $ref: '#/components/schemas/ProjectDescription'
         state:
           $ref: '#/components/schemas/ProjectState'
         myRole:
@@ -3319,21 +3450,58 @@ components:
           description: The signed-in person's role in the project.
         taskCounts:
           $ref: '#/components/schemas/TaskCounts'
+          description: |
+            Omitted until increment I5 returns the task counts; it then
+            becomes required again.
       description: |
         An accessible project as listed in My projects, with its own task
-        counts by state; no totals across projects are given
+        counts by state once I5 is delivered; no totals across projects are
+        given. `description` is omitted when the project has none
         ([FR-001](docs/requirements.md#functional-requirements),
         [FR-024](docs/requirements.md#functional-requirements);
-        [Assumption A-025](docs/constraints.md#assumptions)).
+        [Assumption A-025](docs/constraints.md#assumptions),
+        [Assumption A-031](docs/constraints.md#assumptions)).
+    ProjectPage:
+      type: object
+      required: [items, page, size, totalItems, totalPages]
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/ProjectSummary'
+          description: The projects of this page, possibly none.
+        page:
+          type: integer
+          minimum: 1
+          description: Number of this page, starting at 1.
+        size:
+          type: integer
+          minimum: 1
+          maximum: 100
+          description: Maximum number of projects in a page.
+        totalItems:
+          type: integer
+          minimum: 0
+          description: Number of projects that match, across all pages.
+        totalPages:
+          type: integer
+          minimum: 0
+          description: Number of pages; 0 when no project matches.
+      description: |
+        One page of My projects, ordered by name ignoring letter case, then by
+        `projectId`
+        ([Assumption A-032](docs/constraints.md#assumptions)).
     Project:
       type: object
-      required: [projectId, name, state, myRole, progress]
+      required: [projectId, name, state, myRole]
       properties:
         projectId:
           $ref: '#/components/schemas/Identifier'
           description: Identifier of the project.
         name:
           $ref: '#/components/schemas/ProjectName'
+        description:
+          $ref: '#/components/schemas/ProjectDescription'
         state:
           $ref: '#/components/schemas/ProjectState'
         myRole:
@@ -3343,10 +3511,15 @@ components:
             offer only the permitted actions.
         progress:
           $ref: '#/components/schemas/Progress'
+          description: |
+            Omitted until increment I5 returns the progress; it then becomes
+            required again.
       description: |
-        An accessible project with its progress
+        An accessible project with its progress once I5 is delivered.
+        `description` is omitted when the project has none
         ([FR-001](docs/requirements.md#functional-requirements),
-        [FR-012](docs/requirements.md#functional-requirements)). Its members
+        [FR-012](docs/requirements.md#functional-requirements);
+        [Assumption A-031](docs/constraints.md#assumptions)). Its members
         are returned by `listProjectMembers`, and its tasks by `listTasks`.
     Task:
       type: object
@@ -3454,22 +3627,34 @@ components:
       properties:
         name:
           $ref: '#/components/schemas/ProjectName'
+        description:
+          oneOf:
+            - $ref: '#/components/schemas/ProjectDescription'
+            - type: 'null'
+          description: Optional; `null` or empty after trimming means no description.
       description: |
-        Content for creating a project. Only `name` is accepted: the project
-        always starts Active, with its creator as Project Owner
+        Content for creating a project. Only `name` and `description` are
+        accepted: the project always starts Active, with its creator as
+        Project Owner
         ([Assumption A-003](docs/constraints.md#assumptions),
-        [Assumption A-008](docs/constraints.md#assumptions)). Any other
+        [Assumption A-008](docs/constraints.md#assumptions),
+        [Assumption A-031](docs/constraints.md#assumptions)). Any other
         property receives `422`.
-    RenameProjectRequest:
+    UpdateProjectRequest:
       type: object
-      required: [name]
       additionalProperties: false
       properties:
         name:
           $ref: '#/components/schemas/ProjectName'
+        description:
+          oneOf:
+            - $ref: '#/components/schemas/ProjectDescription'
+            - type: 'null'
+          description: '`null` or empty after trimming removes the description.'
       description: |
-        JSON Merge Patch for renaming a project: `name` is required and cannot
-        be `null`. Any other property receives `422`.
+        JSON Merge Patch for editing a project: `name` cannot be `null`, and
+        a property that is absent is left unchanged. Any other property
+        receives `422`.
     CompleteProjectRequest:
       type: object
       required: [state]

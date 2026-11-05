@@ -54,13 +54,17 @@ class DemoDataTests {
 
 	private static final Map<String, String> DEMO_DATA_OFF = Map.of("MATRIZ_DEMO_DATA", "false");
 
-	/** A database created by I1, before the schema migrations that followed the demonstration data. */
+	/**
+	 * A database created by I1, before the schema migrations that followed the demonstration data.
+	 * Hibernate's schema validation is off, because the entities now map columns that version 1
+	 * lacks; SchemaMigrationTests checks that the full schema satisfies them.
+	 */
 	private static final Map<String, String> I1_DATABASE = Map.of("MATRIZ_DEMO_DATA", "false",
-			"spring.flyway.target", "1");
+			"spring.flyway.target", "1", "spring.jpa.hibernate.ddl-auto", "none");
 
-	private static final String[] WITH_DEMONSTRATION_DATA = { "1", "1.1", "2", "3" };
+	private static final String[] WITH_DEMONSTRATION_DATA = { "1", "1.1", "2", "3", "4" };
 
-	private static final String[] WITHOUT_DEMONSTRATION_DATA = { "1", "2", "3" };
+	private static final String[] WITHOUT_DEMONSTRATION_DATA = { "1", "2", "3", "4" };
 
 	private static final Map<String, Integer> DEMONSTRATION_COUNTS = counts(4, 4, 8, 9, 3, 2);
 
@@ -77,7 +81,7 @@ class DemoDataTests {
 		assertThat(history(jdbc)).containsExactly(WITH_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(DEMONSTRATION_COUNTS);
 		assertTheDemonstrationContents(jdbc);
-		assertThat(output).contains("Demonstration data is on").contains("now at version v3");
+		assertThat(output).contains("Demonstration data is on").contains("now at version v4");
 		String anaHash = passwordHash(jdbc, ANA);
 
 		UUID handAdded = UUID.randomUUID();
@@ -202,7 +206,7 @@ class DemoDataTests {
 		assertThatThrownBy(() -> start(url, PASSWORDS)).rootCause()
 			.isInstanceOf(DemoDataException.class)
 			.hasMessage("The demonstration data (migration 1.1) cannot be added to this database, because its schema "
-					+ "is already at version 3. The setting is fixed for each database.");
+					+ "is already at version 4. The setting is fixed for each database.");
 		assertThat(output).contains("Set MATRIZ_DEMO_DATA=false, or reset the local database as described in README.md");
 		assertThat(history(jdbc)).containsExactly(WITHOUT_DEMONSTRATION_DATA);
 		assertThat(counts(jdbc)).isEqualTo(NO_ROWS);
