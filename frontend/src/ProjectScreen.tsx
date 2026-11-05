@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { type Session, SessionEndedError } from './api';
 import { messages } from './messages';
 import ProjectForm from './ProjectForm';
+import TasksSection from './TasksSection';
 import { refusal } from './projectValidation';
 import { deleteProject, getProject, type Project, type ProjectResult, updateProject } from './projectsApi';
 
@@ -148,6 +149,19 @@ export default function ProjectScreen({ session, projectId, onBack, onSessionEnd
           </button>
         </div>
       )}
+      <TasksSection
+        session={session}
+        projectId={projectId}
+        canChange={canChange}
+        readOnlyText={
+          project.state === 'COMPLETED'
+            ? messages.tasksReadOnlyCompleted
+            : isOwner
+              ? null
+              : messages.tasksReadOnlyParticipant
+        }
+        onSessionEnded={onSessionEnded}
+      />
     </section>
   );
 }
