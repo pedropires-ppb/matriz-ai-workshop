@@ -2,8 +2,11 @@ package com.matriz.tasks.application;
 
 import java.util.ArrayList;
 import java.util.List;
+import java.util.UUID;
 
+import com.matriz.identity.PersonId;
 import com.matriz.projects.AccessDecision;
+import com.matriz.tasks.TaskAction;
 import com.matriz.tasks.TaskPriority;
 import com.matriz.tasks.TaskState;
 import com.matriz.tasks.application.InvalidTaskException.InvalidField;
@@ -49,6 +52,19 @@ final class TaskRules {
 	static void requirePermission(AccessDecision decision) {
 		if (decision == AccessDecision.FORBIDDEN) {
 			throw new NotProjectOwnerException();
+		}
+	}
+
+	/** Like {@link #requirePermission(AccessDecision)}, for an action that others besides the owner may do. */
+	static void requirePermission(AccessDecision decision, TaskAction action) {
+		if (decision == AccessDecision.FORBIDDEN) {
+			throw switch (action) {
+				case CHANGE_STATE -> new NotProjectOwnerException(
+						"Only the Project Owner or an assignee of the task can change its state.");
+				case ASSIGN -> new NotProjectOwnerException("A Project Participant can assign only themselves.");
+				case UNASSIGN -> new NotProjectOwnerException("A Project Participant can unassign only themselves.");
+				default -> new NotProjectOwnerException();
+			};
 		}
 	}
 
@@ -107,6 +123,17 @@ final class TaskRules {
 		}
 		invalid.add(new InvalidField(STATE, STATE_CODES));
 		return null;
+	}
+
+	/** The person with this identifier, or {@code null} if the text cannot identify a person. */
+	static PersonId personId(String text) {
+		try {
+			UUID uuid = UUID.fromString(text);
+			return uuid.toString().equalsIgnoreCase(text) ? new PersonId(uuid) : null;
+		}
+		catch (IllegalArgumentException ex) {
+			return null;
+		}
 	}
 
 	static List<InvalidField> noProblems() {

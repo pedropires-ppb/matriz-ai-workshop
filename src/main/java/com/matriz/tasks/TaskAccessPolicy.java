@@ -10,7 +10,8 @@ import com.matriz.projects.ProjectState;
  * Whether a person may act on the tasks of a project that exists and is not deleted (ADR-008, open
  * point "Layers of Progress and Access control"; module rule 3). Tasks' use cases call it. The Access
  * control module implements it, and decides only from the facts it is given: the person's role in the
- * project, and the project's state. Assignees are not a fact yet: they come with I7.
+ * project, the project's state, and, for the actions that depend on them, whether the person is an
+ * assignee of the task or acts on their own assignment ({@link TaskFacts}).
  */
 public interface TaskAccessPolicy {
 
@@ -21,7 +22,13 @@ public interface TaskAccessPolicy {
 	 * @param action what the person asks to do
 	 * @param state the state of the task's project
 	 * @param role the person's role in the project, or empty if the person is not a member
+	 * @param facts what is known about the task and the request
 	 */
-	AccessDecision decide(TaskAction action, ProjectState state, Optional<MemberRole> role);
+	AccessDecision decide(TaskAction action, ProjectState state, Optional<MemberRole> role, TaskFacts facts);
+
+	/** The decision for an action that does not depend on the task: see {@link TaskFacts#NONE}. */
+	default AccessDecision decide(TaskAction action, ProjectState state, Optional<MemberRole> role) {
+		return decide(action, state, role, TaskFacts.NONE);
+	}
 
 }

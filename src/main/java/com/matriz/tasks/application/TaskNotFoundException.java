@@ -20,4 +20,9 @@ public class TaskNotFoundException extends RuntimeException {
 		return new TaskNotFoundException("The project or task does not exist or is not accessible.");
 	}
 
+	/** For removing an assignee, who may not be one. */
+	public static TaskNotFoundException ofAssignee() {
+		return new TaskNotFoundException("The project, task, or assignee does not exist or is not accessible.");
+	}
+
 }

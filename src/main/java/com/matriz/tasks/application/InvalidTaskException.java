@@ -11,7 +11,11 @@ public class InvalidTaskException extends RuntimeException {
 	private final List<InvalidField> fields;
 
 	public InvalidTaskException(List<InvalidField> fields) {
-		super("The task is invalid.");
+		this("The task is invalid.", fields);
+	}
+
+	public InvalidTaskException(String message, List<InvalidField> fields) {
+		super(message);
 		this.fields = List.copyOf(fields);
 	}
 

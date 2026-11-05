@@ -26,6 +26,8 @@ final class TaskContent {
 
 	static final String STATE = "state";
 
+	static final String PERSON_ID = "personId";
+
 	private static final String CODES_OF_PRIORITY = "Use one of LOW, MEDIUM, or HIGH.";
 
 	private static final String CODES_OF_STATE = "Must be TO_DO, IN_PROGRESS, or DONE.";
@@ -90,6 +92,26 @@ final class TaskContent {
 		}
 		noOtherThan(Set.of(STATE), invalid);
 		return result(invalid, state);
+	}
+
+	/**
+	 * The person to assign: {@code personId} is required.
+	 * @throws InvalidTaskException (422) if the content is not an object, {@code personId} is missing,
+	 * empty, or not a string, or another property is present
+	 */
+	String forAssignee() {
+		requireObject();
+		List<InvalidField> invalid = new ArrayList<>();
+		JsonNode node = this.content.get(PERSON_ID);
+		String person = null;
+		if (node != null && node.isString() && !node.stringValue().isEmpty()) {
+			person = node.stringValue();
+		}
+		else {
+			invalid.add(new InvalidField(pointer(PERSON_ID), "A person identifier is required."));
+		}
+		noOtherThan(Set.of(PERSON_ID), invalid);
+		return result(invalid, person);
 	}
 
 	private void requireObject() {

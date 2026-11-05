@@ -14,6 +14,7 @@ import com.matriz.tasks.TaskAction;
 import com.matriz.tasks.TaskId;
 import com.matriz.tasks.TaskPriority;
 import com.matriz.tasks.TaskState;
+import com.matriz.tasks.application.AssignTask;
 import com.matriz.tasks.application.ChangeTaskState;
 import com.matriz.tasks.application.CheckTaskAccess;
 import com.matriz.tasks.application.CreateTask;
@@ -21,6 +22,7 @@ import com.matriz.tasks.application.DeleteTask;
 import com.matriz.tasks.application.GetTask;
 import com.matriz.tasks.application.ListTasks;
 import com.matriz.tasks.application.TaskNotFoundException;
+import com.matriz.tasks.application.UnassignTask;
 import com.matriz.tasks.application.UpdateTask;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -85,11 +87,15 @@ class TaskController {
 
 	private final DeleteTask deleteTask;
 
+	private final AssignTask assignTask;
+
+	private final UnassignTask unassignTask;
+
 	private final JsonMapper jsonMapper;
 
 	TaskController(CheckTaskAccess checkAccess, CreateTask createTask, ListTasks listTasks, GetTask getTask,
-			UpdateTask updateTask, ChangeTaskState changeTaskState, DeleteTask deleteTask,
-			JsonMapper jsonMapper) {
+			UpdateTask updateTask, ChangeTaskState changeTaskState, DeleteTask deleteTask, AssignTask assignTask,
+			UnassignTask unassignTask, JsonMapper jsonMapper) {
 		this.checkAccess = checkAccess;
 		this.createTask = createTask;
 		this.listTasks = listTasks;
@@ -97,6 +103,8 @@ class TaskController {
 		this.updateTask = updateTask;
 		this.changeTaskState = changeTaskState;
 		this.deleteTask = deleteTask;
+		this.assignTask = assignTask;
+		this.unassignTask = unassignTask;
 		this.jsonMapper = jsonMapper;
 	}
 
@@ -155,6 +163,24 @@ class TaskController {
 		requireMediaType(request, MediaType.APPLICATION_JSON);
 		String state = new TaskContent(readContent(request)).forState();
 		return TaskResponse.of(this.changeTaskState.change(person.personId(), project, task, state));
+	}
+
+	@PostMapping("/{taskId}/assignees")
+	TaskResponse assign(SignedInPerson person, @PathVariable String projectId, @PathVariable String taskId,
+			HttpServletRequest request) throws Exception {
+		ProjectId project = projectId(projectId);
+		TaskId task = taskId(taskId);
+		this.checkAccess.check(person.personId(), project, task, TaskAction.VIEW);
+		requireMediaType(request, MediaType.APPLICATION_JSON);
+		String assignee = new TaskContent(readContent(request)).forAssignee();
+		return TaskResponse.of(this.assignTask.assign(person.personId(), project, task, assignee));
+	}
+
+	@DeleteMapping("/{taskId}/assignees/{personId}")
+	TaskResponse unassign(SignedInPerson person, @PathVariable String projectId, @PathVariable String taskId,
+			@PathVariable String personId) {
+		return TaskResponse
+			.of(this.unassignTask.unassign(person.personId(), projectId(projectId), taskId(taskId), personId));
 	}
 
 	@DeleteMapping("/{taskId}")

@@ -12,9 +12,9 @@ import jakarta.persistence.Table;
 
 /**
  * A person's assignment to a task (glossary: Assignment). An entity inside the {@link Task}
- * aggregate (ADR-008 decision 2). Until I7 it is only read, and removed with its task (Assumption
- * A-022); assignments are created by I7. Two assignments are equal when they have the same
- * identifier.
+ * aggregate (ADR-008 decision 2). It is created by assigning a person to the task (I7), and removed
+ * with it, or by unassigning the person (Assumptions A-022, A-035). Two assignments are equal when
+ * they have the same identifier.
  */
 @Entity
 @Table(name = "assignment")
@@ -29,6 +29,11 @@ public class Assignment {
 
 	/** For Jakarta Persistence only. */
 	protected Assignment() {
+	}
+
+	Assignment(AssignmentId id, ProjectId projectId) {
+		this.id = Objects.requireNonNull(id, "An assignment identifier is required.");
+		this.projectId = Objects.requireNonNull(projectId, "A project identifier is required.");
 	}
 
 	public PersonId personId() {

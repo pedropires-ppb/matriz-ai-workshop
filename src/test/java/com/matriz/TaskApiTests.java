@@ -58,6 +58,8 @@ class TaskApiTests extends DatabaseTestSupport {
 
 	private static final String NOT_OWNER = "Only the Project Owner of this project can do this.";
 
+	private static final String NOT_OWNER_OR_ASSIGNEE = "Only the Project Owner or an assignee of the task can change its state.";
+
 	private static final String COMPLETED = "The project is Completed; it cannot be changed.";
 
 	@Autowired
@@ -650,7 +652,7 @@ class TaskApiTests extends DatabaseTestSupport {
 		assertThat(titles(list(this.ruiToken, ""))).containsExactly("Look only");
 		assertProblem(create(this.ruiToken, json("Mine", null)), 403, "Forbidden", NOT_OWNER);
 		assertProblem(edit(this.ruiToken, id, "{\"title\":\"Mine\"}"), 403, "Forbidden", NOT_OWNER);
-		assertProblem(changeState(this.ruiToken, id, "DONE"), 403, "Forbidden", NOT_OWNER);
+		assertProblem(changeState(this.ruiToken, id, "DONE"), 403, "Forbidden", NOT_OWNER_OR_ASSIGNEE);
 		assertProblem(deleteRequest(this.ruiToken, id), 403, "Forbidden", NOT_OWNER);
 
 		assertThat(view(this.anaToken, id)).isEqualTo(before);
@@ -666,7 +668,7 @@ class TaskApiTests extends DatabaseTestSupport {
 			.andExpect(status().isForbidden());
 		assertProblem(createRaw(this.ruiToken, "{"), 403, "Forbidden", NOT_OWNER);
 		assertProblem(edit(this.ruiToken, id, "{}"), 403, "Forbidden", NOT_OWNER);
-		assertProblem(changeState(this.ruiToken, id, "nope"), 403, "Forbidden", NOT_OWNER);
+		assertProblem(changeState(this.ruiToken, id, "nope"), 403, "Forbidden", NOT_OWNER_OR_ASSIGNEE);
 		// 415 and 400 before 422
 		this.mvc.perform(withToken(patch(tasks() + "/" + id), this.anaToken).contentType(MediaType.APPLICATION_JSON).content("{}"))
 			.andExpect(status().isUnsupportedMediaType());

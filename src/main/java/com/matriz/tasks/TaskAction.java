@@ -15,6 +15,12 @@ public enum TaskAction {
 	/** Change a task's state. */
 	CHANGE_STATE,
 
+	/** Assign a member to a task. */
+	ASSIGN,
+
+	/** Remove an assignee from a task. */
+	UNASSIGN,
+
 	/** Delete a task. */
 	DELETE
 

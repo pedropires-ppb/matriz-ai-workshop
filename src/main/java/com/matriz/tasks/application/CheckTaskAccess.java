@@ -7,7 +7,9 @@ import com.matriz.projects.ProjectAccess.ProjectFacts;
 import com.matriz.projects.ProjectId;
 import com.matriz.tasks.TaskAccessPolicy;
 import com.matriz.tasks.TaskAction;
+import com.matriz.tasks.TaskFacts;
 import com.matriz.tasks.TaskId;
+import com.matriz.tasks.domain.Task;
 import com.matriz.tasks.domain.TaskRepository;
 
 import org.springframework.stereotype.Service;
@@ -48,9 +50,11 @@ public class CheckTaskAccess {
 		}
 		else {
 			TaskRules.requireMemberForTask(decision);
-			this.tasks.findById(project, task).orElseThrow(TaskNotFoundException::ofTask);
+			Task found = this.tasks.findById(project, task).orElseThrow(TaskNotFoundException::ofTask);
+			decision = this.policy.decide(action, facts.state(), facts.role(),
+					new TaskFacts(found.assignees().contains(person), false));
 		}
-		TaskRules.requirePermission(decision);
+		TaskRules.requirePermission(decision, action);
 	}
 
 }
