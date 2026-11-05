@@ -2318,16 +2318,14 @@ paths:
         [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
 
         **Rules (proposed, not client-approved):**
-        - Until assignees exist (increment I7), only the Project Owner may
-          change the state; any other member receives `403` and the state is
-          unchanged. From I7, also any assignee of the task
+        - The Project Owner and any assignee of the task may change the state
           ([FR-011](docs/requirements.md#functional-requirements);
           [Assumption A-001](docs/constraints.md#assumptions),
           [Assumption A-019](docs/constraints.md#assumptions);
           [OQ-025](docs/constraints.md#open-questions)). The Project Owner
           may, whether or not they are an assignee
           ([EX-013](docs/user-stories.md#edge-cases-and-exceptions)).
-          Any other member then receives `403` and the state is unchanged
+          Any other member receives `403` and the state is unchanged
           ([EX-004](docs/user-stories.md#edge-cases-and-exceptions)); a
           Project Participant can first assign themselves with `assignTask`
           ([Assumption A-020](docs/constraints.md#assumptions)).
@@ -2444,8 +2442,7 @@ paths:
         '403':
           description: |
             The person is a member of the project but may not change the
-            state: until assignees exist (I7), only the Project Owner may; from
-            I7, the Project Owner or an assignee of the task. The state is
+            state: only the Project Owner or an assignee of the task may. The state is
             unchanged
             ([EX-004](docs/user-stories.md#edge-cases-and-exceptions);
             [Assumption A-001](docs/constraints.md#assumptions),
@@ -2555,15 +2552,18 @@ paths:
         - The `403` check needs `personId`, so this operation checks in the
           order `401`, `404`, `415`, `400`, `422` for content that does not satisfy
           `AssignTaskRequest`, `403`, `422` for a person who is not a member,
-          `409` (proposal of this draft). A Project Participant naming
+          `409` ([Assumption A-035](docs/constraints.md#assumptions);
+          [ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)). A
+          Project Participant naming
           another person therefore receives `403` whether or not that person
           is a member.
         - `personId` must identify a member of the project, otherwise `422`
           with an error for `/personId`, and the assignees are unchanged
           ([EX-020](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-019](docs/constraints.md#assumptions)). A person who
-          does not exist receives the same response (proposal of this
-          draft).
+          does not exist receives the same response
+          ([EX-029](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-035](docs/constraints.md#assumptions)).
         - Assigning a person who is already an assignee succeeds and changes
           nothing, so repeating the request is harmless.
         - Assignees of tasks in a Completed project cannot be changed
