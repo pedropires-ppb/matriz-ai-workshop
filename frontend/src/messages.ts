@@ -28,6 +28,7 @@ export const messages = {
   roleLabel: 'Your role',
   stateLabel: 'State',
   roles: { PROJECT_OWNER: 'Project Owner', PROJECT_PARTICIPANT: 'Project Participant' },
+  members: 'Members',
   states: { ACTIVE: 'Active', COMPLETED: 'Completed' },
   editProject: 'Edit project',
   deleteProject: 'Delete project',

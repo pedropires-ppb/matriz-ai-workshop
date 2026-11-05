@@ -404,9 +404,27 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			tab.button("Shared").click();
 
 			assertThat(tab.heading("Shared")).isVisible();
-			assertThat(tab.page().getByText("Project Participant")).isVisible();
+			assertThat(tab.page().getByText("Project Participant", new Page.GetByTextOptions().setExact(true)))
+				.isVisible();
 			assertThat(tab.button("Edit project")).hasCount(0);
 			assertThat(tab.button("Delete project")).hasCount(0);
+		});
+	}
+
+	@Test
+	void everyMemberSeesTheMembersOfAProjectWithTheOwnerFirst() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		TestAccess.TestPerson eva = TestAccess.addPerson(this.jdbc, "Eva Santos");
+		addProject("Shared", null, ana, "PROJECT_OWNER", rui, eva);
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Shared").click();
+
+			assertThat(tab.members()).hasText(new String[] { "Ana Silva · Project Owner",
+					"Eva Santos · Project Participant", "Rui Martins · Project Participant" });
+			assertThat(tab.page().getByText(rui.loginName())).hasCount(0);
 		});
 	}
 
@@ -836,6 +854,13 @@ class UserInterfaceTests extends DatabaseTestSupport {
 		Locator tasks() {
 			return this.page
 				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Tasks").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+		}
+
+		/** The rows of the list of members. */
+		Locator members() {
+			return this.page
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Members").setExact(true))
 				.getByRole(AriaRole.LISTITEM);
 		}
 

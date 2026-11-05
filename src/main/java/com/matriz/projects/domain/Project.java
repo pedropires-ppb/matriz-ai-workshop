@@ -1,6 +1,7 @@
 package com.matriz.projects.domain;
 
 import java.time.Instant;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Optional;
@@ -105,6 +106,11 @@ public class Project {
 			.filter((membership) -> membership.personId().equals(person))
 			.map(Membership::role)
 			.findFirst();
+	}
+
+	/** Everyone in the project with their role, in no particular order. */
+	public Set<Membership> members() {
+		return Collections.unmodifiableSet(this.memberships);
 	}
 
 	/**

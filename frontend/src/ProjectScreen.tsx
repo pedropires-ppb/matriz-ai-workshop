@@ -2,6 +2,8 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { type Session, SessionEndedError } from './api';
 import { messages } from './messages';
 import ProjectForm from './ProjectForm';
+import { listProjectMembers, type Member } from './membersApi';
+import MembersSection from './MembersSection';
 import TasksSection from './TasksSection';
 import { refusal } from './projectValidation';
 import { deleteProject, getProject, type Project, type ProjectResult, updateProject } from './projectsApi';
@@ -23,6 +25,8 @@ export default function ProjectScreen({ session, projectId, onBack, onSessionEnd
   const [deleting, setDeleting] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [members, setMembers] = useState<Member[] | null>(null);
+  const [membersFailed, setMembersFailed] = useState(false);
   const cancelButton = useRef<HTMLButtonElement>(null);
 
   /** Runs a request; a 401 sends the person to sign in. */
@@ -49,6 +53,19 @@ export default function ProjectScreen({ session, projectId, onBack, onSessionEnd
             ? { status: 'ready', project: result.value }
             : { status: 'refused', text: refusal(result) ?? messages.somethingFailed },
         );
+      }
+    });
+    return () => {
+      current = false;
+    };
+  }, [guard, session, projectId]);
+
+  useEffect(() => {
+    let current = true;
+    void guard(() => listProjectMembers(session, projectId)).then((result) => {
+      if (current) {
+        setMembers(result.outcome === 'ok' ? result.value : null);
+        setMembersFailed(result.outcome !== 'ok');
       }
     });
     return () => {
@@ -149,6 +166,7 @@ export default function ProjectScreen({ session, projectId, onBack, onSessionEnd
           </button>
         </div>
       )}
+      <MembersSection members={members} failed={membersFailed} />
       <TasksSection
         session={session}
         projectId={projectId}
