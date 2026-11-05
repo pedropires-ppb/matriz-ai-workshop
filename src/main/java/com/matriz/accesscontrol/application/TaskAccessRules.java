@@ -17,6 +17,8 @@ import org.springframework.stereotype.Component;
  * <ul>
  * <li>A person who is not a member is told the project, or the task, does not exist.</li>
  * <li>Any member may view the tasks, also when the project is Completed.</li>
+ * <li>Any member may comment on a task, also when the project is Completed: the only change that a
+ * Completed project allows (rule 5; Assumption A-036).</li>
  * <li>Only the Project Owner may create, edit, or delete a task.</li>
  * <li>The Project Owner or an assignee of the task may change its state (A-019).</li>
  * <li>The Project Owner may assign or unassign any member; a Project Participant only themselves
@@ -33,12 +35,12 @@ class TaskAccessRules implements TaskAccessPolicy {
 		if (role.isEmpty()) {
 			return AccessDecision.NOT_FOUND;
 		}
-		if (action == TaskAction.VIEW) {
+		if (action == TaskAction.VIEW || action == TaskAction.COMMENT) {
 			return AccessDecision.ALLOWED;
 		}
 		boolean owner = role.get() == MemberRole.PROJECT_OWNER;
 		boolean permitted = switch (action) {
-			case VIEW -> true;
+			case VIEW, COMMENT -> true;
 			case CREATE, EDIT, DELETE -> owner;
 			case CHANGE_STATE -> owner || facts.assignee();
 			case ASSIGN, UNASSIGN -> owner || facts.ownAssignment();

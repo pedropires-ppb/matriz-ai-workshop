@@ -85,13 +85,25 @@ class TaskAccessRulesTests {
 	@Test
 	void theProjectOwnerChangesTasksOnlyWhileTheProjectIsActive() {
 		for (TaskAction action : TaskAction.values()) {
-			if (action == TaskAction.VIEW) {
+			if (action == TaskAction.VIEW || action == TaskAction.COMMENT) {
 				continue;
 			}
 			assertThat(this.rules.decide(action, ProjectState.ACTIVE, Optional.of(MemberRole.PROJECT_OWNER)))
 				.isEqualTo(AccessDecision.ALLOWED);
 			assertThat(this.rules.decide(action, ProjectState.COMPLETED, Optional.of(MemberRole.PROJECT_OWNER)))
 				.isEqualTo(AccessDecision.CONFLICT);
+		}
+	}
+
+	@Test
+	void everyMemberCanCommentWhateverTheStateOfTheProject() {
+		for (MemberRole role : MemberRole.values()) {
+			for (ProjectState state : ProjectState.values()) {
+				assertThat(this.rules.decide(TaskAction.COMMENT, state, Optional.of(role)))
+					.isEqualTo(AccessDecision.ALLOWED);
+				assertThat(this.rules.decide(TaskAction.COMMENT, state, Optional.of(role), TaskFacts.NONE))
+					.isEqualTo(AccessDecision.ALLOWED);
+			}
 		}
 	}
 

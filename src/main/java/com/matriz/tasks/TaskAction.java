@@ -22,6 +22,9 @@ public enum TaskAction {
 	UNASSIGN,
 
 	/** Delete a task. */
-	DELETE
+	DELETE,
+
+	/** Add a comment to a task: allowed to every member, in any state of the project (rule 5). */
+	COMMENT
 
 }
