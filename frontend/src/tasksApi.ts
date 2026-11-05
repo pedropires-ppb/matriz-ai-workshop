@@ -121,6 +121,36 @@ export async function changeTaskState(
   );
 }
 
+/** `POST /api/projects/{projectId}/tasks/{taskId}/assignees` (assignTask): a repeated assignment changes nothing. */
+export async function assignTask(
+  session: Session,
+  projectId: string,
+  taskId: string,
+  personId: string,
+): Promise<TaskResult<Task>> {
+  return answer(
+    await withToken(session, `${taskPath(projectId, taskId)}/assignees`, {
+      method: 'POST',
+      headers: { 'Content-Type': JSON_TYPE },
+      body: JSON.stringify({ personId }),
+    }),
+  );
+}
+
+/** `DELETE /api/projects/{projectId}/tasks/{taskId}/assignees/{personId}` (unassignTask). */
+export async function unassignTask(
+  session: Session,
+  projectId: string,
+  taskId: string,
+  personId: string,
+): Promise<TaskResult<Task>> {
+  return answer(
+    await withToken(session, `${taskPath(projectId, taskId)}/assignees/${encodeURIComponent(personId)}`, {
+      method: 'DELETE',
+    }),
+  );
+}
+
 /** `DELETE /api/projects/{projectId}/tasks/{taskId}` (deleteTask). The confirmation is asked before this. */
 export async function deleteTask(session: Session, projectId: string, taskId: string): Promise<TaskResult<null>> {
   return answer(await withToken(session, taskPath(projectId, taskId), { method: 'DELETE' }), null);

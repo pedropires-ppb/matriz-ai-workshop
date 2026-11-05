@@ -171,6 +171,9 @@ export default function ProjectScreen({ session, projectId, onBack, onSessionEnd
         session={session}
         projectId={projectId}
         canChange={canChange}
+        isOwner={isOwner}
+        projectActive={project.state === 'ACTIVE'}
+        members={members}
         readOnlyText={
           project.state === 'COMPLETED'
             ? messages.tasksReadOnlyCompleted

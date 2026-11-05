@@ -19,6 +19,7 @@ import com.microsoft.playwright.Response;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.RequestOptions;
+import com.microsoft.playwright.options.SelectOption;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -653,13 +654,118 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			tab.button("Shared").click();
 
 			assertThat(tab.tasks()).hasCount(1);
-			assertThat(tab.page().getByText("Only the Project Owner can change the tasks of this project."))
+			assertThat(tab.page()
+				.getByText("Only the Project Owner can create, edit, or delete tasks. The Project Owner or an assignee can change a task’s state."))
 				.isVisible();
 			assertThat(tab.button("New task")).hasCount(0);
 			tab.button("Visible task").click();
 			assertThat(tab.page().getByText("Done", new Page.GetByTextOptions().setExact(true)).first()).isVisible();
 			assertThat(tab.button("Edit task")).hasCount(0);
 			assertThat(tab.button("Delete task")).hasCount(0);
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+		});
+	}
+
+	@Test
+	void theProjectOwnerAssignsSeveralMembersAndRemovesEachOneWithoutReloadingThePage() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		TestAccess.TestPerson eva = TestAccess.addPerson(this.jdbc, "Eva Costa");
+		TestAccess.addPerson(this.jdbc, "Daniel Reis");
+		UUID project = addProject("Website Redesign", null, ana, "PROJECT_OWNER", rui, eva);
+		addTask(project, "Write the report", "TO_DO", "MEDIUM");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Website Redesign").click();
+			tab.button("Write the report").click();
+			tab.page().evaluate("() => { window.sameDocument = true; }");
+			assertThat(tab.page().getByText("No one is assigned.")).isVisible();
+			assertThat(tab.page().getByLabel("Person to assign", exact()).locator("option"))
+				.hasText(new String[] { "Choose a member", "Ana Silva", "Eva Costa", "Rui Martins" });
+			assertThat(tab.button("Assign")).isDisabled();
+
+			tab.page().getByLabel("Person to assign", exact()).selectOption(new SelectOption().setLabel("Rui Martins"));
+			Response assigned = tab.page()
+				.waitForResponse((response) -> response.url().endsWith("/assignees")
+						&& "POST".equals(response.request().method()), () -> tab.button("Assign").click());
+			assertThat(assigned.status()).isEqualTo(200);
+			assertThat(tab.page().getByText("The assignment has been saved.")).isVisible();
+			tab.page().getByLabel("Person to assign", exact()).selectOption(new SelectOption().setLabel("Eva Costa"));
+			tab.button("Assign").click();
+
+			Locator assignees = tab.page()
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Assigned to").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+			assertThat(assignees).hasCount(2);
+			assertThat(assignees.first()).containsText("Eva Costa");
+			assertThat(assignees.last()).containsText("Rui Martins");
+			assertThat(tab.page().getByLabel("Person to assign", exact()).locator("option"))
+				.hasText(new String[] { "Choose a member", "Ana Silva" });
+
+			Response removed = tab.page()
+				.waitForResponse((response) -> response.url().contains("/assignees/")
+						&& "DELETE".equals(response.request().method()),
+						() -> tab.button("Remove Eva Costa").click());
+			assertThat(removed.status()).isEqualTo(200);
+			assertThat(tab.page().getByText("The assignment has been removed.")).isVisible();
+			assertThat(assignees).hasCount(1);
+			assertThat(assignees.first()).containsText("Rui Martins");
+
+			assertThat(tab.page().evaluate("() => window.sameDocument")).isEqualTo(true);
+		});
+		assertThat(this.jdbc.sql("SELECT count(*) FROM assignment").query(Integer.class).single()).isEqualTo(1);
+	}
+
+	@Test
+	void aProjectParticipantAssignsThemselvesChangesTheStateAndUnassignsThemselves() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Shared", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Visible task", "TO_DO", "HIGH");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Shared").click();
+			tab.button("Visible task").click();
+			tab.page().evaluate("() => { window.sameDocument = true; }");
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+			assertThat(tab.page().getByLabel("Person to assign", exact())).hasCount(0);
+
+			tab.button("Assign me").click();
+			assertThat(tab.page().getByText("The assignment has been saved.")).isVisible();
+			assertThat(tab.button("Assign me")).hasCount(0);
+			assertThat(tab.button("Unassign me")).isVisible();
+			assertThat(tab.page().getByLabel("State", exact())).isEnabled();
+			assertThat(tab.page().getByLabel("Priority", exact())).isDisabled();
+			tab.page().getByLabel("State", exact()).selectOption("IN_PROGRESS");
+			assertThat(tab.tasks().first()).containsText("In progress");
+
+			tab.button("Unassign me").click();
+			assertThat(tab.page().getByText("The assignment has been removed.")).isVisible();
+			assertThat(tab.button("Assign me")).isVisible();
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+
+			assertThat(tab.page().evaluate("() => window.sameDocument")).isEqualTo(true);
+		});
+	}
+
+	@Test
+	void aCompletedProjectOffersNoAssignmentControls() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Finished", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Old task", "DONE", "LOW");
+		this.jdbc.sql("UPDATE project SET state = 'COMPLETED' WHERE project_id = ?").param(project).update();
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Finished").click();
+			tab.button("Old task").click();
+
+			assertThat(tab.page().getByText("No one is assigned.")).isVisible();
+			assertThat(tab.page().getByLabel("Person to assign", exact())).hasCount(0);
+			assertThat(tab.button("Assign me")).hasCount(0);
 			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
 		});
 	}

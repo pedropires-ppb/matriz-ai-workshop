@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { type Session, SessionEndedError } from './api';
+import type { Member } from './membersApi';
 import { messages } from './messages';
 import TaskForm from './TaskForm';
 import { taskRefusal } from './taskValidation';
 import {
+  assignTask,
   changeTaskState,
   createTask,
   deleteTask,
@@ -16,14 +18,20 @@ import {
   type TaskPriority,
   type TaskResult,
   type TaskState,
+  unassignTask,
   updateTask,
 } from './tasksApi';
 
 interface Props {
   session: Session;
   projectId: string;
-  /** Whether the person may change the tasks: the Project Owner of an Active project, until I7. */
+  /** Whether the person may create, edit, and delete tasks: the Project Owner of an Active project. */
   canChange: boolean;
+  isOwner: boolean;
+  /** Whether the project is Active; a Completed project allows no change to a task. */
+  projectActive: boolean;
+  /** The members of the project, from which the Project Owner picks who to assign; `null` until fetched. */
+  members: Member[] | null;
   /** Why the person may not change them, shown instead of the controls. */
   readOnlyText: string | null;
   onSessionEnded: () => void;
@@ -41,7 +49,16 @@ function toggled<T>(values: readonly T[], value: T): T[] {
  * a confirmation. After each operation the page is fetched again, so the list and the count are
  * those of the server and nobody reloads the page.
  */
-export default function TasksSection({ session, projectId, canChange, readOnlyText, onSessionEnded }: Props) {
+export default function TasksSection({
+  session,
+  projectId,
+  canChange,
+  isOwner,
+  projectActive,
+  members,
+  readOnlyText,
+  onSessionEnded,
+}: Props) {
   const [states, setStates] = useState<TaskState[]>([]);
   const [priorities, setPriorities] = useState<TaskPriority[]>([]);
   const [page, setPage] = useState(1);
@@ -54,6 +71,7 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [failure, setFailure] = useState<string | null>(null);
+  const [personToAssign, setPersonToAssign] = useState('');
   const cancelButton = useRef<HTMLButtonElement>(null);
 
   /** Runs a request; a 401 sends the person to sign in. */
@@ -110,13 +128,14 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
     setSelected(task);
     setEditing(false);
     setConfirming(false);
+    setPersonToAssign('');
     setNotice(null);
     setFailure(null);
   }
 
   /** Shows a refusal; a task that is gone from the server is no longer shown as selected. */
-  function refused(result: TaskResult<unknown>) {
-    setFailure(taskRefusal(result));
+  function refused(result: TaskResult<unknown>, texts: Partial<Record<TaskResult<unknown>['outcome'], string>> = {}) {
+    setFailure(texts[result.outcome] ?? taskRefusal(result));
     setConfirming(false);
     if (result.outcome === 'notFound') {
       setSelected(null);
@@ -124,7 +143,11 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
     refetch();
   }
 
-  async function change<T>(request: () => Promise<TaskResult<T>>, saved: (value: T) => void) {
+  async function change<T>(
+    request: () => Promise<TaskResult<T>>,
+    saved: (value: T) => void,
+    texts?: Partial<Record<TaskResult<unknown>['outcome'], string>>,
+  ) {
     setBusy(true);
     setNotice(null);
     setFailure(null);
@@ -134,7 +157,7 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
       saved(result.value);
       refetch();
     } else {
-      refused(result);
+      refused(result, texts);
     }
   }
 
@@ -142,6 +165,30 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
     void change(
       () => changeTaskState(session, projectId, task.taskId, state),
       (changed) => setSelected(changed),
+      { forbidden: messages.stateForbidden },
+    );
+  }
+
+  function assign(task: Task, personId: string) {
+    void change(
+      () => assignTask(session, projectId, task.taskId, personId),
+      (changed) => {
+        setSelected(changed);
+        setPersonToAssign('');
+        setNotice(messages.assigneeAdded);
+      },
+      { forbidden: messages.assignmentForbidden, invalid: messages.notMemberOfProject },
+    );
+  }
+
+  function unassign(task: Task, personId: string) {
+    void change(
+      () => unassignTask(session, projectId, task.taskId, personId),
+      (changed) => {
+        setSelected(changed);
+        setNotice(messages.assigneeRemoved);
+      },
+      { forbidden: messages.assignmentForbidden },
     );
   }
 
@@ -169,6 +216,12 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
   }
 
   const filtered = states.length > 0 || priorities.length > 0;
+  const me = session.person.personId;
+  const assignedToMe = selected?.assignees.some((person) => person.personId === me) ?? false;
+  const canChangeState = projectActive && (isOwner || assignedToMe);
+  const candidates = (members ?? []).filter(
+    (member) => !(selected?.assignees ?? []).some((person) => person.personId === member.person.personId),
+  );
 
   return (
     <section aria-labelledby="tasks-heading">
@@ -321,13 +374,13 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
           ) : (
             <>
               <p>{selected.description ?? messages.noDescription}</p>
-              {canChange ? (
+              {canChangeState || canChange ? (
                 <p>
                   <label htmlFor="task-state">{messages.stateLabel}</label>{' '}
                   <select
                     id="task-state"
                     value={selected.state}
-                    disabled={busy}
+                    disabled={busy || !canChangeState}
                     onChange={(event) => changeStateTo(selected, event.target.value as TaskState)}
                   >
                     {TASK_STATES.map((state) => (
@@ -340,7 +393,7 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
                   <select
                     id="task-priority"
                     value={selected.priority}
-                    disabled={busy}
+                    disabled={busy || !canChange}
                     onChange={(event) => changePriorityTo(selected, event.target.value as TaskPriority)}
                   >
                     {TASK_PRIORITIES.map((priority) => (
@@ -358,12 +411,66 @@ export default function TasksSection({ session, projectId, canChange, readOnlyTe
                   <dd>{messages.taskPriorities[selected.priority]}</dd>
                 </dl>
               )}
-              <p>
-                {messages.assigneesLabel}:{' '}
-                {selected.assignees.length === 0
-                  ? messages.noAssignees
-                  : selected.assignees.map((person) => person.displayName).join(', ')}
-              </p>
+              <div role="group" aria-label={messages.assigneesLabel}>
+                <p>{messages.assigneesLabel}:</p>
+                {selected.assignees.length === 0 ? (
+                  <p>{messages.noAssignees}</p>
+                ) : (
+                  <ul aria-label={messages.assigneesLabel}>
+                    {selected.assignees.map((person) => (
+                      <li key={person.personId}>
+                        {person.displayName}
+                        {projectActive && (isOwner || person.personId === me) && (
+                          <>
+                            {' '}
+                            <button type="button" disabled={busy} onClick={() => unassign(selected, person.personId)}>
+                              {isOwner ? messages.unassign(person.displayName) : messages.unassignMe}
+                            </button>
+                          </>
+                        )}
+                      </li>
+                    ))}
+                  </ul>
+                )}
+                {projectActive && isOwner && (
+                  <p>
+                    {candidates.length === 0 ? (
+                      messages.allMembersAssigned
+                    ) : (
+                      <>
+                        <label htmlFor="task-assignee">{messages.personToAssign}</label>{' '}
+                        <select
+                          id="task-assignee"
+                          value={personToAssign}
+                          disabled={busy}
+                          onChange={(event) => setPersonToAssign(event.target.value)}
+                        >
+                          <option value="">{messages.chooseMember}</option>
+                          {candidates.map((member) => (
+                            <option key={member.person.personId} value={member.person.personId}>
+                              {member.person.displayName}
+                            </option>
+                          ))}
+                        </select>{' '}
+                        <button
+                          type="button"
+                          disabled={busy || personToAssign === ''}
+                          onClick={() => assign(selected, personToAssign)}
+                        >
+                          {messages.assign}
+                        </button>
+                      </>
+                    )}
+                  </p>
+                )}
+                {projectActive && !isOwner && !assignedToMe && (
+                  <p>
+                    <button type="button" disabled={busy} onClick={() => assign(selected, me)}>
+                      {messages.assignMe}
+                    </button>
+                  </p>
+                )}
+              </div>
               {canChange && !confirming && (
                 <p>
                   <button type="button" onClick={() => { setEditing(true); setNotice(null); setFailure(null); }}>
