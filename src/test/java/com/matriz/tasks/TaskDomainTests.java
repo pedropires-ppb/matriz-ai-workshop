@@ -1,7 +1,9 @@
 package com.matriz.tasks;
 
 import java.time.Instant;
+import java.util.UUID;
 
+import com.matriz.identity.PersonId;
 import com.matriz.projects.ProjectId;
 import com.matriz.tasks.domain.Task;
 import com.matriz.tasks.domain.TaskDescription;
@@ -127,6 +129,49 @@ class TaskDomainTests {
 		assertThatIllegalStateException().isThrownBy(() -> task.changeState(TaskState.DONE));
 		assertThatIllegalStateException().isThrownBy(() -> task.edit(new TaskEdit(null, true, null, null)));
 		assertThatIllegalStateException().isThrownBy(() -> task.delete(Instant.now()));
+	}
+
+	@Test
+	void severalPeopleCanBeAssignedAndEachOneRemovedWithoutChangingTheState() {
+		Task task = task();
+		PersonId ana = new PersonId(UUID.randomUUID());
+		PersonId rui = new PersonId(UUID.randomUUID());
+
+		task.assign(ana);
+		task.assign(rui);
+		assertThat(task.assignees()).containsExactlyInAnyOrder(ana, rui);
+		assertThat(task.state()).isEqualTo(TaskState.TO_DO);
+
+		task.unassign(ana);
+		assertThat(task.assignees()).containsExactly(rui);
+		task.unassign(rui);
+		assertThat(task.assignees()).isEmpty();
+		assertThat(task.state()).isEqualTo(TaskState.TO_DO);
+	}
+
+	@Test
+	void aRepeatedAssignmentChangesNothingAndUnassigningANonAssigneeIsANoOp() {
+		Task task = task();
+		PersonId ana = new PersonId(UUID.randomUUID());
+
+		task.assign(ana);
+		task.assign(ana);
+		task.unassign(new PersonId(UUID.randomUUID()));
+
+		assertThat(task.assignees()).containsExactly(ana);
+	}
+
+	@Test
+	void aDeletedTaskRefusesAssignmentChangesAndLosesItsAssignees() {
+		Task task = task();
+		PersonId ana = new PersonId(UUID.randomUUID());
+		task.assign(ana);
+
+		task.delete(Instant.now());
+
+		assertThat(task.assignees()).isEmpty();
+		assertThatIllegalStateException().isThrownBy(() -> task.assign(ana));
+		assertThatIllegalStateException().isThrownBy(() -> task.unassign(ana));
 	}
 
 	private static Task task() {

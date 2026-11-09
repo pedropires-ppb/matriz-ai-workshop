@@ -2318,16 +2318,14 @@ paths:
         [NFR-002](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria).
 
         **Rules (proposed, not client-approved):**
-        - Until assignees exist (increment I7), only the Project Owner may
-          change the state; any other member receives `403` and the state is
-          unchanged. From I7, also any assignee of the task
+        - The Project Owner and any assignee of the task may change the state
           ([FR-011](docs/requirements.md#functional-requirements);
           [Assumption A-001](docs/constraints.md#assumptions),
           [Assumption A-019](docs/constraints.md#assumptions);
           [OQ-025](docs/constraints.md#open-questions)). The Project Owner
           may, whether or not they are an assignee
           ([EX-013](docs/user-stories.md#edge-cases-and-exceptions)).
-          Any other member then receives `403` and the state is unchanged
+          Any other member receives `403` and the state is unchanged
           ([EX-004](docs/user-stories.md#edge-cases-and-exceptions)); a
           Project Participant can first assign themselves with `assignTask`
           ([Assumption A-020](docs/constraints.md#assumptions)).
@@ -2444,8 +2442,7 @@ paths:
         '403':
           description: |
             The person is a member of the project but may not change the
-            state: until assignees exist (I7), only the Project Owner may; from
-            I7, the Project Owner or an assignee of the task. The state is
+            state: only the Project Owner or an assignee of the task may. The state is
             unchanged
             ([EX-004](docs/user-stories.md#edge-cases-and-exceptions);
             [Assumption A-001](docs/constraints.md#assumptions),
@@ -2555,15 +2552,18 @@ paths:
         - The `403` check needs `personId`, so this operation checks in the
           order `401`, `404`, `415`, `400`, `422` for content that does not satisfy
           `AssignTaskRequest`, `403`, `422` for a person who is not a member,
-          `409` (proposal of this draft). A Project Participant naming
+          `409` ([Assumption A-035](docs/constraints.md#assumptions);
+          [ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)). A
+          Project Participant naming
           another person therefore receives `403` whether or not that person
           is a member.
         - `personId` must identify a member of the project, otherwise `422`
           with an error for `/personId`, and the assignees are unchanged
           ([EX-020](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-019](docs/constraints.md#assumptions)). A person who
-          does not exist receives the same response (proposal of this
-          draft).
+          does not exist receives the same response
+          ([EX-029](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-035](docs/constraints.md#assumptions)).
         - Assigning a person who is already an assignee succeeds and changes
           nothing, so repeating the request is harmless.
         - Assignees of tasks in a Completed project cannot be changed
@@ -2950,15 +2950,19 @@ paths:
           ([EX-024](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-011](docs/constraints.md#assumptions),
           [Assumption A-023](docs/constraints.md#assumptions)).
-        - The text is required and nonempty; an empty text adds no comment
+        - The text is required and has 1 to 2000 characters after trimming;
+          a missing, empty, whitespace-only, or longer text adds no comment
           and returns `422` with an error for `/text`
-          ([EX-023](docs/user-stories.md#edge-cases-and-exceptions)). Length
-          limits and whitespace-only text are open
-          ([OQ-024](docs/constraints.md#open-questions)) and are not
-          enforced.
+          ([EX-023](docs/user-stories.md#edge-cases-and-exceptions),
+          [EX-031](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-036](docs/constraints.md#assumptions);
+          [OQ-024](docs/constraints.md#open-questions)).
         - The author is the signed-in person and the date and time are
-          recorded by Matriz; neither can be chosen
-          ([Assumption A-023](docs/constraints.md#assumptions)).
+          recorded by Matriz; neither can be chosen, and a request that names
+          either gets `422`
+          ([EX-032](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-023](docs/constraints.md#assumptions),
+          [Assumption A-036](docs/constraints.md#assumptions)).
         - A comment cannot be edited or deleted, and no notification is sent
           ([Assumption A-023](docs/constraints.md#assumptions)).
       requestBody:
@@ -3323,12 +3327,16 @@ components:
     CommentText:
       type: string
       minLength: 1
+      maxLength: 2000
       description: |
-        Required, nonempty comment text
-        ([Assumption A-023](docs/constraints.md#assumptions)). Whether
-        whitespace-only text is accepted and any length limits are open
-        ([OQ-024](docs/constraints.md#open-questions)); this draft enforces
-        neither. The text may contain personal data
+        Required comment text of 1 to 2000 characters, counted as Unicode
+        characters and trimmed by the service; text that is empty after
+        trimming, including text of only no-break spaces, is refused, and the
+        trimmed text is stored
+        ([Assumption A-036](docs/constraints.md#assumptions);
+        [Assumption A-033](docs/constraints.md#assumptions) for the
+        whitespace; [OQ-024](docs/constraints.md#open-questions)). The text
+        may contain personal data
         ([OQ-011](docs/constraints.md#open-questions)).
     DisplayName:
       type: string

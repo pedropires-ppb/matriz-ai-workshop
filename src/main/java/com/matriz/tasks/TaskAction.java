@@ -15,7 +15,16 @@ public enum TaskAction {
 	/** Change a task's state. */
 	CHANGE_STATE,
 
+	/** Assign a member to a task. */
+	ASSIGN,
+
+	/** Remove an assignee from a task. */
+	UNASSIGN,
+
 	/** Delete a task. */
-	DELETE
+	DELETE,
+
+	/** Add a comment to a task: allowed to every member, in any state of the project (rule 5). */
+	COMMENT
 
 }

@@ -9,6 +9,7 @@ import com.matriz.projects.ProjectId;
 import com.matriz.projects.application.CreateProject;
 import com.matriz.projects.application.DeleteProject;
 import com.matriz.projects.application.GetProject;
+import com.matriz.projects.application.ListProjectMembers;
 import com.matriz.projects.application.ListProjects;
 import com.matriz.projects.application.ProjectNotFoundException;
 import com.matriz.projects.application.UpdateProject;
@@ -71,15 +72,19 @@ class ProjectController {
 
 	private final DeleteProject deleteProject;
 
+	private final ListProjectMembers listProjectMembers;
+
 	private final JsonMapper jsonMapper;
 
 	ProjectController(CreateProject createProject, ListProjects listProjects, GetProject getProject,
-			UpdateProject updateProject, DeleteProject deleteProject, JsonMapper jsonMapper) {
+			UpdateProject updateProject, DeleteProject deleteProject, ListProjectMembers listProjectMembers,
+			JsonMapper jsonMapper) {
 		this.createProject = createProject;
 		this.listProjects = listProjects;
 		this.getProject = getProject;
 		this.updateProject = updateProject;
 		this.deleteProject = deleteProject;
+		this.listProjectMembers = listProjectMembers;
 		this.jsonMapper = jsonMapper;
 	}
 
@@ -106,6 +111,14 @@ class ProjectController {
 	@GetMapping("/{projectId}")
 	ProjectResponse get(SignedInPerson person, @PathVariable String projectId) {
 		return ProjectResponse.of(this.getProject.get(person.personId(), id(projectId)));
+	}
+
+	@GetMapping("/{projectId}/members")
+	List<MemberResponse> members(SignedInPerson person, @PathVariable String projectId) {
+		return this.listProjectMembers.list(person.personId(), id(projectId))
+			.stream()
+			.map(MemberResponse::of)
+			.toList();
 	}
 
 	@PatchMapping("/{projectId}")

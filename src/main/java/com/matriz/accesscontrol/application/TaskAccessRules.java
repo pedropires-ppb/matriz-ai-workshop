@@ -7,6 +7,7 @@ import com.matriz.projects.MemberRole;
 import com.matriz.projects.ProjectState;
 import com.matriz.tasks.TaskAccessPolicy;
 import com.matriz.tasks.TaskAction;
+import com.matriz.tasks.TaskFacts;
 
 import org.springframework.stereotype.Component;
 
@@ -16,8 +17,12 @@ import org.springframework.stereotype.Component;
  * <ul>
  * <li>A person who is not a member is told the project, or the task, does not exist.</li>
  * <li>Any member may view the tasks, also when the project is Completed.</li>
- * <li>Until assignees exist (I7), only the Project Owner may create, edit, change the state of, or
- * delete a task; a Project Participant is refused.</li>
+ * <li>Any member may comment on a task, also when the project is Completed: the only change that a
+ * Completed project allows (rule 5; Assumption A-036).</li>
+ * <li>Only the Project Owner may create, edit, or delete a task.</li>
+ * <li>The Project Owner or an assignee of the task may change its state (A-019).</li>
+ * <li>The Project Owner may assign or unassign any member; a Project Participant only themselves
+ * (A-020).</li>
  * <li>Nobody may change a task of a Completed project.</li>
  * </ul>
  * It decides from the facts it is given and reads no data of other modules.
@@ -26,14 +31,21 @@ import org.springframework.stereotype.Component;
 class TaskAccessRules implements TaskAccessPolicy {
 
 	@Override
-	public AccessDecision decide(TaskAction action, ProjectState state, Optional<MemberRole> role) {
+	public AccessDecision decide(TaskAction action, ProjectState state, Optional<MemberRole> role, TaskFacts facts) {
 		if (role.isEmpty()) {
 			return AccessDecision.NOT_FOUND;
 		}
-		if (action == TaskAction.VIEW) {
+		if (action == TaskAction.VIEW || action == TaskAction.COMMENT) {
 			return AccessDecision.ALLOWED;
 		}
-		if (role.get() != MemberRole.PROJECT_OWNER) {
+		boolean owner = role.get() == MemberRole.PROJECT_OWNER;
+		boolean permitted = switch (action) {
+			case VIEW, COMMENT -> true;
+			case CREATE, EDIT, DELETE -> owner;
+			case CHANGE_STATE -> owner || facts.assignee();
+			case ASSIGN, UNASSIGN -> owner || facts.ownAssignment();
+		};
+		if (!permitted) {
 			return AccessDecision.FORBIDDEN;
 		}
 		return state == ProjectState.ACTIVE ? AccessDecision.ALLOWED : AccessDecision.CONFLICT;

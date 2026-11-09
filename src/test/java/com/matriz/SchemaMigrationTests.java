@@ -38,7 +38,7 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 
 	private static final String NOT_NULL_VIOLATION = "23502";
 
-	private static final String[] SCHEMA_VERSIONS = { "1", "2", "3", "4", "5" };
+	private static final String[] SCHEMA_VERSIONS = { "1", "2", "3", "4", "5", "6" };
 
 	@Autowired
 	private JdbcClient jdbc;
@@ -65,12 +65,14 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 					Map.of("version", "3", "description", "require lower case login names", "success", true),
 					Map.of("version", "4", "description", "add project description and text limits", "success",
 							true),
-					Map.of("version", "5", "description", "add task description and text limits", "success", true));
+					Map.of("version", "5", "description", "add task description and text limits", "success", true),
+					Map.of("version", "6", "description", "add comment text limit and order", "success", true));
 		// information_schema.sequences omits identity sequences, so pg_class is queried instead.
 		assertThat(this.jdbc.sql("""
 				SELECT c.relname FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
 				WHERE n.nspname = 'public' AND c.relkind = 'S'
-				""").query(String.class).list()).containsExactly("task_creation_order_seq");
+				""").query(String.class).list()).containsExactlyInAnyOrder("task_creation_order_seq",
+						"comment_creation_order_seq");
 	}
 
 	@Test
@@ -129,6 +131,15 @@ class SchemaMigrationTests extends DatabaseTestSupport {
 			.param("project", project)
 			.update(), CHECK_VIOLATION, "task_title_nonempty_ck");
 		assertRejected(() -> comment(task, person, ""), CHECK_VIOLATION, "comment_text_nonempty_ck");
+	}
+
+	@Test
+	void aCommentTextHasAtMost2000Characters() {
+		UUID task = task(project());
+		UUID person = person();
+		assertRejected(() -> comment(task, person, "x".repeat(2001)), CHECK_VIOLATION, "comment_text_length_ck");
+		comment(task, person, "y".repeat(2000));
+		comment(task, person, "\uD83D\uDE00".repeat(2000));
 	}
 
 	@Test

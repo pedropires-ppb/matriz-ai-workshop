@@ -14,13 +14,17 @@ import com.matriz.tasks.TaskAction;
 import com.matriz.tasks.TaskId;
 import com.matriz.tasks.TaskPriority;
 import com.matriz.tasks.TaskState;
+import com.matriz.tasks.application.AddTaskComment;
+import com.matriz.tasks.application.AssignTask;
 import com.matriz.tasks.application.ChangeTaskState;
 import com.matriz.tasks.application.CheckTaskAccess;
 import com.matriz.tasks.application.CreateTask;
 import com.matriz.tasks.application.DeleteTask;
 import com.matriz.tasks.application.GetTask;
+import com.matriz.tasks.application.ListTaskComments;
 import com.matriz.tasks.application.ListTasks;
 import com.matriz.tasks.application.TaskNotFoundException;
+import com.matriz.tasks.application.UnassignTask;
 import com.matriz.tasks.application.UpdateTask;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -48,8 +52,9 @@ import org.springframework.web.bind.annotation.RestController;
 
 /**
  * Task management (openapi.yaml, {@code createTask}, {@code listTasks}, {@code getTask},
- * {@code updateTask}, {@code changeTaskState}, {@code deleteTask}; FR-006, FR-008, FR-009, FR-011,
- * FR-017, FR-023).
+ * {@code updateTask}, {@code changeTaskState}, {@code assignTask}, {@code unassignTask},
+ * {@code addTaskComment}, {@code listTaskComments}, {@code deleteTask}; FR-006, FR-008, FR-009,
+ * FR-010, FR-011, FR-017, FR-019 to FR-021, FR-023).
  * <ul>
  * <li>The project comes from the path, and the person from the token.</li>
  * <li>A person who is not a member is told the project, or the task, does not exist (ADR-004
@@ -85,10 +90,19 @@ class TaskController {
 
 	private final DeleteTask deleteTask;
 
+	private final AssignTask assignTask;
+
+	private final UnassignTask unassignTask;
+
+	private final AddTaskComment addTaskComment;
+
+	private final ListTaskComments listTaskComments;
+
 	private final JsonMapper jsonMapper;
 
 	TaskController(CheckTaskAccess checkAccess, CreateTask createTask, ListTasks listTasks, GetTask getTask,
-			UpdateTask updateTask, ChangeTaskState changeTaskState, DeleteTask deleteTask,
+			UpdateTask updateTask, ChangeTaskState changeTaskState, DeleteTask deleteTask, AssignTask assignTask,
+			UnassignTask unassignTask, AddTaskComment addTaskComment, ListTaskComments listTaskComments,
 			JsonMapper jsonMapper) {
 		this.checkAccess = checkAccess;
 		this.createTask = createTask;
@@ -97,6 +111,10 @@ class TaskController {
 		this.updateTask = updateTask;
 		this.changeTaskState = changeTaskState;
 		this.deleteTask = deleteTask;
+		this.assignTask = assignTask;
+		this.unassignTask = unassignTask;
+		this.addTaskComment = addTaskComment;
+		this.listTaskComments = listTaskComments;
 		this.jsonMapper = jsonMapper;
 	}
 
@@ -155,6 +173,48 @@ class TaskController {
 		requireMediaType(request, MediaType.APPLICATION_JSON);
 		String state = new TaskContent(readContent(request)).forState();
 		return TaskResponse.of(this.changeTaskState.change(person.personId(), project, task, state));
+	}
+
+	@PostMapping("/{taskId}/assignees")
+	TaskResponse assign(SignedInPerson person, @PathVariable String projectId, @PathVariable String taskId,
+			HttpServletRequest request) throws Exception {
+		ProjectId project = projectId(projectId);
+		TaskId task = taskId(taskId);
+		this.checkAccess.check(person.personId(), project, task, TaskAction.VIEW);
+		requireMediaType(request, MediaType.APPLICATION_JSON);
+		String assignee = new TaskContent(readContent(request)).forAssignee();
+		return TaskResponse.of(this.assignTask.assign(person.personId(), project, task, assignee));
+	}
+
+	@DeleteMapping("/{taskId}/assignees/{personId}")
+	TaskResponse unassign(SignedInPerson person, @PathVariable String projectId, @PathVariable String taskId,
+			@PathVariable String personId) {
+		return TaskResponse
+			.of(this.unassignTask.unassign(person.personId(), projectId(projectId), taskId(taskId), personId));
+	}
+
+	@PostMapping("/{taskId}/comments")
+	ResponseEntity<CommentResponse> addComment(SignedInPerson person, @PathVariable String projectId,
+			@PathVariable String taskId, HttpServletRequest request) throws Exception {
+		ProjectId project = projectId(projectId);
+		TaskId task = taskId(taskId);
+		this.checkAccess.check(person.personId(), project, task, TaskAction.COMMENT);
+		requireMediaType(request, MediaType.APPLICATION_JSON);
+		String text = new TaskContent(readContent(request)).forComment();
+		CommentResponse added = CommentResponse
+			.of(this.addTaskComment.add(person.personId(), project, task, text));
+		return ResponseEntity
+			.created(URI.create("/api/projects/" + project + "/tasks/" + task + "/comments/" + added.commentId()))
+			.body(added);
+	}
+
+	@GetMapping("/{taskId}/comments")
+	List<CommentResponse> listComments(SignedInPerson person, @PathVariable String projectId,
+			@PathVariable String taskId) {
+		return this.listTaskComments.list(person.personId(), projectId(projectId), taskId(taskId))
+			.stream()
+			.map(CommentResponse::of)
+			.toList();
 	}
 
 	@DeleteMapping("/{taskId}")

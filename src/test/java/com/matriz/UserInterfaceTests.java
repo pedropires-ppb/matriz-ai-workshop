@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.regex.Pattern;
 
 import com.microsoft.playwright.APIRequest;
 import com.microsoft.playwright.APIRequestContext;
@@ -19,6 +20,7 @@ import com.microsoft.playwright.Response;
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import com.microsoft.playwright.options.AriaRole;
 import com.microsoft.playwright.options.RequestOptions;
+import com.microsoft.playwright.options.SelectOption;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -404,9 +406,27 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			tab.button("Shared").click();
 
 			assertThat(tab.heading("Shared")).isVisible();
-			assertThat(tab.page().getByText("Project Participant")).isVisible();
+			assertThat(tab.page().getByText("Project Participant", new Page.GetByTextOptions().setExact(true)))
+				.isVisible();
 			assertThat(tab.button("Edit project")).hasCount(0);
 			assertThat(tab.button("Delete project")).hasCount(0);
+		});
+	}
+
+	@Test
+	void everyMemberSeesTheMembersOfAProjectWithTheOwnerFirst() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		TestAccess.TestPerson eva = TestAccess.addPerson(this.jdbc, "Eva Santos");
+		addProject("Shared", null, ana, "PROJECT_OWNER", rui, eva);
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Shared").click();
+
+			assertThat(tab.members()).hasText(new String[] { "Ana Silva · Project Owner",
+					"Eva Santos · Project Participant", "Rui Martins · Project Participant" });
+			assertThat(tab.page().getByText(rui.loginName())).hasCount(0);
 		});
 	}
 
@@ -635,7 +655,8 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			tab.button("Shared").click();
 
 			assertThat(tab.tasks()).hasCount(1);
-			assertThat(tab.page().getByText("Only the Project Owner can change the tasks of this project."))
+			assertThat(tab.page()
+				.getByText("Only the Project Owner can create, edit, or delete tasks. The Project Owner or an assignee can change a task’s state."))
 				.isVisible();
 			assertThat(tab.button("New task")).hasCount(0);
 			tab.button("Visible task").click();
@@ -643,6 +664,202 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.button("Edit task")).hasCount(0);
 			assertThat(tab.button("Delete task")).hasCount(0);
 			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+		});
+	}
+
+	@Test
+	void theProjectOwnerAssignsSeveralMembersAndRemovesEachOneWithoutReloadingThePage() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		TestAccess.TestPerson eva = TestAccess.addPerson(this.jdbc, "Eva Costa");
+		TestAccess.addPerson(this.jdbc, "Daniel Reis");
+		UUID project = addProject("Website Redesign", null, ana, "PROJECT_OWNER", rui, eva);
+		addTask(project, "Write the report", "TO_DO", "MEDIUM");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Website Redesign").click();
+			tab.button("Write the report").click();
+			tab.page().evaluate("() => { window.sameDocument = true; }");
+			assertThat(tab.page().getByText("No one is assigned.")).isVisible();
+			assertThat(tab.page().getByLabel("Person to assign", exact()).locator("option"))
+				.hasText(new String[] { "Choose a member", "Ana Silva", "Eva Costa", "Rui Martins" });
+			assertThat(tab.button("Assign")).isDisabled();
+
+			tab.page().getByLabel("Person to assign", exact()).selectOption(new SelectOption().setLabel("Rui Martins"));
+			Response assigned = tab.page()
+				.waitForResponse((response) -> response.url().endsWith("/assignees")
+						&& "POST".equals(response.request().method()), () -> tab.button("Assign").click());
+			assertThat(assigned.status()).isEqualTo(200);
+			assertThat(tab.page().getByText("The assignment has been saved.")).isVisible();
+			tab.page().getByLabel("Person to assign", exact()).selectOption(new SelectOption().setLabel("Eva Costa"));
+			tab.button("Assign").click();
+
+			Locator assignees = tab.page()
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Assigned to").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+			assertThat(assignees).hasCount(2);
+			assertThat(assignees.first()).containsText("Eva Costa");
+			assertThat(assignees.last()).containsText("Rui Martins");
+			assertThat(tab.page().getByLabel("Person to assign", exact()).locator("option"))
+				.hasText(new String[] { "Choose a member", "Ana Silva" });
+
+			Response removed = tab.page()
+				.waitForResponse((response) -> response.url().contains("/assignees/")
+						&& "DELETE".equals(response.request().method()),
+						() -> tab.button("Remove Eva Costa").click());
+			assertThat(removed.status()).isEqualTo(200);
+			assertThat(tab.page().getByText("The assignment has been removed.")).isVisible();
+			assertThat(assignees).hasCount(1);
+			assertThat(assignees.first()).containsText("Rui Martins");
+
+			assertThat(tab.page().evaluate("() => window.sameDocument")).isEqualTo(true);
+		});
+		assertThat(this.jdbc.sql("SELECT count(*) FROM assignment").query(Integer.class).single()).isEqualTo(1);
+	}
+
+	@Test
+	void aProjectParticipantAssignsThemselvesChangesTheStateAndUnassignsThemselves() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Shared", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Visible task", "TO_DO", "HIGH");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Shared").click();
+			tab.button("Visible task").click();
+			tab.page().evaluate("() => { window.sameDocument = true; }");
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+			assertThat(tab.page().getByLabel("Person to assign", exact())).hasCount(0);
+
+			tab.button("Assign me").click();
+			assertThat(tab.page().getByText("The assignment has been saved.")).isVisible();
+			assertThat(tab.button("Assign me")).hasCount(0);
+			assertThat(tab.button("Unassign me")).isVisible();
+			assertThat(tab.page().getByLabel("State", exact())).isEnabled();
+			assertThat(tab.page().getByLabel("Priority", exact())).isDisabled();
+			tab.page().getByLabel("State", exact()).selectOption("IN_PROGRESS");
+			assertThat(tab.tasks().first()).containsText("In progress");
+
+			tab.button("Unassign me").click();
+			assertThat(tab.page().getByText("The assignment has been removed.")).isVisible();
+			assertThat(tab.button("Assign me")).isVisible();
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+
+			assertThat(tab.page().evaluate("() => window.sameDocument")).isEqualTo(true);
+		});
+	}
+
+	@Test
+	void aCompletedProjectOffersNoAssignmentControls() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Finished", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Old task", "DONE", "LOW");
+		this.jdbc.sql("UPDATE project SET state = 'COMPLETED' WHERE project_id = ?").param(project).update();
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Finished").click();
+			tab.button("Old task").click();
+
+			assertThat(tab.page().getByText("No one is assigned.")).isVisible();
+			assertThat(tab.page().getByLabel("Person to assign", exact())).hasCount(0);
+			assertThat(tab.button("Assign me")).hasCount(0);
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+		});
+	}
+
+	@Test
+	void aMemberAddsCommentsSeesTheirAuthorAndDateAndKeepsThemWhenTheTaskIsOpenedAgain() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Website Redesign", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Write the report", "TO_DO", "MEDIUM");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.button("Website Redesign").click();
+			tab.button("Write the report").click();
+			tab.page().evaluate("() => { window.sameDocument = true; }");
+			assertThat(tab.page().getByText("No comments yet.")).isVisible();
+			assertThat(tab.page().getByText("0 of 2000 characters")).isVisible();
+
+			tab.page().getByLabel("Add a comment", exact()).fill("\u00A0 \u00A0");
+			tab.button("Add comment").click();
+			assertThat(tab.page().getByText("The comment text is required.")).isVisible();
+			tab.page().getByLabel("Add a comment", exact()).fill("x".repeat(2001));
+			assertThat(tab.page().getByText("2001 of 2000 characters")).isVisible();
+			tab.button("Add comment").click();
+			assertThat(tab.page().getByText("The comment must have at most 2000 characters.")).isVisible();
+			assertThat(tab.page().getByText("No comments yet.")).isVisible();
+
+			tab.page().getByLabel("Add a comment", exact()).fill("Draft sent to the client");
+			Response added = tab.page()
+				.waitForResponse((response) -> response.url().endsWith("/comments")
+						&& "POST".equals(response.request().method()), () -> tab.button("Add comment").click());
+			assertThat(added.status()).isEqualTo(201);
+			assertThat(added.request().postData()).isEqualTo("{\"text\":\"Draft sent to the client\"}");
+			assertThat(tab.page().getByText("The comment has been added.")).isVisible();
+			assertThat(tab.page().getByLabel("Add a comment", exact())).hasValue("");
+
+			Locator comments = tab.page()
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Comments").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+			assertThat(comments).hasCount(1);
+			assertThat(comments.first()).containsText("Ana Silva");
+			assertThat(comments.first()).containsText("Draft sent to the client");
+			assertThat(comments.first().locator("time")).hasAttribute("datetime",
+					Pattern.compile("^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}(\\.\\d+)?Z$"));
+			assertThat(tab.page().evaluate("() => window.sameDocument")).isEqualTo(true);
+
+			tab.button("Close").click();
+			tab.button("Write the report").click();
+			assertThat(comments).hasCount(1);
+			assertThat(comments.first()).containsText("Draft sent to the client");
+		});
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Website Redesign").click();
+			tab.button("Write the report").click();
+			tab.page().getByLabel("Add a comment", exact()).fill("Reviewed");
+			tab.button("Add comment").click();
+
+			Locator comments = tab.page()
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Comments").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+			assertThat(comments).hasCount(2);
+			assertThat(comments.first()).containsText("Ana Silva");
+			assertThat(comments.last()).containsText("Rui Martins");
+			assertThat(comments.last()).containsText("Reviewed");
+		});
+		assertThat(this.jdbc.sql("SELECT count(*) FROM comment").query(Integer.class).single()).isEqualTo(2);
+	}
+
+	@Test
+	void aCompletedProjectStillAllowsComments() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Finished", null, ana, "PROJECT_OWNER", rui);
+		addTask(project, "Old task", "DONE", "LOW");
+		this.jdbc.sql("UPDATE project SET state = 'COMPLETED' WHERE project_id = ?").param(project).update();
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.button("Finished").click();
+			tab.button("Old task").click();
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+
+			tab.page().getByLabel("Add a comment", exact()).fill("Final report approved by the team");
+			tab.button("Add comment").click();
+
+			assertThat(tab.page().getByText("The comment has been added.")).isVisible();
+			assertThat(tab.page().getByText("Final report approved by the team")).isVisible();
+			assertThat(tab.page()
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Comments").setExact(true))
+				.getByRole(AriaRole.LISTITEM)).containsText("Rui Martins");
 		});
 	}
 
@@ -836,6 +1053,13 @@ class UserInterfaceTests extends DatabaseTestSupport {
 		Locator tasks() {
 			return this.page
 				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Tasks").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+		}
+
+		/** The rows of the list of members. */
+		Locator members() {
+			return this.page
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Members").setExact(true))
 				.getByRole(AriaRole.LISTITEM);
 		}
 

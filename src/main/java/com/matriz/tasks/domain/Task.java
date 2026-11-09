@@ -131,6 +131,27 @@ public class Task {
 	}
 
 	/**
+	 * Assigns the person, in addition to the current assignees. A person who is already an assignee
+	 * stays one, once. That the person is a member of the project is checked before, by the
+	 * application; the database checks it too.
+	 * @throws IllegalStateException if the task is deleted
+	 */
+	public void assign(PersonId person) {
+		requireNotDeleted();
+		this.assignments.add(new Assignment(new AssignmentId(this.id, Objects.requireNonNull(person)), this.projectId));
+	}
+
+	/**
+	 * Removes the person's assignment; nothing changes if the person is not an assignee. The state is
+	 * not changed.
+	 * @throws IllegalStateException if the task is deleted
+	 */
+	public void unassign(PersonId person) {
+		requireNotDeleted();
+		this.assignments.removeIf((assignment) -> assignment.personId().equals(person));
+	}
+
+	/**
 	 * Applies the edit: the title, the description, and the priority, if they are given. Editing to the
 	 * current values changes nothing.
 	 * @throws IllegalStateException if the task is deleted

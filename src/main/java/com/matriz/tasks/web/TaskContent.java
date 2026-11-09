@@ -26,6 +26,10 @@ final class TaskContent {
 
 	static final String STATE = "state";
 
+	static final String PERSON_ID = "personId";
+
+	static final String TEXT = "text";
+
 	private static final String CODES_OF_PRIORITY = "Use one of LOW, MEDIUM, or HIGH.";
 
 	private static final String CODES_OF_STATE = "Must be TO_DO, IN_PROGRESS, or DONE.";
@@ -90,6 +94,56 @@ final class TaskContent {
 		}
 		noOtherThan(Set.of(STATE), invalid);
 		return result(invalid, state);
+	}
+
+	/**
+	 * The person to assign: {@code personId} is required.
+	 * @throws InvalidTaskException (422) if the content is not an object, {@code personId} is missing,
+	 * empty, or not a string, or another property is present
+	 */
+	String forAssignee() {
+		requireObject();
+		List<InvalidField> invalid = new ArrayList<>();
+		JsonNode node = this.content.get(PERSON_ID);
+		String person = null;
+		if (node != null && node.isString() && !node.stringValue().isEmpty()) {
+			person = node.stringValue();
+		}
+		else {
+			invalid.add(new InvalidField(pointer(PERSON_ID), "A person identifier is required."));
+		}
+		noOtherThan(Set.of(PERSON_ID), invalid);
+		return result(invalid, person);
+	}
+
+	/**
+	 * The text of a comment: {@code text} is required. Its length and its whitespace are checked by the
+	 * use case.
+	 * @throws InvalidTaskException (422) if the content is not an object, {@code text} is missing or is
+	 * not a string, or another property is present, such as an author or a date
+	 */
+	String forComment() {
+		try {
+			return comment();
+		}
+		catch (InvalidTaskException ex) {
+			throw new InvalidTaskException("The comment is invalid.", ex.fields());
+		}
+	}
+
+	private String comment() {
+		requireObject();
+		List<InvalidField> invalid = new ArrayList<>();
+		JsonNode node = this.content.get(TEXT);
+		String text = null;
+		if (node != null && node.isString()) {
+			text = node.stringValue();
+		}
+		else {
+			invalid.add(new InvalidField(pointer(TEXT), "The text is required and must be a string."));
+		}
+		noOtherThan(Set.of(TEXT), invalid);
+		return result(invalid, text);
 	}
 
 	private void requireObject() {
