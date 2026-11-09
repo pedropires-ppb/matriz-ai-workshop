@@ -1,12 +1,11 @@
 import { useState } from 'react';
 import CommentsSection from './CommentsSection';
-import { Button, ConfirmBox, Link, LoadFailed, Loading, Notice, SelectField, StateBadge } from './components';
+import { Button, ConfirmBox, Link, LoadFailed, Loading, NotAccessible, Notice, SelectField, StateBadge } from './components';
 import type { Refused, Result } from './http';
 import { listProjectMembers } from './membersApi';
 import { messages } from './messages';
 import { type Flash, go, useFlash } from './navigation';
 import { getProject, type Project } from './projectsApi';
-import { NotAccessible } from './ProjectScreen';
 import type { Route } from './router';
 import { useApi, useLoad, useSubmit } from './session';
 import TaskForm from './TaskForm';

@@ -1,29 +1,17 @@
 import { useState } from 'react';
-import { Button, ConfirmBox, Link, LoadFailed, Loading, Notice, StateBadge } from './components';
+import { Button, ConfirmBox, Link, LoadFailed, Loading, NotAccessible, Notice, StateBadge } from './components';
 import { listProjectMembers } from './membersApi';
 import MembersSection from './MembersSection';
 import { messages } from './messages';
 import { type Flash, go, useFlash } from './navigation';
 import ProjectForm from './ProjectForm';
 import { deleteProject, getProject, updateProject } from './projectsApi';
-import { ALL_PROJECTS, HOME, type Route } from './router';
+import { ALL_PROJECTS, type Route } from './router';
 import { useApi, useLoad, useSubmit } from './session';
 import TasksSection from './TasksSection';
 import { refusal } from './validation';
 
 type ProjectRoute = Extract<Route, { screen: 'project' }>;
-
-/** A project that cannot be shown: it does not exist, or the person is not a member (I13 decision 4). */
-export function NotAccessible({ text }: { text: string }) {
-  return (
-    <section className="screen">
-      <Notice kind="error">{text}</Notice>
-      <p>
-        <Link to={HOME}>{messages.goHome}</Link>
-      </p>
-    </section>
-  );
-}
 
 /**
  * Project detail (US-007, US-008, US-016, US-026): the project's data, its renaming and its deletion after

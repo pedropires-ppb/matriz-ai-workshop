@@ -2,7 +2,7 @@
 // the same everywhere (I13 scope decisions 8–9).
 import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { messages } from './messages';
-import { formatRoute, type Route } from './router';
+import { formatRoute, HOME, type Route } from './router';
 import type { TaskPriority, TaskState } from './tasksApi';
 import type { MemberRole, ProjectState } from './projectsApi';
 
@@ -238,5 +238,17 @@ export function ConfirmBox({ text, confirmLabel, busy, onConfirm, onCancel }: Co
         </button>
       </div>
     </div>
+  );
+}
+
+/** A project or task that cannot be shown: it does not exist, or the person is not a member (I13 decision 4). */
+export function NotAccessible({ text }: { text: string }) {
+  return (
+    <section className="screen">
+      <Notice kind="error">{text}</Notice>
+      <p>
+        <Link to={HOME}>{messages.goHome}</Link>
+      </p>
+    </section>
   );
 }
