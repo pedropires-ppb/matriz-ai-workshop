@@ -23,17 +23,22 @@ function current(): Location {
   return { route: parseRoute(hash), notice };
 }
 
-/** Opens a screen. `replace` leaves no entry in the history (used for filters and corrections). */
+/**
+ * Opens a screen. `replace` leaves no entry in the history (used for filters and corrections). The
+ * screens learn of it at once, not at the next `hashchange`, so a controlled control such as a filter
+ * checkbox shows its new value in the same event; the history API sends no `hashchange`.
+ */
 export function go(route: Route, options: { replace?: boolean; notice?: string } = {}): void {
   const hash = formatRoute(route);
   pending = options.notice === undefined ? null : { hash, text: options.notice };
-  if (window.location.hash === hash) {
-    listeners.forEach((listener) => listener());
-  } else if (options.replace === true) {
-    window.location.replace(hash);
-  } else {
-    window.location.hash = hash;
+  if (window.location.hash !== hash) {
+    if (options.replace === true) {
+      window.history.replaceState(null, '', hash);
+    } else {
+      window.history.pushState(null, '', hash);
+    }
   }
+  listeners.forEach((listener) => listener());
 }
 
 function sameScreen(one: Route, other: Route): boolean {
