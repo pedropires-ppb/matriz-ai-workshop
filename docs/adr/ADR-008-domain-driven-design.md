@@ -40,7 +40,7 @@ The glossary is the ubiquitous language: classes are named in its terms.
 | Identity | Person | — | `PersonId`, `LoginName`, `DisplayName`, `PasswordHash` | — |
 | Projects | Project | Membership, identified within its project by the member's `PersonId`, with a `MemberRole` | `ProjectId`, `ProjectState`, `MemberRole`, the project's name | Rule 1 (one Project Owner); rule 5 for the project and its Memberships (a Completed project does not change) |
 | Tasks | Task | Assignment, identified within its task by the assignee's `PersonId` | `TaskId`, `TaskState`, `TaskPriority`, the task's title | No member is assigned twice to the same task ([FR-010](../requirements.md#functional-requirements)); deleting a task removes its Assignments (rule 6) |
-| Tasks | Comment | — | `CommentId`, the comment's text | Rule 7 (a Comment is never changed); Comments can still be added in a Completed project (rule 5) |
+| Tasks | Comment | — | `CommentId`, the comment's text | Rule 7 (a Comment is never changed); Comments can still be added in a Completed project (rule 5). *Confirmed on 2026-11-09 by team decision (the conversation “Implement the Matriz front end”, review question 4): a Comment is an aggregate of its own. The phrase “Comment inside the Task aggregate” in [Alternatives considered](#alternatives-considered) is the option not chosen, so this ADR does not contradict itself.* |
 | Progress | None: a read model, derived from the states of tasks | — | — | — |
 | Access control | None: a policy that decides from data owned by other modules | — | — | — |
 
