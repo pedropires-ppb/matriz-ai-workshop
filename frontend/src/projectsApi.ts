@@ -95,6 +95,14 @@ export function updateProject(session: Session, projectId: string, content: Proj
   return call(session, projectPath(projectId), sending('PATCH', body, MERGE_PATCH_TYPE));
 }
 
+/**
+ * `PUT /api/projects/{projectId}/state` (completeProject). The confirmation is asked before this. A `409`
+ * means the project has unfinished tasks or is already Completed (I8 decision 6).
+ */
+export function completeProject(session: Session, projectId: string): Promise<Result<Project>> {
+  return call(session, `${projectPath(projectId)}/state`, sending('PUT', { state: 'COMPLETED' }));
+}
+
 /** `DELETE /api/projects/{projectId}` (deleteProject). The confirmation is asked before this. */
 export function deleteProject(session: Session, projectId: string): Promise<Result<null>> {
   return call(session, projectPath(projectId), { method: 'DELETE' }, true);

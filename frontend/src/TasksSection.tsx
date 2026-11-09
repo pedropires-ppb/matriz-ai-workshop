@@ -20,6 +20,8 @@ interface Props {
   project: Project;
   /** Called after a task is created, so that the project's progress is fetched again. */
   onTasksChanged: () => void;
+  /** A change of this number fetches the list again, for example after a refused completion (I8 decision 6). */
+  listVersion: number;
 }
 
 /**
@@ -28,14 +30,14 @@ interface Props {
  * so the task detail returns to them (I13 decision 3). After a creation the page is fetched again, so the
  * list and the count are the server's (I13 scope decision 10).
  */
-export default function TasksSection({ route, project, onTasksChanged }: Props) {
+export default function TasksSection({ route, project, onTasksChanged, listVersion }: Props) {
   const { run } = useApi();
   const { projectId, list } = route;
   const [creating, setCreating] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const tasks = useLoad(
     (session) => listTasks(session, projectId, { ...list, size: TASKS_PAGE_SIZE }),
-    [projectId, list.states.join(), list.priorities.join(), list.page],
+    [projectId, list.states.join(), list.priorities.join(), list.page, listVersion],
   );
   const isOwner = project.myRole === 'PROJECT_OWNER';
   const canChange = isOwner && project.state === 'ACTIVE';

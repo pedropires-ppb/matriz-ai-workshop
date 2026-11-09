@@ -47,6 +47,12 @@ export const messages = {
   confirmDelete: (name: string) =>
     `Delete "${name}"? Its tasks, comments and assignments will no longer be visible. This cannot be undone.`,
   confirmDeleteButton: 'Delete',
+  completeProject: 'Complete project',
+  confirmComplete: (name: string) =>
+    `Complete "${name}"? It cannot be reopened, and its tasks become read-only; comments can still be added.`,
+  confirmCompleteButton: 'Complete',
+  completeUnavailable: 'Unavailable while tasks are To do or In progress.',
+  projectHasUnfinishedTasks: 'The project has tasks that are To do or In progress; it remains Active.',
   nameRequired: 'Name is required.',
   nameTooLong: 'Name must be at most 100 characters.',
   descriptionTooLong: 'Description must be at most 1000 characters.',
@@ -115,6 +121,7 @@ export const messages = {
   projectCreated: 'The project has been created.',
   saved: 'The project has been saved.',
   deleted: 'The project has been deleted.',
+  projectCompletedNotice: 'The project has been completed.',
   incorrectCredentials: 'The login name or password is incorrect.',
   credentialsRequired: 'A login name and a password are required.',
   unreachable: 'Matriz could not be reached. Please try again.',

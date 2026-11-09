@@ -113,15 +113,26 @@ interface ButtonProps {
   busy?: boolean;
   disabled?: boolean;
   variant?: 'primary' | 'secondary' | 'danger';
+  /** The identifier of a text that explains the button, for example why it is unavailable. */
+  describedBy?: string;
 }
 
-export function Button({ children, onClick, type = 'button', busy = false, disabled = false, variant = 'secondary' }: ButtonProps) {
+export function Button({
+  children,
+  onClick,
+  type = 'button',
+  busy = false,
+  disabled = false,
+  variant = 'secondary',
+  describedBy,
+}: ButtonProps) {
   return (
     <button
       type={type}
       className={`button ${variant}`}
       disabled={busy || disabled}
       aria-busy={busy ? true : undefined}
+      aria-describedby={describedBy}
       onClick={onClick}
     >
       {children}
