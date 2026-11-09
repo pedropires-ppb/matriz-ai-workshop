@@ -5,11 +5,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Locale;
 import java.util.UUID;
-import java.util.concurrent.Callable;
-import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +24,8 @@ import org.springframework.test.web.servlet.ResultActions;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 import static com.matriz.Contract.assertProblem;
+import static com.matriz.SimultaneousRequests.simultaneously;
+import static com.matriz.SimultaneousRequests.statusOf;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -463,37 +460,6 @@ class ParticipantsApiTests extends DatabaseTestSupport {
 			.param(UUID.fromString(this.project))
 			.query(Integer.class)
 			.single();
-	}
-
-	@SafeVarargs
-	private static List<Integer> simultaneously(Callable<Integer>... requests) throws Exception {
-		ExecutorService pool = Executors.newFixedThreadPool(requests.length);
-		try {
-			CountDownLatch ready = new CountDownLatch(requests.length);
-			CountDownLatch go = new CountDownLatch(1);
-			List<Future<Integer>> results = new ArrayList<>();
-			for (Callable<Integer> request : requests) {
-				results.add(pool.submit(() -> {
-					ready.countDown();
-					go.await();
-					return request.call();
-				}));
-			}
-			ready.await();
-			go.countDown();
-			List<Integer> statuses = new ArrayList<>();
-			for (Future<Integer> result : results) {
-				statuses.add(result.get());
-			}
-			return statuses;
-		}
-		finally {
-			pool.shutdownNow();
-		}
-	}
-
-	private static int statusOf(ResultActions actions) {
-		return actions.andReturn().getResponse().getStatus();
 	}
 
 	private static MockHttpServletRequestBuilder withToken(MockHttpServletRequestBuilder request, String token) {

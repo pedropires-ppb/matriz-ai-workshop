@@ -6,7 +6,8 @@ import java.util.Map;
 
 /**
  * What other modules may learn about people: the display names, to show them, and the people who
- * are not in a set, to choose whom to add to a project (openapi.yaml, PersonSummary). Never the login name or the password hash (Assumption A-017).
+ * are not in a set, to choose whom to add to a project (openapi.yaml, PersonSummary). Never the
+ * login name or the password hash (Assumption A-017).
  */
 public interface PersonDirectory {
 
