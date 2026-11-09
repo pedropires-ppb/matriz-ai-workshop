@@ -2,9 +2,9 @@
 // the same everywhere (I13 scope decisions 8–9).
 import { type ReactNode, useEffect, useId, useRef } from 'react';
 import { messages } from './messages';
-import { formatRoute, HOME, type Route } from './router';
+import { FIRST_PAGE, formatRoute, HOME, type Route } from './router';
 import type { TaskPriority, TaskState } from './tasksApi';
-import type { MemberRole, ProjectState } from './projectsApi';
+import { countsByState, type MemberRole, type Progress, type ProjectState, type ProjectSummary, type TaskCounts } from './projectsApi';
 
 /** A link to a screen; it opens in the same tab, and the address can be copied or opened in a new one. */
 export function Link({ to, children, className }: { to: Route; children: ReactNode; className?: string }) {
@@ -249,6 +249,59 @@ export function NotAccessible({ text }: { text: string }) {
       <p>
         <Link to={HOME}>{messages.goHome}</Link>
       </p>
+    </section>
+  );
+}
+
+/** A project's task counts by state, for example "2 To do, 1 In progress, 1 Done" (I5 decision 5). */
+export function TaskCountsText({ counts }: { counts: TaskCounts }) {
+  return (
+    <p className="secondary-text task-counts">
+      {messages.taskCounts(countsByState(counts).map(([state, count]) => [messages.taskStates[state], count]))}
+    </p>
+  );
+}
+
+/**
+ * A project in a list, on Home and on Projects (I5 decision 4): its name, linking to its detail, its state,
+ * the person's role, and its own task counts by state, with no percentage (FR-024).
+ */
+export function ProjectRow({ project, withDescription = false }: { project: ProjectSummary; withDescription?: boolean }) {
+  return (
+    <li>
+      <Link to={{ screen: 'project', projectId: project.projectId, list: FIRST_PAGE }}>{project.name}</Link>
+      <span className="badges">
+        <StateBadge kind="project" value={project.state} />
+        <StateBadge kind="role" value={project.myRole} />
+      </span>
+      <TaskCountsText counts={project.taskCounts} />
+      {withDescription && project.description !== undefined && <p className="secondary-text">{project.description}</p>}
+    </li>
+  );
+}
+
+/**
+ * A project's progress, as wireframe marker 4 draws it (US-006; I5 decision 3): the percentage Done with a
+ * bar that repeats it, and the counts by state. With no tasks, "No tasks", with no percentage and no bar
+ * (EX-005).
+ */
+export function ProgressPanel({ progress }: { progress: Progress }) {
+  const headingId = useId();
+  const { percentDone, taskCounts } = progress;
+  return (
+    <section aria-labelledby={headingId} className="panel project-progress">
+      <h3 id={headingId}>{messages.progress}</h3>
+      {percentDone === null ? (
+        <p className="progress-figure">{messages.progressNoTasks}</p>
+      ) : (
+        <div className="progress-summary">
+          <p className="progress-figure">{messages.percentDone(percentDone)}</p>
+          <progress max={100} value={percentDone} aria-label={messages.progress}>
+            {messages.percentDone(percentDone)}
+          </progress>
+        </div>
+      )}
+      <TaskCountsText counts={taskCounts} />
     </section>
   );
 }

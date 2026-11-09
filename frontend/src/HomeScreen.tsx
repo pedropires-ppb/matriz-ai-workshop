@@ -1,8 +1,8 @@
-import { EmptyState, Link, LoadFailed, Loading, Notice, StateBadge } from './components';
+import { EmptyState, Link, LoadFailed, Loading, Notice, ProjectRow } from './components';
 import { messages } from './messages';
 import { type Flash, useFlash } from './navigation';
 import { listProjects } from './projectsApi';
-import { ALL_PROJECTS, FIRST_PAGE, NEW_PROJECT } from './router';
+import { ALL_PROJECTS, NEW_PROJECT } from './router';
 import { useLoad, useSession } from './session';
 import { refusal } from './validation';
 
@@ -11,7 +11,7 @@ const HOME_PROJECTS = 5;
 
 /**
  * Home (I13 decision 1): the signed-in person, how many projects they can see, from the API's total, and
- * the first of them. The task counts by state come with I5.
+ * the first of them, each with its task counts by state (I5 decision 4).
  */
 export default function HomeScreen({ notice }: { notice: Flash | null }) {
   const { session } = useSession();
@@ -41,13 +41,7 @@ export default function HomeScreen({ notice }: { notice: Flash | null }) {
               <p className="count">{messages.projectCount(projects.state.value.totalItems)}</p>
               <ul aria-label={messages.myProjects} className="rows">
                 {projects.state.value.items.map((project) => (
-                  <li key={project.projectId}>
-                    <Link to={{ screen: 'project', projectId: project.projectId, list: FIRST_PAGE }}>{project.name}</Link>
-                    <span className="badges">
-                      <StateBadge kind="project" value={project.state} />
-                      <StateBadge kind="role" value={project.myRole} />
-                    </span>
-                  </li>
+                  <ProjectRow key={project.projectId} project={project} />
                 ))}
               </ul>
               <p>

@@ -352,6 +352,30 @@ dd {
   margin: 0;
 }
 
+/* A project's progress (wireframe marker 4; I5 decision 3). The bar only repeats the percentage. */
+.progress-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.progress-figure {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.project-progress progress {
+  flex: 1 1 10rem;
+  height: 0.75rem;
+  accent-color: var(--success-text);
+}
+
+.task-counts {
+  margin: 0.25rem 0 0;
+}
+
 /* One column below the breakpoint; two from it. */
 @media (min-width: 720px) {
   .project-layout,
@@ -369,12 +393,17 @@ dd {
 
   .project-layout .project-members {
     grid-column: 1;
-    grid-row: 2;
+    grid-row: 2 / span 2;
+  }
+
+  .project-layout .project-progress {
+    grid-column: 2;
+    grid-row: 1;
   }
 
   .project-layout .project-tasks {
     grid-column: 2;
-    grid-row: 1 / span 2;
+    grid-row: 2 / span 2;
   }
 
   .task-layout > :nth-child(3) {

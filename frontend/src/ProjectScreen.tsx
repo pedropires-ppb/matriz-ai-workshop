@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Button, ConfirmBox, Link, LoadFailed, Loading, NotAccessible, Notice, StateBadge } from './components';
+import { Button, ConfirmBox, Link, LoadFailed, Loading, NotAccessible, Notice, ProgressPanel, StateBadge } from './components';
 import { listProjectMembers } from './membersApi';
 import MembersSection from './MembersSection';
 import { messages } from './messages';
@@ -14,8 +14,10 @@ import { refusal } from './validation';
 type ProjectRoute = Extract<Route, { screen: 'project' }>;
 
 /**
- * Project detail (US-007, US-008, US-016, US-026): the project's data, its renaming and its deletion after
- * a confirmation, its members, and its tasks. Edit and Delete are here only (I13 decision 2).
+ * Project detail (US-006, US-007, US-008, US-016, US-026): the project's data, its progress, its renaming
+ * and its deletion after a confirmation, its members, and its tasks. Edit and Delete are here only (I13
+ * decision 2). After a task is created here, the project is fetched again, so the progress is the API's
+ * (I5 decision 3; I13 scope decision 10).
  */
 export default function ProjectScreen({ route, notice }: { route: ProjectRoute; notice: Flash | null }) {
   const { projectId } = route;
@@ -131,8 +133,9 @@ export default function ProjectScreen({ route, notice }: { route: ProjectRoute; 
             />
           )}
         </section>
+        <ProgressPanel progress={current.progress} />
         <MembersSection loaded={members.state} onRetry={members.retry} />
-        <TasksSection route={route} project={current} />
+        <TasksSection route={route} project={current} onTasksChanged={project.reload} />
       </div>
     </section>
   );

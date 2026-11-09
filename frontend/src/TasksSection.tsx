@@ -18,6 +18,8 @@ function toggled<T>(values: readonly T[], value: T): T[] {
 interface Props {
   route: ProjectRoute;
   project: Project;
+  /** Called after a task is created, so that the project's progress is fetched again. */
+  onTasksChanged: () => void;
 }
 
 /**
@@ -26,7 +28,7 @@ interface Props {
  * so the task detail returns to them (I13 decision 3). After a creation the page is fetched again, so the
  * list and the count are the server's (I13 scope decision 10).
  */
-export default function TasksSection({ route, project }: Props) {
+export default function TasksSection({ route, project, onTasksChanged }: Props) {
   const { run } = useApi();
   const { projectId, list } = route;
   const [creating, setCreating] = useState(false);
@@ -109,6 +111,7 @@ export default function TasksSection({ route, project }: Props) {
           onSaved={() => {
             setCreating(false);
             setNotice(messages.taskCreated);
+            onTasksChanged();
             const total = tasks.state.status === 'ready' ? tasks.state.value.totalItems : 0;
             const last = Math.max(1, Math.ceil((total + 1) / TASKS_PAGE_SIZE));
             if (last === list.page) {

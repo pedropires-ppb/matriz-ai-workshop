@@ -1,16 +1,49 @@
 // The project operations of the Matriz API (openapi.yaml).
 import { call, MERGE_PATCH_TYPE, type Result, sending, type Session } from './http';
+import type { TaskState } from './tasksApi';
 
 export type ProjectState = 'ACTIVE' | 'COMPLETED';
 export type MemberRole = 'PROJECT_OWNER' | 'PROJECT_PARTICIPANT';
 
-/** A project as listed (ProjectSummary) or viewed (Project). `description` is absent if none. */
-export interface Project {
+/** What a project shows in a list and when viewed. `description` is absent if none. */
+interface ProjectData {
   projectId: string;
   name: string;
   description?: string;
   state: ProjectState;
   myRole: MemberRole;
+}
+
+/** The number of a project's tasks in each state, not counting deleted ones (TaskCounts). */
+export interface TaskCounts {
+  toDo: number;
+  inProgress: number;
+  done: number;
+}
+
+/** A project's progress (Progress). `percentDone` is null when the project has no tasks (EX-005). */
+export interface Progress {
+  taskCounts: TaskCounts;
+  percentDone: number | null;
+}
+
+/** A project as listed (ProjectSummary): its own counts by state, and no percentage (FR-024). */
+export interface ProjectSummary extends ProjectData {
+  taskCounts: TaskCounts;
+}
+
+/** A project as viewed, created, or edited (Project), with its progress (FR-012). */
+export interface Project extends ProjectData {
+  progress: Progress;
+}
+
+/** The counts in the order of the task states, so that a screen lists them as the glossary does. */
+export function countsByState(counts: TaskCounts): [TaskState, number][] {
+  return [
+    ['TO_DO', counts.toDo],
+    ['IN_PROGRESS', counts.inProgress],
+    ['DONE', counts.done],
+  ];
 }
 
 /** A page of a list. `page` starts at 1; `totalPages` is 0 if nothing matches; `totalItems` counts every match. */
@@ -22,7 +55,7 @@ export interface Page<T> {
   totalPages: number;
 }
 
-export type ProjectPage = Page<Project>;
+export type ProjectPage = Page<ProjectSummary>;
 
 export interface ProjectContent {
   name: string;

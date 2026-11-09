@@ -111,9 +111,9 @@ All features below are proposed Must priorities, subject to client approval; the
 | Screen | Address | Content |
 |---|---|---|
 | Sign-in | any address, before signing in | Login name and password. After signing in, the address that was asked for opens. |
-| Home | `#/` | The signed-in person, the number of their projects, the first five, and a link to all. |
-| Projects | `#/projects`, `#/projects/new` | Search by name, paging, and the “New project” form. |
-| Project detail | `#/projects/{projectId}` | The details, with Edit and Delete for the Project Owner; the members; and the tasks, with filters, paging, the assignees of each task, and the “New task” form. |
+| Home | `#/` | The signed-in person, the number of their projects, the first five with their task counts by state, and a link to all. *Changed on 2026-11-09 with increment [I5](docs/implementation-plan.md#i5--progress-and-my-projects): previously without the task counts.* |
+| Projects | `#/projects`, `#/projects/new` | Search by name, paging, each project's task counts by state, and the “New project” form. *Changed on 2026-11-09 with increment I5: previously without the task counts.* |
+| Project detail | `#/projects/{projectId}` | The details, with Edit and Delete for the Project Owner; the progress, with the percentage Done, a bar, and the task counts by state, or “No tasks” (*added on 2026-11-09 with increment I5*); the members; and the tasks, with filters, paging, the assignees of each task, and the “New task” form. |
 | Task detail | `#/projects/{projectId}/tasks/{taskId}` | The details, state, and priority; Edit and Delete; the assignees; and the comments. |
 
 The search, the filters, and the page are kept in the address, so Back and Forward work. An unknown address leads to Home. Reloading the page signs the person out ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)); the address is kept, so the same screen opens after signing in again. The screens fit widths from 390 pixels; from 720 pixels, the project and task screens use two columns.

@@ -1,5 +1,5 @@
 import { type FormEvent, useEffect, useState } from 'react';
-import { Button, EmptyState, Link, LoadFailed, Loading, Notice, Pagination, StateBadge } from './components';
+import { Button, EmptyState, Link, LoadFailed, Loading, Notice, Pagination, ProjectRow } from './components';
 import { messages } from './messages';
 import { type Flash, go, useFlash } from './navigation';
 import ProjectForm from './ProjectForm';
@@ -12,7 +12,8 @@ const PAGE_SIZE = 20;
 
 /**
  * Projects (US-007, US-023; I13 decision 1): the person's projects, a page at a time, searchable by name,
- * and the form to create one. The search and the page are in the address, and the total is the API's.
+ * and the form to create one. The search and the page are in the address, and the total is the API's. Each
+ * project shows its task counts by state (I5 decision 4).
  */
 export default function ProjectsScreen({ route, notice }: { route: ProjectsRoute; notice: Flash | null }) {
   const { run } = useApi();
@@ -102,14 +103,7 @@ export default function ProjectsScreen({ route, notice }: { route: ProjectsRoute
           ) : (
             <ul aria-label={messages.projects} className="rows">
               {projects.state.value.items.map((project) => (
-                <li key={project.projectId}>
-                  <Link to={{ screen: 'project', projectId: project.projectId, list: FIRST_PAGE }}>{project.name}</Link>
-                  <span className="badges">
-                    <StateBadge kind="project" value={project.state} />
-                    <StateBadge kind="role" value={project.myRole} />
-                  </span>
-                  {project.description !== undefined && <p className="secondary-text">{project.description}</p>}
-                </li>
+                <ProjectRow key={project.projectId} project={project} withDescription />
               ))}
             </ul>
           )}
