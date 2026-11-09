@@ -1,32 +1,12 @@
-// Calls to the Matriz API (openapi.yaml). The access token is kept only in memory, by the caller,
-// and is sent only in the Authorization header (ADR-005).
-
-export interface PersonSummary {
-  personId: string;
-  displayName: string;
-}
-
-/** A signed-in person's access token, when it expires, and who it names. */
-export interface Session {
-  accessToken: string;
-  /** When the token expires, in milliseconds since the epoch, from `expiresIn`. */
-  expiresAt: number;
-  person: PersonSummary;
-}
+// The session operations of the Matriz API (openapi.yaml): signing in and out, and the signed-in person.
+import { apiUrl } from './config';
+import { type PersonSummary, type Session, withToken } from './http';
 
 export type SignInResult =
   | { outcome: 'signedIn'; session: Session }
   | { outcome: 'incorrect' }
   | { outcome: 'required' }
   | { outcome: 'unreachable' };
-
-/** The answer 401 to a request made with the access token: the session is no longer valid. */
-export class SessionEndedError extends Error {
-  constructor() {
-    super('The session is no longer valid.');
-    this.name = 'SessionEndedError';
-  }
-}
 
 interface SignInResponse {
   accessToken: string;
@@ -37,7 +17,7 @@ interface SignInResponse {
 /** `POST /api/session` (signIn). */
 export async function signIn(loginName: string, password: string): Promise<SignInResult> {
   try {
-    const response = await fetch('/api/session', {
+    const response = await fetch(apiUrl('/session'), {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ loginName, password }),
@@ -67,7 +47,7 @@ export async function signIn(loginName: string, password: string): Promise<SignI
 
 /** `GET /api/me` (getCurrentPerson). Throws `SessionEndedError` if the token is refused. */
 export async function getCurrentPerson(session: Session): Promise<PersonSummary> {
-  const response = await withToken(session, '/api/me');
+  const response = await withToken(session, '/me');
   if (!response.ok) {
     throw new Error(`GET /api/me answered ${response.status}.`);
   }
@@ -76,16 +56,5 @@ export async function getCurrentPerson(session: Session): Promise<PersonSummary>
 
 /** `DELETE /api/session` (signOut): ends the token on the server. */
 export async function signOut(session: Session): Promise<void> {
-  await withToken(session, '/api/session', { method: 'DELETE' });
-}
-
-/** A request made with the access token. Every 401 to it means that the session has ended. */
-export async function withToken(session: Session, path: string, init: RequestInit = {}): Promise<Response> {
-  const headers = new Headers(init.headers);
-  headers.set('Authorization', `Bearer ${session.accessToken}`);
-  const response = await fetch(path, { ...init, headers });
-  if (response.status === 401) {
-    throw new SessionEndedError();
-  }
-  return response;
+  await withToken(session, '/session', { method: 'DELETE' });
 }

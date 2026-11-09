@@ -1,22 +1,24 @@
+import { LoadFailed, Loading } from './components';
 import type { Member } from './membersApi';
 import { messages } from './messages';
+import type { Loaded } from './session';
+import { refusal } from './validation';
 
 interface Props {
-  /** `null` while the list is being fetched. */
-  members: Member[] | null;
-  failed: boolean;
+  loaded: Loaded<Member[]>;
+  onRetry: () => void;
 }
 
 /** The members of a project and their roles, which every member may see (US-026). */
-export default function MembersSection({ members, failed }: Props) {
+export default function MembersSection({ loaded, onRetry }: Props) {
   return (
-    <section aria-labelledby="members-heading">
+    <section aria-labelledby="members-heading" className="panel project-members">
       <h3 id="members-heading">{messages.members}</h3>
-      {failed && <p role="alert">{messages.somethingFailed}</p>}
-      {!failed && members === null && <p>{messages.loading}</p>}
-      {members !== null && (
-        <ul aria-label={messages.members}>
-          {members.map((member) => (
+      {loaded.status === 'loading' && <Loading />}
+      {loaded.status === 'failed' && <LoadFailed text={refusal(loaded.result, 'project')} onRetry={onRetry} />}
+      {loaded.status === 'ready' && (
+        <ul aria-label={messages.members} className="rows">
+          {loaded.value.map((member) => (
             <li key={member.person.personId}>
               {member.person.displayName} · {messages.roles[member.role]}
             </li>

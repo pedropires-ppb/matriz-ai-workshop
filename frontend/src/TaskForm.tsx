@@ -1,116 +1,98 @@
 import { type FormEvent, useState } from 'react';
+import { Button, Field, Notice, SelectField } from './components';
+import type { Result } from './http';
 import { messages } from './messages';
-import { taskFieldMessages, type TaskFieldMessages, taskRefusal, validateTask } from './taskValidation';
-import { TASK_PRIORITIES, type Task, type TaskPriority, type TaskResult } from './tasksApi';
+import { useSubmit } from './session';
+import { TASK_PRIORITIES, type Task, type TaskPriority } from './tasksApi';
+import { checkFields, fieldMessagesFrom, type FieldMessages, hasProblems, refusal, RULES } from './validation';
+
+const TASK_RULES = { title: RULES.taskTitle, description: RULES.taskDescription };
+
+export interface TaskContent {
+  title: string;
+  description: string;
+  priority: TaskPriority;
+}
 
 interface Props {
   idPrefix: string;
-  initialTitle: string;
-  initialDescription: string;
-  /** Present when the form also chooses the priority (creation); an edit changes it elsewhere. */
-  initialPriority?: TaskPriority;
+  initial: TaskContent;
+  /** Whether the form also chooses the priority (creation); an edit changes it on its own control. */
+  withPriority: boolean;
   submitLabel: string;
-  /** Sends the content; the form shows what is refused. */
-  onSubmit: (content: { title: string; description: string; priority: TaskPriority }) => Promise<TaskResult<Task>>;
+  /** Sends the content; the form shows what is refused and keeps what was typed. */
+  onSubmit: (content: TaskContent) => Promise<Result<Task>>;
   onSaved: (task: Task) => void;
   onCancel: () => void;
 }
 
 /** The form to create or edit a task: its title and description, and its priority when created, with their messages. */
-export default function TaskForm(props: Props) {
-  const [title, setTitle] = useState(props.initialTitle);
-  const [description, setDescription] = useState(props.initialDescription);
-  const [priority, setPriority] = useState<TaskPriority>(props.initialPriority ?? 'MEDIUM');
-  const [problems, setProblems] = useState<TaskFieldMessages>({});
+export default function TaskForm({ idPrefix, initial, withPriority, submitLabel, onSubmit, onSaved, onCancel }: Props) {
+  const [content, setContent] = useState<TaskContent>(initial);
+  const [problems, setProblems] = useState<FieldMessages<'title' | 'description'>>({});
   const [failure, setFailure] = useState<string | null>(null);
-  const [submitting, setSubmitting] = useState(false);
-  const titleId = `${props.idPrefix}-title`;
-  const descriptionId = `${props.idPrefix}-description`;
-  const priorityId = `${props.idPrefix}-priority`;
+  const { busy, submit } = useSubmit();
 
-  async function submit(event: FormEvent<HTMLFormElement>) {
+  function send(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setFailure(null);
-    const found = validateTask(title, description);
-    setProblems(found);
-    if (found.title !== undefined || found.description !== undefined) {
-      return;
-    }
-    setSubmitting(true);
-    const result = await props.onSubmit({ title, description, priority });
-    setSubmitting(false);
-    if (result.outcome === 'ok') {
-      props.onSaved(result.value);
-      return;
-    }
-    if (result.outcome === 'invalid') {
-      setProblems(taskFieldMessages(result.problems));
-    }
-    setFailure(taskRefusal(result));
+    void submit(async () => {
+      setFailure(null);
+      const found = checkFields({ title: content.title, description: content.description }, TASK_RULES);
+      setProblems(found);
+      if (hasProblems(found)) {
+        return;
+      }
+      const result = await onSubmit(content);
+      if (result.outcome === 'ok') {
+        onSaved(result.value);
+        return;
+      }
+      if (result.outcome === 'invalid') {
+        setProblems(fieldMessagesFrom(result.problems, TASK_RULES));
+      }
+      setFailure(refusal(result, 'task'));
+    });
   }
 
   return (
-    <form noValidate onSubmit={(event) => void submit(event)}>
-      <p>
-        <label htmlFor={titleId}>{messages.title}</label>
-        <input
-          id={titleId}
-          name="title"
-          autoFocus
-          value={title}
-          aria-invalid={problems.title !== undefined}
-          aria-describedby={problems.title !== undefined ? `${titleId}-error` : undefined}
-          onChange={(event) => setTitle(event.target.value)}
+    <form noValidate onSubmit={send} className="form">
+      <Field
+        id={`${idPrefix}-title`}
+        name="title"
+        label={messages.title}
+        value={content.title}
+        autoFocus
+        error={problems.title}
+        onChange={(title) => setContent({ ...content, title })}
+      />
+      <Field
+        id={`${idPrefix}-description`}
+        name="description"
+        label={messages.taskDescription}
+        multiline
+        value={content.description}
+        error={problems.description}
+        onChange={(description) => setContent({ ...content, description })}
+      />
+      {withPriority && (
+        <SelectField
+          id={`${idPrefix}-priority`}
+          name="priority"
+          label={messages.priorityLabel}
+          value={content.priority}
+          options={TASK_PRIORITIES.map((value) => ({ value, label: messages.taskPriorities[value] }))}
+          onChange={(priority) => setContent({ ...content, priority })}
         />
-      </p>
-      {problems.title !== undefined && (
-        <p id={`${titleId}-error`} role="alert">
-          {problems.title}
-        </p>
       )}
-      <p>
-        <label htmlFor={descriptionId}>{messages.taskDescription}</label>
-        <textarea
-          id={descriptionId}
-          name="description"
-          rows={4}
-          value={description}
-          aria-invalid={problems.description !== undefined}
-          aria-describedby={problems.description !== undefined ? `${descriptionId}-error` : undefined}
-          onChange={(event) => setDescription(event.target.value)}
-        />
-      </p>
-      {problems.description !== undefined && (
-        <p id={`${descriptionId}-error`} role="alert">
-          {problems.description}
-        </p>
-      )}
-      {props.initialPriority !== undefined && (
-        <p>
-          <label htmlFor={priorityId}>{messages.priorityLabel}</label>
-          <select
-            id={priorityId}
-            name="priority"
-            value={priority}
-            onChange={(event) => setPriority(event.target.value as TaskPriority)}
-          >
-            {TASK_PRIORITIES.map((value) => (
-              <option key={value} value={value}>
-                {messages.taskPriorities[value]}
-              </option>
-            ))}
-          </select>
-        </p>
-      )}
-      {failure !== null && <p role="alert">{failure}</p>}
-      <p>
-        <button type="submit" disabled={submitting}>
-          {props.submitLabel}
-        </button>{' '}
-        <button type="button" disabled={submitting} onClick={props.onCancel}>
+      {failure !== null && <Notice kind="error">{failure}</Notice>}
+      <div className="actions">
+        <Button type="submit" variant="primary" busy={busy}>
+          {submitLabel}
+        </Button>
+        <Button disabled={busy} onClick={onCancel}>
           {messages.cancel}
-        </button>
-      </p>
+        </Button>
+      </div>
     </form>
   );
 }

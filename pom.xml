@@ -201,6 +201,17 @@
                             <arguments>run typecheck</arguments>
                         </configuration>
                     </execution>
+                    <!-- Front-end unit tests with Vitest (ADR-003, amended on 2026-11-09). -->
+                    <execution>
+                        <id>npm-test</id>
+                        <phase>generate-resources</phase>
+                        <goals>
+                            <goal>npm</goal>
+                        </goals>
+                        <configuration>
+                            <arguments>test</arguments>
+                        </configuration>
+                    </execution>
                     <execution>
                         <id>npm-build</id>
                         <phase>generate-resources</phase>
