@@ -14,8 +14,8 @@ import { refusal } from './validation';
 type ProjectRoute = Extract<Route, { screen: 'project' }>;
 
 /**
- * Project detail (US-006, US-007, US-008, US-010, US-016, US-026): the project's data, its progress, its
- * renaming, its completion and its deletion after a confirmation, its members, and its tasks. Edit, Complete,
+ * Project detail (US-002, US-006, US-007, US-008, US-009, US-010, US-016, US-026): the project's data, its
+ * progress, its renaming, its completion and its deletion after a confirmation, its members, and its tasks. Edit, Complete,
  * and Delete are here only (I13 decision 2; I8 decision 5). After a task is created here, the project is
  * fetched again, so the progress is the API's (I5 decision 3). When completing is refused, the project and
  * its tasks are fetched again, and the message says whether it is still Active (I8 decision 6).
@@ -37,6 +37,15 @@ export default function ProjectScreen({ route, notice }: { route: ProjectRoute; 
   function clearNotices() {
     setShown(null);
     setFailure(null);
+  }
+
+  /** Fetches the project again and shows it, when a change was refused because it may have changed. */
+  async function refreshProject() {
+    const fresh = await run((session) => getProject(session, projectId));
+    if (fresh.outcome === 'ok') {
+      project.set(fresh.value);
+    }
+    return fresh;
   }
 
   function confirmDelete() {
@@ -64,13 +73,12 @@ export default function ProjectScreen({ route, notice }: { route: ProjectRoute; 
         setFailure(refusal(result, 'project'));
         return;
       }
-      const fresh = await run((session) => getProject(session, projectId));
+      const fresh = await refreshProject();
       setTaskListVersion((version) => version + 1);
       if (fresh.outcome !== 'ok') {
         setFailure(refusal(fresh, 'project'));
         return;
       }
-      project.set(fresh.value);
       setFailure(fresh.value.state === 'ACTIVE' ? messages.projectHasUnfinishedTasks : messages.projectCompleted);
     });
   }
@@ -188,7 +196,13 @@ export default function ProjectScreen({ route, notice }: { route: ProjectRoute; 
           )}
         </section>
         <ProgressPanel progress={current.progress} />
-        <MembersSection loaded={members.state} onRetry={members.retry} />
+        <MembersSection
+          project={current}
+          loaded={members.state}
+          onRetry={members.retry}
+          onMembersChanged={members.reload}
+          onProjectStale={refreshProject}
+        />
         <TasksSection
           route={route}
           project={current}

@@ -1002,7 +1002,9 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.heading("Mobile App")).isVisible();
 			assertThat(tab.progress()).containsText("0% Done");
 			assertThat(tab.progress()).containsText("1 To do, 1 In progress, 0 Done");
-			assertThat(tab.members()).hasText(new String[] { "Ana Silva · Project Owner", "Rui Martins · Project Participant" });
+			assertThat(tab.members()).hasText(new String[] { "Ana Silva · Project Owner",
+					"Rui Martins · Project ParticipantRemoveUnavailable while assigned to tasks." });
+			assertThat(tab.button("Add participant")).isVisible();
 			assertThat(tab.taskCount()).hasText("2 tasks");
 			assertThat(tab.tasks().filter(new Locator.FilterOptions().setHasText("Design the screens")))
 				.containsText("Assigned to: Rui Martins");
@@ -1292,6 +1294,209 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			.isEqualTo(1);
 	}
 
+	@ParameterizedTest(name = "at a width of {0} pixels")
+	@ValueSource(ints = { 390, 1280 })
+	void theProjectOwnerAddsAPersonWhoSeesTheProjectUntilTheyAreRemoved(int width) {
+		String tag = UUID.randomUUID().toString().substring(0, 6);
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		TestAccess.TestPerson daniel = TestAccess.addPerson(this.jdbc, "Daniel Rocha " + tag);
+		UUID mobile = addProject("Mobile App", null, ana, "PROJECT_OWNER", rui);
+		String danielName = daniel.displayName();
+
+		inATab(width, (anaTab) -> {
+			anaTab.open();
+			anaTab.signIn(ana);
+			anaTab.openProject("Mobile App");
+			assertThat(anaTab.members()).hasCount(2);
+			anaTab.button("Add participant").click();
+			anaTab.page().getByLabel("Name", exact()).fill("  rocha " + tag + " ");
+			anaTab.button("Search").click();
+			assertThat(anaTab.peopleToAdd()).hasText(new String[] { danielName + "Add" });
+			anaTab.assertFitsTheWidth();
+
+			anaTab.peopleToAdd().getByRole(AriaRole.BUTTON).click();
+
+			assertThat(anaTab.notice()).hasText(danielName + " has been added to the project.");
+			assertThat(anaTab.members()).hasCount(3);
+			assertThat(anaTab.members().filter(new Locator.FilterOptions().setHasText(danielName)))
+				.containsText("Project Participant");
+			assertThat(anaTab.page().getByText("No people to add.")).isVisible();
+			assertThat(anaTab.page().getByLabel("Name", exact())).hasValue("  rocha " + tag + " ");
+			assertThat(role(mobile, daniel)).isEqualTo("PROJECT_PARTICIPANT");
+			anaTab.assertFitsTheWidth();
+
+			inATab(width, (danielTab) -> {
+				danielTab.open();
+				danielTab.signIn(daniel);
+				assertThat(danielTab.homeProject("Mobile App")).isVisible();
+
+				anaTab.button("Cancel").click();
+				anaTab.members()
+					.filter(new Locator.FilterOptions().setHasText(danielName))
+					.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Remove").setExact(true))
+					.click();
+				assertThat(anaTab.page().getByRole(AriaRole.ALERTDIALOG)).containsText("Remove " + danielName
+						+ " from Mobile App? They will no longer see the project; their comments are kept.");
+				anaTab.button("Remove").click();
+				assertThat(anaTab.notice()).hasText(danielName + " has been removed from the project.");
+				assertThat(anaTab.members()).hasCount(2);
+				assertThat(role(mobile, daniel)).isNull();
+
+				danielTab.homeProject("Mobile App").getByRole(AriaRole.LINK).click();
+				assertThat(danielTab.page().getByRole(AriaRole.ALERT))
+					.hasText("This project does not exist or is not accessible.");
+				danielTab.navigateTo("Projects");
+				assertThat(danielTab.link("Mobile App")).hasCount(0);
+			}, "the server responded with a status of 404");
+		});
+	}
+
+	@Test
+	void theMembersPanelGuardsEachChangeAndOnlyTheProjectOwnerOfAnActiveProjectSeesIt() {
+		String tag = UUID.randomUUID().toString().substring(0, 6);
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		TestAccess.TestPerson eva = TestAccess.addPerson(this.jdbc, "Eva Santos");
+		TestAccess.TestPerson daniel = TestAccess.addPerson(this.jdbc, "Daniel Rocha " + tag);
+		TestAccess.TestPerson sofia = TestAccess.addPerson(this.jdbc, "Sofia Lopes " + tag);
+		UUID mobile = addProject("Mobile App", null, ana, "PROJECT_OWNER", rui);
+		addProject("Website Redesign", null, eva, "PROJECT_OWNER");
+		UUID ship = addTask(mobile, "Ship it", "TO_DO", "HIGH");
+		this.jdbc.sql("INSERT INTO assignment (task_id, person_id, project_id) VALUES (?, ?, ?)")
+			.params(ship, rui.id(), mobile)
+			.update();
+		String anaToken = apiSignIn(ana);
+		String ruiToken = apiSignIn(rui);
+		String membersPath = "/api/projects/" + mobile + "/members";
+		String assigneesPath = "/api/projects/" + mobile + "/tasks/" + ship + "/assignees";
+
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.openProject("Mobile App");
+			Locator ruiRemove = tab.members()
+				.filter(new Locator.FilterOptions().setHasText("Rui Martins"))
+				.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Remove").setExact(true));
+			assertThat(ruiRemove).isDisabled();
+			assertThat(ruiRemove).hasAttribute("aria-describedby", Pattern.compile(".+"));
+			assertThat(tab.page().getByText("Unavailable while assigned to tasks.")).isVisible();
+			assertThat(tab.members().filter(new Locator.FilterOptions().setHasText("Ana Silva")).getByRole(AriaRole.BUTTON))
+				.hasCount(0);
+
+			tab.openTask("Ship it");
+			tab.button("Remove Rui Martins").click();
+			assertThat(tab.notice()).hasText("The assignment has been removed.");
+			tab.link("Back to the project").click();
+			assertThat(ruiRemove).isEnabled();
+			assertThat(tab.page().getByText("Unavailable while assigned to tasks.")).hasCount(0);
+
+			ruiRemove.click();
+			tab.button("Cancel").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERTDIALOG)).hasCount(0);
+			assertThat(tab.members()).hasCount(2);
+
+			// Rui assigns himself after Ana has opened the confirmation.
+			ruiRemove.click();
+			assertThat(apiStatus("POST", assigneesPath, ruiToken, "{\"personId\":\"" + rui.id() + "\"}")).isEqualTo(200);
+			tab.button("Remove").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT))
+				.hasText("Rui Martins is assigned to tasks of this project; remove those assignments first.");
+			assertThat(ruiRemove).isDisabled();
+			assertThat(role(mobile, rui)).isEqualTo("PROJECT_PARTICIPANT");
+
+			// A search that fails keeps the text, and the next one succeeds.
+			tab.button("Add participant").click();
+			tab.page().route("**/eligible-participants**", (route) -> route.fulfill(new Route.FulfillOptions().setStatus(500)));
+			tab.page().getByLabel("Name", exact()).fill(tag);
+			tab.button("Search").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("Something went wrong. Please try again.");
+			assertThat(tab.page().getByLabel("Name", exact())).hasValue(tag);
+			tab.page().unroute("**/eligible-participants**");
+			tab.button("Search").click();
+			assertThat(tab.peopleToAdd()).hasText(new String[] { daniel.displayName() + "Add", sofia.displayName() + "Add" });
+
+			// A repeated click adds once.
+			tab.clickTwiceAtOnce("Add");
+			assertThat(tab.notice()).hasText(daniel.displayName() + " has been added to the project.");
+			assertThat(tab.peopleToAdd()).hasText(new String[] { sofia.displayName() + "Add" });
+			assertThat(tab.members()).hasCount(3);
+			assertThat(tab.requests().stream().filter((request) -> request.equals("POST " + baseUrl() + membersPath)))
+				.hasSize(1);
+
+			// Sofia is added elsewhere after the search.
+			assertThat(apiStatus("POST", membersPath, anaToken, "{\"personId\":\"" + sofia.id() + "\"}")).isEqualTo(201);
+			tab.peopleToAdd().getByRole(AriaRole.BUTTON).click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT))
+				.hasText(sofia.displayName() + " is already a member of the project.");
+			assertThat(tab.members()).hasCount(4);
+			assertThat(tab.page().getByText("No people to add.")).isVisible();
+
+			// A repeated click removes once.
+			tab.members()
+				.filter(new Locator.FilterOptions().setHasText(daniel.displayName()))
+				.getByRole(AriaRole.BUTTON, new Locator.GetByRoleOptions().setName("Remove").setExact(true))
+				.click();
+			tab.clickTwiceAtOnce("Remove");
+			assertThat(tab.notice()).hasText(daniel.displayName() + " has been removed from the project.");
+			assertThat(tab.members()).hasCount(3);
+			assertThat(tab.requests()
+				.stream()
+				.filter((request) -> request.equals("DELETE " + baseUrl() + membersPath + "/" + daniel.id()))).hasSize(1);
+		}, "the server responded with a status of 409", "the server responded with a status of 500");
+
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.openProject("Mobile App");
+			assertThat(tab.members()).hasCount(3);
+			assertThat(tab.button("Add participant")).hasCount(0);
+			assertThat(tab.button("Remove")).hasCount(0);
+		});
+
+		inATab((tab) -> {
+			tab.open("#/projects/" + mobile);
+			tab.signIn(eva);
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("This project does not exist or is not accessible.");
+			assertThat(tab.button("Add participant")).hasCount(0);
+		}, "the server responded with a status of 404");
+
+		this.jdbc.sql("UPDATE task SET state = 'DONE' WHERE task_id = ?").param(ship).update();
+		assertThat(apiStatus("PUT", "/api/projects/" + mobile + "/state", anaToken, "{\"state\":\"COMPLETED\"}"))
+			.isEqualTo(200);
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.openProject("Mobile App");
+			assertThat(tab.members()).hasCount(3);
+			assertThat(tab.button("Add participant")).hasCount(0);
+			assertThat(tab.button("Remove")).hasCount(0);
+		});
+
+		assertThat(role(mobile, daniel)).isNull();
+		assertThat(role(mobile, sofia)).isEqualTo("PROJECT_PARTICIPANT");
+		assertThat(this.jdbc.sql("SELECT count(*) FROM membership WHERE project_id = ?").param(mobile).query(Integer.class).single())
+			.isEqualTo(3);
+	}
+
+	@Test
+	void aSessionEndedElsewhereSendsThePersonToSignInWhenTheySearchForPeopleToAdd() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		addProject("Mine", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			String token = tab.signIn(ana);
+			tab.openProject("Mine");
+			tab.button("Add participant").click();
+			assertThat(apiStatus("DELETE", SIGN_IN_PATH, token)).isEqualTo(204);
+
+			tab.button("Search").click();
+
+			assertThat(tab.notice()).hasText("Your session has ended. Please sign in again.");
+			tab.assertSignInScreen();
+		}, UNAUTHORIZED_RESOURCE);
+	}
+
 	@Test
 	void aListThatFailsToLoadOffersRetryAndShowsLoadingWhileItWaits() {
 		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
@@ -1454,6 +1659,15 @@ class UserInterfaceTests extends DatabaseTestSupport {
 				.update();
 		}
 		return id;
+	}
+
+	/** The person's role in the project, or {@code null} if they are not a member. */
+	private String role(UUID project, TestAccess.TestPerson person) {
+		return this.jdbc.sql("SELECT role FROM membership WHERE project_id = ? AND person_id = ?")
+			.params(project, person.id())
+			.query(String.class)
+			.optional()
+			.orElse(null);
 	}
 
 	private boolean isDeleted(UUID project) {
@@ -1678,6 +1892,13 @@ class UserInterfaceTests extends DatabaseTestSupport {
 		Locator members() {
 			return this.page
 				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("Members").setExact(true))
+				.getByRole(AriaRole.LISTITEM);
+		}
+
+		/** The rows of the people that the Project Owner may add, after a search. */
+		Locator peopleToAdd() {
+			return this.page
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("People to add").setExact(true))
 				.getByRole(AriaRole.LISTITEM);
 		}
 
