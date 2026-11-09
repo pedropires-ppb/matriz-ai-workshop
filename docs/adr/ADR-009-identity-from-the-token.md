@@ -33,7 +33,7 @@
 - *Added on 2026-11-02 by team decision (Lab Worksheet 03, question 17), recorded during implementation:*
   - Signing out discards the token and shows “You have signed out.” even if the request fails.
   - The sign-in form has `noValidate`: the browser shows none of its own validation messages, only the User interface's texts.
-  - The User interface has no router and adds no dependency.
+  - The User interface has no router and adds no dependency. *Changed on 2026-11-09 by team decision (the conversation “Implement the Matriz front end”, question 6; [I13](../implementation-plan.md#i13--user-interface-consolidation)): the User interface has a small hash router of its own, with addresses such as `#/projects`, `#/projects/{id}`, and `#/projects/{id}/tasks/{id}`, and still adds no runtime dependency. A reload still signs the person out ([ADR-005](ADR-005-authentication-with-jwt.md)).*
 - *Accepted on 2026-11-02 by team decision (the conversation “I2 review and acceptance”, question 7), previously proposals of the I2 verification record:*
   - a sign-in answered with a status other than 200, 401, or 422 shows “Matriz could not be reached. Please try again.”;
   - the password field is cleared after an incorrect attempt, and a message is hidden when the form is sent again;
