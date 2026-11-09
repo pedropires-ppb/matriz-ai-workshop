@@ -1465,34 +1465,21 @@ class UserInterfaceTests extends DatabaseTestSupport {
 
 	/** Sends a direct API request, outside the User interface, and returns its status. */
 	private int apiStatus(String method, String path, String token) {
-		APIRequestContext api = this.playwright.request()
-			.newContext(new APIRequest.NewContextOptions().setBaseURL(baseUrl()));
-		try {
-			return api
-				.fetch(path,
-						RequestOptions.create()
-							.setMethod(method)
-							.setHeader(HttpHeaders.AUTHORIZATION, TestAccess.bearer(token)))
-				.status();
-		}
-		finally {
-			api.dispose();
-		}
+		return apiStatus(method, path, token, null);
 	}
 
-	/** As {@link #apiStatus(String, String, String)}, with JSON content. */
+	/** As {@link #apiStatus(String, String, String)}, with JSON content when {@code json} is not null. */
 	private int apiStatus(String method, String path, String token, String json) {
 		APIRequestContext api = this.playwright.request()
 			.newContext(new APIRequest.NewContextOptions().setBaseURL(baseUrl()));
 		try {
-			return api
-				.fetch(path,
-						RequestOptions.create()
-							.setMethod(method)
-							.setHeader(HttpHeaders.AUTHORIZATION, TestAccess.bearer(token))
-							.setHeader(HttpHeaders.CONTENT_TYPE, "application/json")
-							.setData(json))
-				.status();
+			RequestOptions options = RequestOptions.create()
+				.setMethod(method)
+				.setHeader(HttpHeaders.AUTHORIZATION, TestAccess.bearer(token));
+			if (json != null) {
+				options.setHeader(HttpHeaders.CONTENT_TYPE, "application/json").setData(json);
+			}
+			return api.fetch(path, options).status();
 		}
 		finally {
 			api.dispose();
