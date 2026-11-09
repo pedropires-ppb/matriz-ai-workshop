@@ -1,6 +1,8 @@
 package com.matriz.projects.web;
 
 import com.matriz.projects.application.InvalidProjectException;
+import com.matriz.projects.application.MemberNotFoundException;
+import com.matriz.projects.application.MembershipConflictException;
 import com.matriz.projects.application.NotProjectOwnerException;
 import com.matriz.projects.application.ProjectCompletedException;
 import com.matriz.projects.application.ProjectNotFoundException;
@@ -40,6 +42,16 @@ class ProjectProblems {
 
 	@ExceptionHandler(UnfinishedTasksException.class)
 	ResponseEntity<ProblemDetail> unfinished(UnfinishedTasksException ex) {
+		return problem(HttpStatus.CONFLICT, ex.getMessage());
+	}
+
+	@ExceptionHandler(MemberNotFoundException.class)
+	ResponseEntity<ProblemDetail> memberNotFound(MemberNotFoundException ex) {
+		return problem(HttpStatus.NOT_FOUND, ex.getMessage());
+	}
+
+	@ExceptionHandler(MembershipConflictException.class)
+	ResponseEntity<ProblemDetail> membershipConflict(MembershipConflictException ex) {
 		return problem(HttpStatus.CONFLICT, ex.getMessage());
 	}
 

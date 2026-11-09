@@ -5,7 +5,9 @@ import java.util.EnumSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 
+import com.matriz.identity.PersonId;
 import com.matriz.projects.ProjectId;
 import com.matriz.tasks.TaskId;
 import com.matriz.tasks.TaskPriority;
@@ -35,6 +37,11 @@ class JpaTaskRepository implements TaskRepository {
 	@Override
 	public Optional<Task> findById(ProjectId project, TaskId id) {
 		return this.tasks.findVisible(project.value(), id.value());
+	}
+
+	@Override
+	public Set<PersonId> assignees(ProjectId project) {
+		return this.tasks.assigneesOf(project.value()).stream().map(PersonId::new).collect(Collectors.toSet());
 	}
 
 	@Override

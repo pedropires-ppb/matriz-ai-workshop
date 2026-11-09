@@ -5,6 +5,7 @@ import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
+import com.matriz.identity.PersonId;
 import com.matriz.projects.ProjectId;
 import com.matriz.tasks.TaskId;
 import com.matriz.tasks.TaskPriority;
@@ -40,6 +41,9 @@ public interface TaskRepository {
 
 	/** Whether any task of the project, not deleted, is To do or In progress (EX-018; Assumption A-007). */
 	boolean hasUnfinished(ProjectId project);
+
+	/** The people assigned to any task of the project that is not deleted, whatever its state (A-009). */
+	Set<PersonId> assignees(ProjectId project);
 
 	/** The number of tasks of one project in one state. */
 	record StateCount(ProjectId project, TaskState state, long count) {

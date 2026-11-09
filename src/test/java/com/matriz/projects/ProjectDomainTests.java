@@ -26,6 +26,8 @@ class ProjectDomainTests {
 
 	private static final PersonId OTHER = new PersonId(UUID.randomUUID());
 
+	private static final PersonId THIRD = new PersonId(UUID.randomUUID());
+
 	@Test
 	void aNameIsTrimmedAndHasOneToOneHundredCharacters() {
 		assertThat(new ProjectName("  Matriz  ").value()).isEqualTo("Matriz");
@@ -140,6 +142,58 @@ class ProjectDomainTests {
 		assertThatIllegalStateException().isThrownBy(() -> project.complete(OWNER, true));
 		assertThatIllegalStateException().isThrownBy(() -> project.complete(OTHER, false));
 		assertThat(project.state()).isEqualTo(ProjectState.ACTIVE);
+	}
+
+	@Test
+	void theOwnerAddsAndRemovesAParticipantWhoHasNoAssignedTasks() {
+		Project project = project();
+
+		project.addParticipant(OWNER, OTHER);
+		assertThat(project.roleOf(OTHER)).contains(MemberRole.PROJECT_PARTICIPANT);
+
+		project.removeParticipant(OWNER, OTHER, false);
+		assertThat(project.roleOf(OTHER)).isEmpty();
+		assertThat(project.roleOf(OWNER)).contains(MemberRole.PROJECT_OWNER);
+	}
+
+	@Test
+	void aMemberIsNotAddedTwiceAndOnlyTheOwnerAddsOrRemoves() {
+		Project project = project();
+		project.addParticipant(OWNER, OTHER);
+
+		assertThatIllegalStateException().isThrownBy(() -> project.addParticipant(OWNER, OTHER));
+		assertThatIllegalStateException().isThrownBy(() -> project.addParticipant(OWNER, OWNER));
+		assertThatIllegalStateException().isThrownBy(() -> project.addParticipant(OTHER, THIRD));
+		assertThatIllegalStateException().isThrownBy(() -> project.removeParticipant(OTHER, OTHER, false));
+		assertThat(project.roleOf(THIRD)).isEmpty();
+		assertThat(project.roleOf(OTHER)).contains(MemberRole.PROJECT_PARTICIPANT);
+	}
+
+	@Test
+	void theOwnerANonMemberOrAnAssignedParticipantIsNotRemoved() {
+		Project project = project();
+		project.addParticipant(OWNER, OTHER);
+
+		assertThatIllegalStateException().isThrownBy(() -> project.removeParticipant(OWNER, OWNER, false));
+		assertThatIllegalStateException().isThrownBy(() -> project.removeParticipant(OWNER, THIRD, false));
+		assertThatIllegalStateException().isThrownBy(() -> project.removeParticipant(OWNER, OTHER, true));
+		assertThat(project.roleOf(OTHER)).contains(MemberRole.PROJECT_PARTICIPANT);
+	}
+
+	@Test
+	void aCompletedOrDeletedProjectKeepsItsMembers() {
+		Project completed = project();
+		completed.addParticipant(OWNER, OTHER);
+		completed.complete(OWNER, false);
+		Project deleted = project();
+		deleted.addParticipant(OWNER, OTHER);
+		deleted.delete(OWNER, Instant.now());
+
+		for (Project project : new Project[] { completed, deleted }) {
+			assertThatIllegalStateException().isThrownBy(() -> project.addParticipant(OWNER, THIRD));
+			assertThatIllegalStateException().isThrownBy(() -> project.removeParticipant(OWNER, OTHER, false));
+			assertThat(project.roleOf(OTHER)).contains(MemberRole.PROJECT_PARTICIPANT);
+		}
 	}
 
 	private static Project project() {

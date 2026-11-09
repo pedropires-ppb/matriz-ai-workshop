@@ -1,5 +1,9 @@
 package com.matriz.projects;
 
+import java.util.Set;
+
+import com.matriz.identity.PersonId;
+
 /**
  * What Projects needs to know about a project's tasks, which Tasks owns: Projects defines this
  * interface, and Tasks implements it, so that Projects does not depend on Tasks (ADR-008 decision 3;
@@ -13,5 +17,11 @@ public interface ProjectTasks {
 	 * (EX-018; Assumptions A-007, A-022).
 	 */
 	boolean hasUnfinishedTasks(ProjectId project);
+
+	/**
+	 * The members assigned to any task of the project that is not deleted, whatever its state
+	 * (EX-007; Assumptions A-009, A-022).
+	 */
+	Set<PersonId> assignedMembers(ProjectId project);
 
 }

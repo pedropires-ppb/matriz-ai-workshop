@@ -1,5 +1,8 @@
 package com.matriz.tasks.application;
 
+import java.util.Set;
+
+import com.matriz.identity.PersonId;
 import com.matriz.projects.ProjectId;
 import com.matriz.projects.ProjectTasks;
 import com.matriz.tasks.domain.TaskRepository;
@@ -22,6 +25,12 @@ class ProjectTasksProvider implements ProjectTasks {
 	@Transactional(propagation = Propagation.MANDATORY)
 	public boolean hasUnfinishedTasks(ProjectId project) {
 		return this.tasks.hasUnfinished(project);
+	}
+
+	@Override
+	@Transactional(propagation = Propagation.MANDATORY)
+	public Set<PersonId> assignedMembers(ProjectId project) {
+		return this.tasks.assignees(project);
 	}
 
 }

@@ -1345,6 +1345,12 @@ paths:
           [OQ-011](docs/constraints.md#open-questions)).
         - Order: the Project Owner first, then the other members by display
           name (proposal of this draft).
+        - `hasAssignedTasks` says whether the member is an assignee of a
+          task that is not deleted, whatever its state; such a member cannot
+          be removed with `removeParticipant`
+          ([EX-007](docs/user-stories.md#edge-cases-and-exceptions);
+          [Assumption A-009](docs/constraints.md#assumptions)). *Added on
+          2026-11-09 by team decision (the I6 decisions, question 2).*
       responses:
         '200':
           description: The members of the project and their roles.
@@ -1362,14 +1368,17 @@ paths:
                         personId: 'c95e0a27'
                         displayName: Ana Silva
                       role: PROJECT_OWNER
+                      hasAssignedTasks: true
                     - person:
                         personId: '0d4a7e3b'
                         displayName: Eva Santos
                       role: PROJECT_PARTICIPANT
+                      hasAssignedTasks: false
                     - person:
                         personId: '3e7b5a90'
                         displayName: Rui Martins
                       role: PROJECT_PARTICIPANT
+                      hasAssignedTasks: true
         '401':
           $ref: '#/components/responses/Unauthorized'
         '404':
@@ -1446,6 +1455,7 @@ paths:
                       personId: '6c0f9b25'
                       displayName: Daniel Rocha
                     role: PROJECT_PARTICIPANT
+                    hasAssignedTasks: false
         '400':
           $ref: '#/components/responses/BadRequest'
         '415':
@@ -1649,17 +1659,21 @@ paths:
           discloses the display names of people outside the Project Owner's
           projects, and any signed-in person can become a Project Owner
           ([Assumption A-018](docs/constraints.md#assumptions)). This rule is
-          a proposal registered as
-          [Assumption A-030](docs/constraints.md#assumptions), not yet
-          decided by the team; which personal data may be shown, and to whom,
-          is open ([OQ-011](docs/constraints.md#open-questions);
+          [Assumption A-030](docs/constraints.md#assumptions), decided by
+          the team on 2026-11-09 while only fictitious data exists, and
+          pending the client (*changed on 2026-11-09: previously “a proposal
+          … not yet decided by the team”*); which personal data may be
+          shown, and to whom, is open ([OQ-011](docs/constraints.md#open-questions);
           [NFR-003](docs/requirements.md#non-functional-requirements-and-unresolved-quality-criteria)).
         - `name` selects the people whose display name contains the text,
-          ignoring letter case (proposal of this draft, following
-          [Assumption A-024](docs/constraints.md#assumptions);
-          [OQ-026](docs/constraints.md#open-questions)). An empty `name`
-          receives `400`.
-        - Order: by display name (proposal of this draft).
+          trimmed, ignoring letter case; accents are significant, as for the
+          project search
+          ([Assumption A-024](docs/constraints.md#assumptions),
+          [Assumption A-030](docs/constraints.md#assumptions);
+          [OQ-026](docs/constraints.md#open-questions)). An empty `name`, or
+          one of only whitespace, receives `400`.
+        - Order: by display name ignoring letter case, then by identifier.
+          The list is whole, without paging (A-030).
       parameters:
         - name: name
           in: query
@@ -3497,12 +3511,20 @@ components:
         [OQ-011](docs/constraints.md#open-questions)).
     Member:
       type: object
-      required: [person, role]
+      required: [person, role, hasAssignedTasks]
       properties:
         person:
           $ref: '#/components/schemas/PersonSummary'
         role:
           $ref: '#/components/schemas/MemberRole'
+        hasAssignedTasks:
+          type: boolean
+          description: |
+            Whether the member is an assignee of a task of the project that
+            is not deleted, whatever its state; such a member cannot be
+            removed ([EX-007](docs/user-stories.md#edge-cases-and-exceptions);
+            [Assumption A-009](docs/constraints.md#assumptions)). *Added on
+            2026-11-09 by team decision (the I6 decisions, question 2).*
       description: |
         A member of a project and their role in it
         ([glossary](docs/requirements.md#glossary);

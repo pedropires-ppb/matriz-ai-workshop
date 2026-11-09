@@ -13,6 +13,15 @@ public enum ProjectAction {
 	DELETE,
 
 	/** Complete it (FR-007). */
-	COMPLETE
+	COMPLETE,
+
+	/** Add or remove a Project Participant (FR-004, FR-005). */
+	MANAGE_MEMBERS,
+
+	/**
+	 * See the people who can be added (Assumption A-030): the Project Owner only, also while the
+	 * project is Completed.
+	 */
+	LIST_ELIGIBLE_PARTICIPANTS
 
 }

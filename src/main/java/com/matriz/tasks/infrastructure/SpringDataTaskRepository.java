@@ -43,6 +43,13 @@ interface SpringDataTaskRepository extends Repository<Task, TaskId> {
 			""")
 	boolean hasStateOtherThan(@Param("project") UUID project, @Param("done") TaskState done);
 
+	@Query("""
+			select distinct a.id.personId.value
+			from Task t join t.assignments a
+			where t.projectId.value = :project and t.deletedAt is null
+			""")
+	List<UUID> assigneesOf(@Param("project") UUID project);
+
 	@Query(value = """
 			select t from Task t
 			where t.projectId.value = :project and t.deletedAt is null

@@ -113,7 +113,7 @@ All features below are proposed Must priorities, subject to client approval; the
 | Sign-in | any address, before signing in | Login name and password. After signing in, the address that was asked for opens. |
 | Home | `#/` | The signed-in person, the number of their projects, the first five with their task counts by state, and a link to all. *Changed on 2026-11-09 with increment [I5](docs/implementation-plan.md#i5--progress-and-my-projects): previously without the task counts.* |
 | Projects | `#/projects`, `#/projects/new` | Search by name, paging, each project's task counts by state, and the “New project” form. *Changed on 2026-11-09 with increment I5: previously without the task counts.* |
-| Project detail | `#/projects/{projectId}` | The details, with Edit, Complete (*added on 2026-11-09 with increment I8*), and Delete for the Project Owner; the progress, with the percentage Done, a bar, and the task counts by state, or “No tasks” (*added on 2026-11-09 with increment I5*); the members; and the tasks, with filters, paging, the assignees of each task, and the “New task” form. |
+| Project detail | `#/projects/{projectId}` | The details, with Edit, Complete (*added on 2026-11-09 with increment I8*), and Delete for the Project Owner; the progress, with the percentage Done, a bar, and the task counts by state, or “No tasks” (*added on 2026-11-09 with increment I5*); the members, where the Project Owner of an Active project adds and removes Project Participants (*added on 2026-11-09 with increment I6*); and the tasks, with filters, paging, the assignees of each task, and the “New task” form. |
 | Task detail | `#/projects/{projectId}/tasks/{taskId}` | The details, state, and priority; Edit and Delete; the assignees; and the comments. |
 
 The search, the filters, and the page are kept in the address, so Back and Forward work. An unknown address leads to Home. Reloading the page signs the person out ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)); the address is kept, so the same screen opens after signing in again. The screens fit widths from 390 pixels; from 720 pixels, the project and task screens use two columns.
@@ -187,6 +187,17 @@ The name has 1 to 100 characters and the optional description at most 1000, coun
 | `deleteTask` | `DELETE /api/projects/{projectId}/tasks/{taskId}` | 204 | A soft deletion: the task and its Assignments disappear from every read; no restore. |
 
 The title has 1 to 150 characters and the optional description at most 2000, counted after trimming; text that is empty after trimming gets 422 (for the description, it means none). Spaces, tabs, and the no-break spaces U+00A0, U+2007, and U+202F count as blank, for project and task texts. Until assignees exist (I7), only the Project Owner creates, edits, changes the state of, and deletes tasks, so a Project Participant gets 403; a person who is not a member, and an unknown, deleted, or foreign task, get 404; a Completed project gets 409 for every change. Two simultaneous changes are applied one after the other, and the last prevails. The limits, the values, and the rules are team decisions awaiting client validation ([A-033](docs/constraints.md#assumptions), [OQ-030](docs/constraints.md#open-questions)).
+
+### Manage members
+
+*Added on 2026-11-09 with increment I6 ([A-009](docs/constraints.md#assumptions), [A-030](docs/constraints.md#assumptions), [EX-007](docs/user-stories.md#edge-cases-and-exceptions)).* The Members panel of the Project detail lists every member. The Project Owner of an Active project opens “Add participant”, searches people by name, and adds them; each Project Participant has “Remove”, which asks for confirmation and is unavailable while the person is assigned to tasks. The [API contract](openapi.yaml) specifies each operation; in short:
+
+| Operation | Request | Success | Notes |
+|---|---|---|---|
+| `listProjectMembers` | `GET /api/projects/{projectId}/members` | 200 | Any member. The Project Owner first, then by display name. `hasAssignedTasks` says whether the member is an assignee of a task that is not deleted, in any state. |
+| `listEligibleParticipants` | `GET /api/projects/{projectId}/eligible-participants?name=` | 200 | Only the Project Owner, in any state. Every person who is not a member, without paging; `name` is a trimmed, case-insensitive substring search, and accents are significant. An empty `name` gets 400. A team decision pending the client, with a privacy risk ([A-030](docs/constraints.md#assumptions), [OQ-011](docs/constraints.md#open-questions)). |
+| `addParticipant` | `POST /api/projects/{projectId}/members` with `personId` | 201 and a `Location` header | Only the Project Owner, only while the project is Active. An unknown person gets 422; a member gets 409. The person sees the project immediately. |
+| `removeParticipant` | `DELETE /api/projects/{projectId}/members/{personId}` | 204 | Only the Project Owner, only while the project is Active. The Project Owner, or a person assigned to a task of the project, gets 409; a person who is not a member gets 404. The person loses access immediately; their comments are kept. |
 
 ## Review log (human-in-the-loop)
 

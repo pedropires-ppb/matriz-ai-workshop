@@ -31,6 +31,8 @@ import jakarta.persistence.Table;
  * <li>A project starts Active, and its creator is its single Project Owner and a member (A-008).</li>
  * <li>Only the Project Owner edits, deletes, or completes it, and only while it is Active (A-001, A-011).</li>
  * <li>It is completed only when none of its tasks is To do or In progress (A-007).</li>
+ * <li>Only the Project Owner adds or removes Project Participants, only while it is Active; the Project
+ * Owner, and a member assigned to a task, cannot be removed (A-009).</li>
  * <li>Deleting sets a deletion time; the data is kept (A-022).</li>
  * </ul>
  * The access policy decides first, and with the answers of the API; the checks here guard the rules
@@ -153,6 +155,38 @@ public class Project {
 			throw new IllegalStateException("The project has unfinished tasks.");
 		}
 		this.state = ProjectState.COMPLETED;
+	}
+
+	/**
+	 * Adds the person as a Project Participant; the role cannot be chosen (OQ-002, OQ-008).
+	 * @throws IllegalStateException if the actor is not the Project Owner, the project is not Active or
+	 * is deleted, or the person is already a member
+	 */
+	public void addParticipant(PersonId actor, PersonId person) {
+		requireOwnerOfActiveProject(actor);
+		Objects.requireNonNull(person, "A person is required.");
+		if (roleOf(person).isPresent()) {
+			throw new IllegalStateException("The person is already a member.");
+		}
+		this.memberships.add(new Membership(this.id, person, MemberRole.PROJECT_PARTICIPANT));
+	}
+
+	/**
+	 * Removes a Project Participant, who can then no longer view the project (FR-005).
+	 * @param hasAssignedTasks whether the person is assigned to a task of the project that is not deleted
+	 * @throws IllegalStateException if the actor is not the Project Owner, the project is not Active or
+	 * is deleted, or the person is not a member, is the Project Owner, or has assigned tasks (A-009)
+	 */
+	public void removeParticipant(PersonId actor, PersonId person, boolean hasAssignedTasks) {
+		requireOwnerOfActiveProject(actor);
+		MemberRole role = roleOf(person).orElseThrow(() -> new IllegalStateException("The person is not a member."));
+		if (role == MemberRole.PROJECT_OWNER) {
+			throw new IllegalStateException("The Project Owner cannot be removed.");
+		}
+		if (hasAssignedTasks) {
+			throw new IllegalStateException("The person is assigned to tasks of the project.");
+		}
+		this.memberships.removeIf((membership) -> membership.personId().equals(person));
 	}
 
 	private void requireOwnerOfActiveProject(PersonId actor) {
