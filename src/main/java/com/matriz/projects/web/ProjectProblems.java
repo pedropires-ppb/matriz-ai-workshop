@@ -4,6 +4,7 @@ import com.matriz.projects.application.InvalidProjectException;
 import com.matriz.projects.application.NotProjectOwnerException;
 import com.matriz.projects.application.ProjectCompletedException;
 import com.matriz.projects.application.ProjectNotFoundException;
+import com.matriz.projects.application.UnfinishedTasksException;
 
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -34,6 +35,11 @@ class ProjectProblems {
 
 	@ExceptionHandler(ProjectCompletedException.class)
 	ResponseEntity<ProblemDetail> completed(ProjectCompletedException ex) {
+		return problem(HttpStatus.CONFLICT, ex.getMessage());
+	}
+
+	@ExceptionHandler(UnfinishedTasksException.class)
+	ResponseEntity<ProblemDetail> unfinished(UnfinishedTasksException ex) {
 		return problem(HttpStatus.CONFLICT, ex.getMessage());
 	}
 

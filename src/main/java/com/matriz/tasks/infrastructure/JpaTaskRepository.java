@@ -38,6 +38,11 @@ class JpaTaskRepository implements TaskRepository {
 	}
 
 	@Override
+	public boolean hasUnfinished(ProjectId project) {
+		return this.tasks.hasStateOtherThan(project.value(), TaskState.DONE);
+	}
+
+	@Override
 	public List<StateCount> countByState(Collection<ProjectId> projects) {
 		return this.tasks.countByState(projects.stream().map(ProjectId::value).toList())
 			.stream()

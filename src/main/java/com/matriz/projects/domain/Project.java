@@ -29,7 +29,8 @@ import jakarta.persistence.Table;
  * decision 2): it is stored, loaded, and locked as a whole (ADR-006). Rules checked here:
  * <ul>
  * <li>A project starts Active, and its creator is its single Project Owner and a member (A-008).</li>
- * <li>Only the Project Owner edits or deletes it, and only while it is Active (A-001, A-011).</li>
+ * <li>Only the Project Owner edits, deletes, or completes it, and only while it is Active (A-001, A-011).</li>
+ * <li>It is completed only when none of its tasks is To do or In progress (A-007).</li>
  * <li>Deleting sets a deletion time; the data is kept (A-022).</li>
  * </ul>
  * The access policy decides first, and with the answers of the API; the checks here guard the rules
@@ -138,6 +139,20 @@ public class Project {
 	public void delete(PersonId actor, Instant when) {
 		requireOwnerOfActiveProject(actor);
 		this.deletedAt = Objects.requireNonNull(when, "A deletion time is required.");
+	}
+
+	/**
+	 * Completes the project. Completing cannot be undone (OQ-006).
+	 * @param hasUnfinishedTasks whether any of its tasks, not deleted, is To do or In progress
+	 * @throws IllegalStateException if the person is not the Project Owner, the project is not Active
+	 * or is deleted, or it has unfinished tasks
+	 */
+	public void complete(PersonId actor, boolean hasUnfinishedTasks) {
+		requireOwnerOfActiveProject(actor);
+		if (hasUnfinishedTasks) {
+			throw new IllegalStateException("The project has unfinished tasks.");
+		}
+		this.state = ProjectState.COMPLETED;
 	}
 
 	private void requireOwnerOfActiveProject(PersonId actor) {

@@ -11,7 +11,11 @@ public class InvalidProjectException extends RuntimeException {
 	private final List<InvalidField> fields;
 
 	public InvalidProjectException(List<InvalidField> fields) {
-		super("The project is invalid.");
+		this("The project is invalid.", fields);
+	}
+
+	public InvalidProjectException(String detail, List<InvalidField> fields) {
+		super(detail);
 		this.fields = List.copyOf(fields);
 	}
 

@@ -38,6 +38,9 @@ public interface TaskRepository {
 	 */
 	List<StateCount> countByState(Collection<ProjectId> projects);
 
+	/** Whether any task of the project, not deleted, is To do or In progress (EX-018; Assumption A-007). */
+	boolean hasUnfinished(ProjectId project);
+
 	/** The number of tasks of one project in one state. */
 	record StateCount(ProjectId project, TaskState state, long count) {
 

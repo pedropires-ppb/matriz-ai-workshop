@@ -118,6 +118,28 @@ class ProjectDomainTests {
 		assertThat(project.isDeleted()).isTrue();
 		assertThatIllegalStateException().isThrownBy(() -> project.edit(OWNER, new ProjectEdit(null, false, null)));
 		assertThatIllegalStateException().isThrownBy(() -> project.delete(OWNER, Instant.now()));
+		assertThatIllegalStateException().isThrownBy(() -> project.complete(OWNER, false));
+	}
+
+	@Test
+	void theOwnerCompletesAProjectWithNoUnfinishedTasksAndThenItCannotBeChanged() {
+		Project project = project();
+
+		project.complete(OWNER, false);
+
+		assertThat(project.state()).isEqualTo(ProjectState.COMPLETED);
+		assertThatIllegalStateException().isThrownBy(() -> project.complete(OWNER, false));
+		assertThatIllegalStateException().isThrownBy(() -> project.edit(OWNER, new ProjectEdit(null, false, null)));
+		assertThatIllegalStateException().isThrownBy(() -> project.delete(OWNER, Instant.now()));
+	}
+
+	@Test
+	void aProjectWithUnfinishedTasksOrCompletedByAnotherPersonStaysActive() {
+		Project project = project();
+
+		assertThatIllegalStateException().isThrownBy(() -> project.complete(OWNER, true));
+		assertThatIllegalStateException().isThrownBy(() -> project.complete(OTHER, false));
+		assertThat(project.state()).isEqualTo(ProjectState.ACTIVE);
 	}
 
 	private static Project project() {

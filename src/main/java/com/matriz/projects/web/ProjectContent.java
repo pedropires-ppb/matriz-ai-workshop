@@ -27,6 +27,10 @@ final class ProjectContent {
 
 	static final String DESCRIPTION = "description";
 
+	static final String STATE = "state";
+
+	static final String COMPLETED = "COMPLETED";
+
 	private final JsonNode content;
 
 	ProjectContent(JsonNode content) {
@@ -51,6 +55,33 @@ final class ProjectContent {
 	 */
 	Parsed forUpdate() {
 		return parse(false);
+	}
+
+	/**
+	 * Checks the content of a request to complete the project ({@code CompleteProjectRequest}):
+	 * an object whose only member is {@code state}, with the value {@code COMPLETED}. Reopening is not
+	 * defined (OQ-006).
+	 * @throws InvalidProjectException (422) otherwise
+	 */
+	void forCompletion() {
+		List<InvalidField> invalid = new ArrayList<>();
+		if (!this.content.isObject()) {
+			invalid.add(new InvalidField("", "The content must be a JSON object."));
+		}
+		else {
+			JsonNode state = this.content.get(STATE);
+			if (state == null || !state.isString() || !COMPLETED.equals(state.stringValue())) {
+				invalid.add(new InvalidField(pointer(STATE), "The only accepted value is COMPLETED."));
+			}
+			for (String property : this.content.propertyNames()) {
+				if (!STATE.equals(property)) {
+					invalid.add(new InvalidField(pointer(property), "This property is not allowed."));
+				}
+			}
+		}
+		if (!invalid.isEmpty()) {
+			throw new InvalidProjectException("A project can only be changed to the state COMPLETED.", invalid);
+		}
 	}
 
 	private Parsed parse(boolean nameRequired) {

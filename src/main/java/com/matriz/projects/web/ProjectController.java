@@ -6,6 +6,7 @@ import java.util.UUID;
 
 import com.matriz.identity.SignedInPerson;
 import com.matriz.projects.ProjectId;
+import com.matriz.projects.application.CompleteProject;
 import com.matriz.projects.application.CreateProject;
 import com.matriz.projects.application.DeleteProject;
 import com.matriz.projects.application.GetProject;
@@ -33,6 +34,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -74,17 +76,20 @@ class ProjectController {
 
 	private final ListProjectMembers listProjectMembers;
 
+	private final CompleteProject completeProject;
+
 	private final JsonMapper jsonMapper;
 
 	ProjectController(CreateProject createProject, ListProjects listProjects, GetProject getProject,
 			UpdateProject updateProject, DeleteProject deleteProject, ListProjectMembers listProjectMembers,
-			JsonMapper jsonMapper) {
+			CompleteProject completeProject, JsonMapper jsonMapper) {
 		this.createProject = createProject;
 		this.listProjects = listProjects;
 		this.getProject = getProject;
 		this.updateProject = updateProject;
 		this.deleteProject = deleteProject;
 		this.listProjectMembers = listProjectMembers;
+		this.completeProject = completeProject;
 		this.jsonMapper = jsonMapper;
 	}
 
@@ -126,10 +131,21 @@ class ProjectController {
 			throws Exception {
 		ProjectId id = id(projectId);
 		this.updateProject.checkCanEdit(person.personId(), id);
-		requireMergePatch(request);
+		requireMediaType(request, MERGE_PATCH);
 		ProjectContent.Parsed parsed = new ProjectContent(readContent(request)).forUpdate();
 		return ProjectResponse.of(this.updateProject.update(person.personId(), id, parsed.name(),
 				parsed.hasDescription(), parsed.description()));
+	}
+
+	/** Completes the project: 404 and 403 first, then 415, 400, and 422, then 409 (ADR-004 decision 5). */
+	@PutMapping("/{projectId}/state")
+	ProjectResponse complete(SignedInPerson person, @PathVariable String projectId, HttpServletRequest request)
+			throws Exception {
+		ProjectId id = id(projectId);
+		this.completeProject.checkCanComplete(person.personId(), id);
+		requireMediaType(request, MediaType.APPLICATION_JSON);
+		new ProjectContent(readContent(request)).forCompletion();
+		return ProjectResponse.of(this.completeProject.complete(person.personId(), id));
 	}
 
 	@DeleteMapping("/{projectId}")
@@ -152,7 +168,8 @@ class ProjectController {
 		}
 	}
 
-	private static void requireMergePatch(HttpServletRequest request) throws HttpMediaTypeNotSupportedException {
+	private static void requireMediaType(HttpServletRequest request, MediaType expected)
+			throws HttpMediaTypeNotSupportedException {
 		String header = request.getContentType();
 		MediaType type = null;
 		if (header != null) {
@@ -163,8 +180,8 @@ class ProjectController {
 				type = null;
 			}
 		}
-		if (type == null || !MERGE_PATCH.isCompatibleWith(type)) {
-			throw new HttpMediaTypeNotSupportedException(type, List.of(MERGE_PATCH));
+		if (type == null || !expected.isCompatibleWith(type)) {
+			throw new HttpMediaTypeNotSupportedException(type, List.of(expected));
 		}
 	}
 

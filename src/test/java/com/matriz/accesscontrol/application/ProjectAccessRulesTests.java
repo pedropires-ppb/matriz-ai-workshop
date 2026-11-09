@@ -38,8 +38,8 @@ class ProjectAccessRulesTests {
 	}
 
 	@Test
-	void aProjectParticipantCannotEditOrDeleteEvenWhenCompleted() {
-		for (ProjectAction action : new ProjectAction[] { ProjectAction.EDIT, ProjectAction.DELETE }) {
+	void aProjectParticipantCannotEditDeleteOrCompleteEvenWhenCompleted() {
+		for (ProjectAction action : new ProjectAction[] { ProjectAction.EDIT, ProjectAction.DELETE, ProjectAction.COMPLETE }) {
 			for (ProjectState state : ProjectState.values()) {
 				assertThat(this.rules.decide(action, state, Optional.of(MemberRole.PROJECT_PARTICIPANT)))
 					.isEqualTo(AccessDecision.FORBIDDEN);
@@ -48,8 +48,8 @@ class ProjectAccessRulesTests {
 	}
 
 	@Test
-	void theProjectOwnerEditsAndDeletesOnlyWhileTheProjectIsActive() {
-		for (ProjectAction action : new ProjectAction[] { ProjectAction.EDIT, ProjectAction.DELETE }) {
+	void theProjectOwnerEditsDeletesAndCompletesOnlyWhileTheProjectIsActive() {
+		for (ProjectAction action : new ProjectAction[] { ProjectAction.EDIT, ProjectAction.DELETE, ProjectAction.COMPLETE }) {
 			assertThat(this.rules.decide(action, ProjectState.ACTIVE, Optional.of(MemberRole.PROJECT_OWNER)))
 				.isEqualTo(AccessDecision.ALLOWED);
 			assertThat(this.rules.decide(action, ProjectState.COMPLETED, Optional.of(MemberRole.PROJECT_OWNER)))

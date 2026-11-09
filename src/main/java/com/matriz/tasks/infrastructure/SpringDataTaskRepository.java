@@ -36,6 +36,13 @@ interface SpringDataTaskRepository extends Repository<Task, TaskId> {
 			""")
 	List<StateCountRow> countByState(@Param("projects") Collection<UUID> projects);
 
+	@Query("""
+			select count(t) > 0
+			from Task t
+			where t.projectId.value = :project and t.deletedAt is null and t.state <> :done
+			""")
+	boolean hasStateOtherThan(@Param("project") UUID project, @Param("done") TaskState done);
+
 	@Query(value = """
 			select t from Task t
 			where t.projectId.value = :project and t.deletedAt is null

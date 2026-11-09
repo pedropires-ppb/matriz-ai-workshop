@@ -10,6 +10,9 @@ public enum ProjectAction {
 	EDIT,
 
 	/** Delete it. */
-	DELETE
+	DELETE,
+
+	/** Complete it (FR-007). */
+	COMPLETE
 
 }
