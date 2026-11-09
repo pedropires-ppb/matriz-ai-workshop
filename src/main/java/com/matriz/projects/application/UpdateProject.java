@@ -8,6 +8,7 @@ import com.matriz.projects.MemberRole;
 import com.matriz.projects.ProjectAccessPolicy;
 import com.matriz.projects.ProjectAction;
 import com.matriz.projects.ProjectId;
+import com.matriz.projects.ProjectProgress;
 import com.matriz.projects.application.InvalidProjectException.InvalidField;
 import com.matriz.projects.domain.Project;
 import com.matriz.projects.domain.ProjectDescription;
@@ -28,10 +29,13 @@ public class UpdateProject {
 
 	private final ProjectRepository projects;
 
+	private final ProjectProgress progress;
+
 	private final ProjectAccessPolicy policy;
 
-	UpdateProject(ProjectRepository projects, ProjectAccessPolicy policy) {
+	UpdateProject(ProjectRepository projects, ProjectProgress progress, ProjectAccessPolicy policy) {
 		this.projects = projects;
+		this.progress = progress;
 		this.policy = policy;
 	}
 
@@ -70,7 +74,7 @@ public class UpdateProject {
 		ProjectRules.requireNoProblems(invalid);
 		ProjectRules.requireNoConflict(decision);
 		project.edit(person, new ProjectEdit(newName, changesDescription, newDescription));
-		return ProjectDetails.of(project, MemberRole.PROJECT_OWNER);
+		return ProjectDetails.of(project, MemberRole.PROJECT_OWNER, this.progress.of(id));
 	}
 
 }

@@ -1,5 +1,6 @@
 package com.matriz.tasks.domain;
 
+import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
@@ -30,6 +31,17 @@ public interface TaskRepository {
 	 * @param size the maximum number of tasks in the page
 	 */
 	TaskPage find(ProjectId project, Set<TaskState> states, Set<TaskPriority> priorities, int page, int size);
+
+	/**
+	 * The number of tasks, not deleted, of each of the projects in each state, in one query. A state
+	 * with no task of a project has no entry (FR-012, FR-024; Assumption A-022).
+	 */
+	List<StateCount> countByState(Collection<ProjectId> projects);
+
+	/** The number of tasks of one project in one state. */
+	record StateCount(ProjectId project, TaskState state, long count) {
+
+	}
 
 	/** A page of tasks and the number of all the tasks that match. */
 	record TaskPage(List<Task> items, long totalItems) {

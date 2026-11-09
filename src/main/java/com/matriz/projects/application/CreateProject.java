@@ -5,6 +5,7 @@ import java.util.List;
 import com.matriz.identity.PersonId;
 import com.matriz.projects.MemberRole;
 import com.matriz.projects.ProjectId;
+import com.matriz.projects.ProjectProgress;
 import com.matriz.projects.application.InvalidProjectException.InvalidField;
 import com.matriz.projects.domain.Project;
 import com.matriz.projects.domain.ProjectDescription;
@@ -23,8 +24,11 @@ public class CreateProject {
 
 	private final ProjectRepository projects;
 
-	CreateProject(ProjectRepository projects) {
+	private final ProjectProgress progress;
+
+	CreateProject(ProjectRepository projects, ProjectProgress progress) {
 		this.projects = projects;
+		this.progress = progress;
 	}
 
 	/**
@@ -39,7 +43,7 @@ public class CreateProject {
 		ProjectDescription validDescription = ProjectRules.description(description, invalid);
 		ProjectRules.requireNoProblems(invalid);
 		Project project = this.projects.save(Project.create(ProjectId.generate(), validName, validDescription, owner));
-		return ProjectDetails.of(project, MemberRole.PROJECT_OWNER);
+		return ProjectDetails.of(project, MemberRole.PROJECT_OWNER, this.progress.of(project.id()));
 	}
 
 }

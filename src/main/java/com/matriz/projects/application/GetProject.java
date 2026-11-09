@@ -6,6 +6,7 @@ import com.matriz.projects.MemberRole;
 import com.matriz.projects.ProjectAccessPolicy;
 import com.matriz.projects.ProjectAction;
 import com.matriz.projects.ProjectId;
+import com.matriz.projects.ProjectProgress;
 import com.matriz.projects.domain.Project;
 import com.matriz.projects.domain.ProjectRepository;
 
@@ -18,10 +19,13 @@ public class GetProject {
 
 	private final ProjectRepository projects;
 
+	private final ProjectProgress progress;
+
 	private final ProjectAccessPolicy policy;
 
-	GetProject(ProjectRepository projects, ProjectAccessPolicy policy) {
+	GetProject(ProjectRepository projects, ProjectProgress progress, ProjectAccessPolicy policy) {
 		this.projects = projects;
+		this.progress = progress;
 		this.policy = policy;
 	}
 
@@ -32,7 +36,7 @@ public class GetProject {
 		AccessDecision decision = this.policy.decide(ProjectAction.VIEW, project.state(), project.roleOf(person));
 		ProjectRules.requireMemberWithPermission(decision);
 		MemberRole role = project.roleOf(person).orElseThrow(ProjectNotFoundException::new);
-		return ProjectDetails.of(project, role);
+		return ProjectDetails.of(project, role, this.progress.of(id));
 	}
 
 }

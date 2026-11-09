@@ -1,6 +1,8 @@
 package com.matriz.tasks.infrastructure;
 
+import java.util.Collection;
 import java.util.EnumSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -33,6 +35,14 @@ class JpaTaskRepository implements TaskRepository {
 	@Override
 	public Optional<Task> findById(ProjectId project, TaskId id) {
 		return this.tasks.findVisible(project.value(), id.value());
+	}
+
+	@Override
+	public List<StateCount> countByState(Collection<ProjectId> projects) {
+		return this.tasks.countByState(projects.stream().map(ProjectId::value).toList())
+			.stream()
+			.map(StateCountRow::toStateCount)
+			.toList();
 	}
 
 	@Override

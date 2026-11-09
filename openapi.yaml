@@ -249,7 +249,8 @@ info:
       ([Assumption A-031](docs/constraints.md#assumptions)).
     - `listProjects` is paged (`page`, `size`) and returns `ProjectPage`,
       previously an array ([Assumption A-032](docs/constraints.md#assumptions)).
-    - `progress` and `taskCounts` are optional until I5 returns them.
+    - `progress` and `taskCounts` were optional until I5 returned them;
+      they are required again since I5 (2026-11-09).
     - Content of the wrong type receives `422`, not `400`.
     **Other open questions reflected, not answered:**
     - who may create projects and how people receive access
@@ -522,8 +523,8 @@ paths:
         Returns a page of the signed-in person's accessible projects, Active
         and Completed, each with its name, state, and the person's role. With
         `name`, only the projects whose name contains that text, ignoring
-        letter case, are returned. The task counts of each project are added
-        by increment I5: until then, `taskCounts` is omitted.
+        letter case, are returned. Each project comes with its own task
+        counts by state.
 
         **Traceability:**
         [FR-001](docs/requirements.md#functional-requirements),
@@ -569,8 +570,8 @@ paths:
           pages are stable ([Assumption A-032](docs/constraints.md#assumptions)).
         - An empty page is a successful response: the client then says that
           the person has no projects yet, or that no projects match.
-        - Each project's task counts by state, not counting deleted tasks,
-          come with I5; no totals across projects are returned
+        - Each project's task counts by state do not count deleted tasks;
+          no totals across projects are returned
           ([Assumption A-022](docs/constraints.md#assumptions),
           [Assumption A-025](docs/constraints.md#assumptions);
           [OQ-005](docs/constraints.md#open-questions)).
@@ -625,10 +626,18 @@ paths:
                         name: Project Alpha
                         state: ACTIVE
                         myRole: PROJECT_PARTICIPANT
+                        taskCounts:
+                          toDo: 1
+                          inProgress: 1
+                          done: 2
                       - projectId: 'b4e2d6a1'
                         name: Project Gamma
                         state: COMPLETED
                         myRole: PROJECT_OWNER
+                        taskCounts:
+                          toDo: 0
+                          inProgress: 0
+                          done: 3
                     page: 1
                     size: 20
                     totalItems: 2
@@ -641,6 +650,10 @@ paths:
                         name: Website Redesign
                         state: ACTIVE
                         myRole: PROJECT_PARTICIPANT
+                        taskCounts:
+                          toDo: 2
+                          inProgress: 1
+                          done: 1
                     page: 1
                     size: 20
                     totalItems: 1
@@ -750,6 +763,12 @@ paths:
                     description: First release
                     state: ACTIVE
                     myRole: PROJECT_OWNER
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 0
+                      percentDone: null
         '400':
           $ref: '#/components/responses/BadRequest'
         '415':
@@ -796,9 +815,8 @@ paths:
       summary: View a project
       description: |
         Returns an accessible project with its name, description, state, and
-        the person's role. Its progress, the task counts by state and the
-        percentage Done, is added by increment I5: until then, `progress` is
-        omitted.
+        the person's role, and its progress: the task counts by state and the
+        percentage Done.
 
         **Traceability:**
         [FR-001](docs/requirements.md#functional-requirements),
@@ -820,7 +838,7 @@ paths:
           is not a member receives `404`
           ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md);
           [Assumption A-022](docs/constraints.md#assumptions)).
-        - Once `progress` is returned, it counts only tasks that are not deleted
+        - `progress` counts only tasks that are not deleted
           ([Assumption A-006](docs/constraints.md#assumptions),
           [Assumption A-022](docs/constraints.md#assumptions)); task filters
           never change it
@@ -839,7 +857,7 @@ paths:
           ([Assumption A-011](docs/constraints.md#assumptions)).
       responses:
         '200':
-          description: The project, with its progress once I5 is delivered.
+          description: The project, with its progress.
           content:
             application/json:
               schema:
@@ -853,6 +871,12 @@ paths:
                     description: First release
                     state: ACTIVE
                     myRole: PROJECT_PARTICIPANT
+                    progress:
+                      taskCounts:
+                        toDo: 1
+                        inProgress: 1
+                        done: 2
+                      percentDone: 50
                 withoutDescription:
                   summary: US-007 — a project without a description omits the property
                   value:
@@ -860,6 +884,12 @@ paths:
                     name: Project Delta
                     state: ACTIVE
                     myRole: PROJECT_PARTICIPANT
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 0
+                      percentDone: null
                 completed:
                   summary: US-007 AC2 — a Completed project remains viewable
                   value:
@@ -867,8 +897,14 @@ paths:
                     name: Project Gamma
                     state: COMPLETED
                     myRole: PROJECT_OWNER
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 0
+                        done: 3
+                      percentDone: 100
                 fourTasks:
-                  summary: US-006 AC1, once I5 is delivered — 1 To do, 1 In progress, 2 Done; 50%
+                  summary: US-006 AC1 — 1 To do, 1 In progress, 2 Done; 50%
                   value:
                     projectId: '7f3a9c1e'
                     name: Project Alpha
@@ -881,7 +917,7 @@ paths:
                         done: 2
                       percentDone: 50
                 noTasks:
-                  summary: US-006 AC2 and EX-005, once I5 is delivered — zero tasks; the client shows "No tasks"
+                  summary: US-006 AC2 and EX-005 — zero tasks; the client shows "No tasks"
                   value:
                     projectId: 'a61f0d93'
                     name: Project Delta
@@ -894,7 +930,7 @@ paths:
                         done: 0
                       percentDone: null
                 oneOfThreeDone:
-                  summary: EX-027, once I5 is delivered — 1 of 3 tasks Done; 33%
+                  summary: EX-027 — 1 of 3 tasks Done; 33%
                   value:
                     projectId: 'c2d8e4f6'
                     name: Project Sigma
@@ -992,6 +1028,12 @@ paths:
                     description: First release
                     state: ACTIVE
                     myRole: PROJECT_OWNER
+                    progress:
+                      taskCounts:
+                        toDo: 0
+                        inProgress: 1
+                        done: 1
+                      percentDone: 50
         '400':
           $ref: '#/components/responses/BadRequest'
         '415':
@@ -3516,7 +3558,7 @@ components:
         measure is open ([OQ-005](docs/constraints.md#open-questions)).
     ProjectSummary:
       type: object
-      required: [projectId, name, state, myRole]
+      required: [projectId, name, state, myRole, taskCounts]
       properties:
         projectId:
           $ref: '#/components/schemas/Identifier'
@@ -3533,12 +3575,11 @@ components:
         taskCounts:
           $ref: '#/components/schemas/TaskCounts'
           description: |
-            Omitted until increment I5 returns the task counts; it then
-            becomes required again.
+            The project's task counts by state. *Optional and omitted from
+            2026-11-02 until I5; required again since I5 (2026-11-09).*
       description: |
         An accessible project as listed in My projects, with its own task
-        counts by state once I5 is delivered; no totals across projects are
-        given. `description` is omitted when the project has none
+        counts by state; no totals across projects are given. `description` is omitted when the project has none
         ([FR-001](docs/requirements.md#functional-requirements),
         [FR-024](docs/requirements.md#functional-requirements);
         [Assumption A-025](docs/constraints.md#assumptions),
@@ -3575,7 +3616,7 @@ components:
         ([Assumption A-032](docs/constraints.md#assumptions)).
     Project:
       type: object
-      required: [projectId, name, state, myRole]
+      required: [projectId, name, state, myRole, progress]
       properties:
         projectId:
           $ref: '#/components/schemas/Identifier'
@@ -3594,10 +3635,10 @@ components:
         progress:
           $ref: '#/components/schemas/Progress'
           description: |
-            Omitted until increment I5 returns the progress; it then becomes
-            required again.
+            The project's progress. *Optional and omitted from 2026-11-02
+            until I5; required again since I5 (2026-11-09).*
       description: |
-        An accessible project with its progress once I5 is delivered.
+        An accessible project with its progress.
         `description` is omitted when the project has none
         ([FR-001](docs/requirements.md#functional-requirements),
         [FR-012](docs/requirements.md#functional-requirements);

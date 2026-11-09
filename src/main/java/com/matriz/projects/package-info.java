@@ -5,7 +5,8 @@
  * This top-level package is the module's API (ADR-008): the identifiers and the interfaces that
  * other modules use or implement. Its sub-packages domain, application, infrastructure, and web
  * are internal. Since I3 it holds the project, state, role, and action types, and the interface
- * through which Access control decides who may do what with a project.
+ * through which Access control decides who may do what with a project. Since I5 also
+ * ProjectProgress, which Progress implements.
  */
 @ApplicationModule(displayName = "Projects", allowedDependencies = "identity")
 package com.matriz.projects;

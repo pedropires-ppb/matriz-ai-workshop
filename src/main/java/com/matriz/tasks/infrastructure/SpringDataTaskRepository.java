@@ -1,6 +1,7 @@
 package com.matriz.tasks.infrastructure;
 
 import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -26,6 +27,14 @@ interface SpringDataTaskRepository extends Repository<Task, TaskId> {
 
 	@Query("select t from Task t where t.id.value = :id and t.projectId.value = :project and t.deletedAt is null")
 	Optional<Task> findVisible(@Param("project") UUID project, @Param("id") UUID id);
+
+	@Query("""
+			select new com.matriz.tasks.infrastructure.StateCountRow(t.projectId.value, t.state, count(t))
+			from Task t
+			where t.projectId.value in :projects and t.deletedAt is null
+			group by t.projectId.value, t.state
+			""")
+	List<StateCountRow> countByState(@Param("projects") Collection<UUID> projects);
 
 	@Query(value = """
 			select t from Task t
