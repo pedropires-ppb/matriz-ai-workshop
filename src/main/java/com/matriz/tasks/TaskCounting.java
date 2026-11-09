@@ -21,10 +21,6 @@ public interface TaskCounting {
 
 	/** The number of tasks of one project in each state. */
 	record TaskCounts(long toDo, long inProgress, long done) {
-
-		/** No task in any state. */
-		public static final TaskCounts NONE = new TaskCounts(0, 0, 0);
-
 	}
 
 }

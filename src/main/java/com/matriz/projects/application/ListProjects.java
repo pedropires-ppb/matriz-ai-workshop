@@ -43,11 +43,11 @@ public class ListProjects {
 	public ProjectsPage list(PersonId person, String nameContains, int page, int size) {
 		String text = nameContains == null ? null : Whitespace.trim(nameContains);
 		ProjectListingPage found = this.projects.findAccessible(person, text, page, size);
-		Map<ProjectId, Figures> progress = this.progress
+		Map<ProjectId, Figures> figures = this.progress
 			.of(found.items().stream().map(ProjectListing::id).toList());
 		List<ProjectSummary> items = found.items()
 			.stream()
-			.map((listing) -> summary(listing, progress.get(listing.id())))
+			.map((listing) -> summary(listing, figures.get(listing.id())))
 			.toList();
 		long totalPages = (found.totalItems() + size - 1) / size;
 		return new ProjectsPage(items, page, size, found.totalItems(), totalPages);

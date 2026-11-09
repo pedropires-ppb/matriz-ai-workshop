@@ -17,7 +17,7 @@ type ProjectRoute = Extract<Route, { screen: 'project' }>;
  * Project detail (US-006, US-007, US-008, US-016, US-026): the project's data, its progress, its renaming
  * and its deletion after a confirmation, its members, and its tasks. Edit and Delete are here only (I13
  * decision 2). After a task is created here, the project is fetched again, so the progress is the API's
- * (I5 decision 3; I13 scope decision 10).
+ * (I5 decision 3).
  */
 export default function ProjectScreen({ route, notice }: { route: ProjectRoute; notice: Flash | null }) {
   const { projectId } = route;
