@@ -104,6 +104,22 @@ All features below are proposed Must priorities, subject to client approval; the
 
 **Troubleshooting.** If Maven cannot download because of a certificate error, such as `PKIX path building failed`, on a network that uses a private certificate authority, point the JDK at a trust store that contains that authority: `export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/path/to/truststore"`. Never commit trust stores or registry settings.
 
+### Use the User interface
+
+*Added on 2026-11-09 with increment [I13](docs/implementation-plan.md#i13--user-interface-consolidation).* After signing in at <http://localhost:8080/>, the User interface has five screens, each with its own address:
+
+| Screen | Address | Content |
+|---|---|---|
+| Sign-in | any address, before signing in | Login name and password. After signing in, the address that was asked for opens. |
+| Home | `#/` | The signed-in person, the number of their projects, the first five, and a link to all. |
+| Projects | `#/projects`, `#/projects/new` | Search by name, paging, and the “New project” form. |
+| Project detail | `#/projects/{projectId}` | The details, with Edit and Delete for the Project Owner; the members; and the tasks, with filters, paging, the assignees of each task, and the “New task” form. |
+| Task detail | `#/projects/{projectId}/tasks/{taskId}` | The details, state, and priority; Edit and Delete; the assignees; and the comments. |
+
+The search, the filters, and the page are kept in the address, so Back and Forward work. An unknown address leads to Home. Reloading the page signs the person out ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)); the address is kept, so the same screen opens after signing in again. The screens fit widths from 390 pixels; from 720 pixels, the project and task screens use two columns.
+
+**Front-end development.** The front end is in `frontend/` (React, TypeScript, Vite). The build runs its type check and unit tests (Vitest); to run them alone, with the Node.js that the build installs: `cd frontend && PATH="$PWD/node:$PATH" npm test`. The address of the backend is configured in one place, `frontend/src/config.ts`, from `VITE_API_BASE_URL` at build time. It is empty by default, which means the same origin as the page. Only the same origin is supported for now: another origin would need CORS, which is not configured.
+
 ### Sign in, use the API, and sign out
 
 *Added on 2026-11-02 with increment I2 ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points), [ADR-009](docs/adr/ADR-009-identity-from-the-token.md)).* With the demonstration data, open <http://localhost:8080/> and sign in with a demonstration login name and the password you chose in `.env`. Letter case in the login name does not matter. The [API contract](openapi.yaml) specifies the access token's life cycle under “Token life cycle”; in short:
@@ -144,7 +160,7 @@ unset PASSWORD TOKEN
 
 ### Manage projects
 
-*Added on 2026-11-02 with increments I3, I10 (project deletion only), and I11 (search by name only) ([A-031 and A-032](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* After signing in, “My projects” lists the projects of the signed-in person, with a search by name, a pager, and a “New project” form; opening a project shows its page, where the Project Owner of an Active project edits or deletes it. Deleting asks for confirmation in the User interface. The [API contract](openapi.yaml) specifies each operation; in short:
+*Added on 2026-11-02 with increments I3, I10 (project deletion only), and I11 (search by name only) ([A-031 and A-032](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* The Projects screen lists the projects of the signed-in person, with a search by name, a pager, and a “New project” form; opening a project shows the Project detail, where the Project Owner of an Active project edits or deletes it. Deleting asks for confirmation in the User interface. *Changed on 2026-11-09 with increment I13: previously “After signing in, “My projects” lists the projects of the signed-in person, …; opening a project shows its page, …”.* The [API contract](openapi.yaml) specifies each operation; in short:
 
 | Operation | Request | Success | Notes |
 |---|---|---|---|
@@ -158,7 +174,7 @@ The name has 1 to 100 characters and the optional description at most 1000, coun
 
 ### Manage tasks
 
-*Added on 2026-11-05 with increments I4, I10 (task deletion only), and I11 (task filters only) ([A-033](docs/constraints.md#assumptions), [A-004, A-024, A-031, and A-032 as amended](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* The project page has a “Tasks” section: filters by state and priority, the list with a count and a pager, a “New task” form, and a details panel where the Project Owner of an Active project edits the task, changes its state and priority, or deletes it after a confirmation. After each operation the page of tasks is fetched again, so the list and the count are current without reloading the page. A Project Participant sees the tasks but cannot change them until assignees arrive in I7.
+*Added on 2026-11-05 with increments I4, I10 (task deletion only), and I11 (task filters only) ([A-033](docs/constraints.md#assumptions), [A-004, A-024, A-031, and A-032 as amended](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* The Project detail has a “Tasks” section: filters by state and priority, the list with a count, the assignees of each task, and a pager, and a “New task” form. Each task opens the Task detail, where the Project Owner of an Active project edits the task, changes its state and priority, or deletes it after a confirmation. *Changed on 2026-11-09 with increment I13: previously “The project page has a “Tasks” section: filters by state and priority, the list with a count and a pager, a “New task” form, and a details panel where …”.* After each operation the page of tasks is fetched again, so the list and the count are current without reloading the page. A Project Participant sees the tasks but cannot change them until assignees arrive in I7.
 
 | Operation | Request | Success | Notes |
 |---|---|---|---|
