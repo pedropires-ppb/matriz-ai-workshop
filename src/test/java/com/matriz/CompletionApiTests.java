@@ -217,6 +217,23 @@ class CompletionApiTests extends DatabaseTestSupport {
 	}
 
 	@Test
+	void anAssigneeOfACompletedProjectCannotChangeTheStateOrTheAssignees() throws Exception {
+		String task = addTask("DONE");
+		assign(task, this.rui);
+		complete(this.anaToken).andExpect(status().isOk());
+		String before = snapshot();
+
+		assertProblem(changeTaskState(this.ruiToken, task, "IN_PROGRESS"), 409, "Conflict", COMPLETED);
+		assertProblem(this.mvc.perform(withToken(delete(taskUrl(task) + "/assignees/" + this.rui.id()), this.ruiToken)),
+				409, "Conflict", COMPLETED);
+		assertProblem(this.mvc.perform(withToken(post(taskUrl(task) + "/assignees"), this.ruiToken)
+			.contentType(MediaType.APPLICATION_JSON)
+			.content("{\"personId\":\"" + this.rui.id() + "\"}")), 409, "Conflict", COMPLETED);
+
+		assertThat(snapshot()).isEqualTo(before);
+	}
+
+	@Test
 	void aCompletedProjectStillAcceptsComments() throws Exception {
 		String task = addTask("DONE");
 		complete(this.anaToken).andExpect(status().isOk());

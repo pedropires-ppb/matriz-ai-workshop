@@ -506,6 +506,26 @@ class UserInterfaceTests extends DatabaseTestSupport {
 	}
 
 	@Test
+	void aSessionEndedElsewhereSendsThePersonToSignInWhenTheyCompleteAProject() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Mine", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			String token = tab.signIn(ana);
+			tab.openProject("Mine");
+			tab.button("Complete project").click();
+			assertThat(apiStatus("DELETE", SIGN_IN_PATH, token)).isEqualTo(204);
+
+			tab.button("Complete").click();
+
+			assertThat(tab.notice()).hasText("Your session has ended. Please sign in again.");
+			tab.assertSignInScreen();
+		}, UNAUTHORIZED_RESOURCE);
+		assertThat(this.jdbc.sql("SELECT state FROM project WHERE project_id = ?").param(project).query(String.class).single())
+			.isEqualTo("ACTIVE");
+	}
+
+	@Test
 	void theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage() {
 		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
 		UUID project = addProject("Website Redesign", null, ana, "PROJECT_OWNER");
@@ -1024,6 +1044,7 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.heading("Mobile App")).isVisible();
 			assertThat(tab.button("New task")).hasCount(0);
 			assertThat(tab.button("Edit project")).hasCount(0);
+			assertThat(tab.button("Complete project")).hasCount(0);
 			tab.openTask("Design the screens");
 			assertThat(tab.page().getByText("Please start with the sign-in screen")).isVisible();
 			assertThat(tab.button("Edit task")).hasCount(0);
@@ -1057,8 +1078,23 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.page().getByText("This project has no tasks yet.")).isVisible();
 			assertThat(tab.progress()).containsText("No tasks");
 			assertThat(tab.progress().locator("progress")).hasCount(0);
+
+			tab.button("Complete project").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERTDIALOG)).hasText(Pattern.compile(
+					"^Complete \"Side Project\"\\? It cannot be reopened, and its tasks become read-only; comments can still be added\\."));
+			tab.assertFitsTheWidth();
+			tab.button("Complete").click();
+			assertThat(tab.notice()).hasText("The project has been completed.");
+			assertThat(tab.page().locator(".project-details dd").first()).hasText("Completed");
+			assertThat(tab.button("Edit project")).hasCount(0);
+			assertThat(tab.button("Delete project")).hasCount(0);
+			assertThat(tab.button("Complete project")).hasCount(0);
+			assertThat(tab.button("New task")).hasCount(0);
+			tab.assertFitsTheWidth();
+
 			tab.navigateTo("Home");
 			assertThat(tab.page().getByText("1 project", new Page.GetByTextOptions().setExact(true))).isVisible();
+			assertThat(tab.homeProject("Side Project")).containsText("Completed");
 			assertThat(tab.homeProject("Side Project")).containsText("0 To do, 0 In progress, 0 Done");
 			tab.assertFitsTheWidth();
 		});
@@ -1085,21 +1121,25 @@ class UserInterfaceTests extends DatabaseTestSupport {
 		addProject("Empty", null, ana, "PROJECT_OWNER");
 		UUID archive = addProject("Archive", null, ana, "PROJECT_OWNER");
 		addTask(archive, "Old work", "DONE", "MEDIUM");
-		addTask(archive, "Left over", "TO_DO", "MEDIUM");
-		this.jdbc.sql("UPDATE project SET state = 'COMPLETED' WHERE project_id = ?").param(archive).update();
+		addTask(archive, "Wrapped up", "DONE", "MEDIUM");
 
 		inATab((tab) -> {
 			tab.open();
 			tab.signIn(ana);
+			tab.openProject("Archive");
+			tab.button("Complete project").click();
+			tab.button("Complete").click();
+			assertThat(tab.notice()).hasText("The project has been completed.");
+			tab.navigateTo("Home");
 			assertThat(tab.homeProject("Archive")).containsText("Completed");
-			assertThat(tab.homeProject("Archive")).containsText("1 To do, 0 In progress, 1 Done");
+			assertThat(tab.homeProject("Archive")).containsText("0 To do, 0 In progress, 2 Done");
 			assertThat(tab.homeProject("Website Redesign")).containsText("1 To do, 1 In progress, 2 Done");
 			assertThat(tab.page().getByText("% Done")).hasCount(0);
 
 			tab.navigateTo("Projects");
 			assertThat(tab.projects()).hasCount(4);
 			assertThat(tab.projects().filter(new Locator.FilterOptions().setHasText("Archive")))
-				.containsText("1 To do, 0 In progress, 1 Done");
+				.containsText("0 To do, 0 In progress, 2 Done");
 			assertThat(tab.projects().filter(new Locator.FilterOptions().setHasText("Empty")))
 				.containsText("0 To do, 0 In progress, 0 Done");
 
@@ -1113,7 +1153,7 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.progress().locator("progress")).hasAttribute("value", "33");
 
 			tab.openProject("Archive");
-			assertThat(tab.progress()).containsText("50% Done");
+			assertThat(tab.progress()).containsText("100% Done");
 
 			tab.openProject("Website Redesign");
 			assertThat(tab.progress()).containsText("50% Done");
@@ -1146,6 +1186,110 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			.param(copy)
 			.query(Boolean.class)
 			.single()).isTrue();
+	}
+
+	/**
+	 * I8: completing a project (US-010; EX-006, EX-018; Assumptions A-001, A-007, A-011, A-023, A-029),
+	 * through the User interface and the real API (the I8 decisions 4, 5, 6, and 9).
+	 */
+	@Test
+	void theProjectOwnerCompletesAProjectOnlyWhenNoTaskIsUnfinished() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		TestAccess.TestPerson eva = TestAccess.addPerson(this.jdbc, "Eva Santos");
+		UUID mobile = addProject("Mobile App", null, ana, "PROJECT_OWNER", rui);
+		addProject("Website Redesign", null, eva, "PROJECT_OWNER");
+		addTask(mobile, "Plan the release", "DONE", "MEDIUM");
+		UUID ship = addTask(mobile, "Ship it", "TO_DO", "HIGH");
+		this.jdbc.sql("INSERT INTO assignment (task_id, person_id, project_id) VALUES (?, ?, ?)")
+			.params(ship, rui.id(), mobile)
+			.update();
+		String ruiToken = apiSignIn(rui);
+		String completePath = "/api/projects/" + mobile + "/state";
+		String shipStatePath = "/api/projects/" + mobile + "/tasks/" + ship + "/state";
+
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.openProject("Mobile App");
+			assertThat(tab.button("Complete project")).isDisabled();
+			assertThat(tab.page().getByText("Unavailable while tasks are To do or In progress.")).isVisible();
+			assertThat(tab.button("Complete project")).hasAttribute("aria-describedby", Pattern.compile(".+"));
+
+			tab.openTask("Ship it");
+			tab.page().getByLabel("State", exact()).selectOption("DONE");
+			assertThat(tab.notice()).hasText("The state is now Done.");
+			tab.link("Back to the project").click();
+			assertThat(tab.progress()).containsText("0 To do, 0 In progress, 2 Done");
+			assertThat(tab.button("Complete project")).isEnabled();
+			assertThat(tab.page().getByText("Unavailable while tasks are To do or In progress.")).hasCount(0);
+
+			tab.button("Complete project").click();
+			tab.button("Cancel").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERTDIALOG)).hasCount(0);
+			assertThat(tab.button("Complete project")).isEnabled();
+			assertThat(tab.requests().stream().filter((request) -> request.endsWith(completePath))).isEmpty();
+
+			// Rui reopens the task after Ana has opened the confirmation.
+			tab.button("Complete project").click();
+			assertThat(apiStatus("PUT", shipStatePath, ruiToken, "{\"state\":\"TO_DO\"}")).isEqualTo(200);
+			tab.button("Complete").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT))
+				.hasText("The project has tasks that are To do or In progress; it remains Active.");
+			assertThat(tab.progress()).containsText("1 To do, 0 In progress, 1 Done");
+			assertThat(tab.tasks().filter(new Locator.FilterOptions().setHasText("Ship it"))).containsText("To do");
+			assertThat(tab.button("Complete project")).isDisabled();
+			assertThat(tab.page().locator(".project-details dd").first()).hasText("Active");
+
+			assertThat(apiStatus("PUT", shipStatePath, ruiToken, "{\"state\":\"DONE\"}")).isEqualTo(200);
+			tab.openProject("Mobile App");
+			assertThat(tab.button("Complete project")).isEnabled();
+			tab.button("Complete project").click();
+			tab.clickTwiceAtOnce("Complete");
+			assertThat(tab.notice()).hasText("The project has been completed.");
+			assertThat(tab.requests().stream().filter((request) -> request.endsWith(completePath))).hasSize(2);
+			assertThat(tab.page().locator(".project-details dd").first()).hasText("Completed");
+			assertThat(tab.progress()).containsText("100% Done");
+			assertThat(tab.button("Complete project")).hasCount(0);
+			assertThat(tab.button("Edit project")).hasCount(0);
+			assertThat(tab.button("Delete project")).hasCount(0);
+			assertThat(tab.button("New task")).hasCount(0);
+			assertThat(tab.page().getByText("The project is Completed; its tasks cannot be changed.")).isVisible();
+
+			tab.navigateTo("Home");
+			assertThat(tab.homeProject("Mobile App")).containsText("Completed");
+			assertThat(tab.homeProject("Mobile App")).containsText("0 To do, 0 In progress, 2 Done");
+			tab.navigateTo("Projects");
+			assertThat(tab.projects().filter(new Locator.FilterOptions().setHasText("Mobile App"))).containsText("Completed");
+		}, "the server responded with a status of 409");
+
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(rui);
+			tab.openProject("Mobile App");
+			assertThat(tab.page().locator(".project-details dd").first()).hasText("Completed");
+			assertThat(tab.button("Complete project")).hasCount(0);
+			tab.openTask("Ship it");
+			assertThat(tab.page().getByLabel("State", exact())).hasCount(0);
+			tab.page().getByLabel("Add a comment", exact()).fill("Released to the stores");
+			tab.button("Add comment").click();
+			assertThat(tab.page().getByText("The comment has been added.")).isVisible();
+		});
+
+		inATab((tab) -> {
+			tab.open("#/projects/" + mobile);
+			tab.signIn(eva);
+			assertThat(tab.page().getByRole(AriaRole.ALERT))
+				.hasText("This project does not exist or is not accessible.");
+			assertThat(tab.button("Complete project")).hasCount(0);
+		}, "the server responded with a status of 404");
+
+		assertThat(this.jdbc.sql("SELECT state FROM project WHERE project_id = ?").param(mobile).query(String.class).single())
+			.isEqualTo("COMPLETED");
+		assertThat(this.jdbc.sql("SELECT state FROM task WHERE task_id = ?").param(ship).query(String.class).single())
+			.isEqualTo("DONE");
+		assertThat(this.jdbc.sql("SELECT count(*) FROM comment WHERE task_id = ?").param(ship).query(Integer.class).single())
+			.isEqualTo(1);
 	}
 
 	@Test
@@ -1330,6 +1474,41 @@ class UserInterfaceTests extends DatabaseTestSupport {
 							.setMethod(method)
 							.setHeader(HttpHeaders.AUTHORIZATION, TestAccess.bearer(token)))
 				.status();
+		}
+		finally {
+			api.dispose();
+		}
+	}
+
+	/** As {@link #apiStatus(String, String, String)}, with JSON content. */
+	private int apiStatus(String method, String path, String token, String json) {
+		APIRequestContext api = this.playwright.request()
+			.newContext(new APIRequest.NewContextOptions().setBaseURL(baseUrl()));
+		try {
+			return api
+				.fetch(path,
+						RequestOptions.create()
+							.setMethod(method)
+							.setHeader(HttpHeaders.AUTHORIZATION, TestAccess.bearer(token))
+							.setHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+							.setData(json))
+				.status();
+		}
+		finally {
+			api.dispose();
+		}
+	}
+
+	/** Signs a person in through the API, outside the User interface, and returns the access token. */
+	private String apiSignIn(TestAccess.TestPerson person) {
+		APIRequestContext api = this.playwright.request()
+			.newContext(new APIRequest.NewContextOptions().setBaseURL(baseUrl()));
+		try {
+			var response = api.post(SIGN_IN_PATH, RequestOptions.create()
+				.setHeader(HttpHeaders.CONTENT_TYPE, "application/json")
+				.setData(Map.of("loginName", person.loginName(), "password", person.password())));
+			assertThat(response.status()).isEqualTo(200);
+			return JsonMapper.shared().readTree(response.text()).path("accessToken").stringValue();
 		}
 		finally {
 			api.dispose();
