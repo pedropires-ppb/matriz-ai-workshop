@@ -28,7 +28,7 @@
 
 - A timer, set from `expiresIn` when the person signs in, discards the token when it expires. The message is then shown without waiting for a request.
 - When the page becomes visible again, the User interface checks the token with `GET /api/me`.
-- After signing in again, the person sees My projects.
+- After signing in again, the person sees My projects. *Changed on 2026-11-09 by team decision (the conversation “Implement the Matriz front end”, I13 question 4): after signing in, the person returns to the address they were at, for example after a reload or an ended session; after signing out, and from an unknown address, they see Home, which shows My projects.*
 - The texts are in English ([Assumption A-028](../constraints.md#assumptions)). They are kept in [`frontend/src/messages.ts`](../../frontend/src/messages.ts).
 - *Added on 2026-11-02 by team decision (Lab Worksheet 03, question 17), recorded during implementation:*
   - Signing out discards the token and shows “You have signed out.” even if the request fails.
