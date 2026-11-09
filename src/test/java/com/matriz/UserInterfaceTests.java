@@ -969,14 +969,19 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.heading("Home")).isVisible();
 			assertThat(tab.page().getByText("Welcome, Ana Silva.")).isVisible();
 			assertThat(tab.page().getByText("2 projects", new Page.GetByTextOptions().setExact(true))).isVisible();
+			assertThat(tab.homeProject("Mobile App")).containsText("1 To do, 1 In progress, 0 Done");
+			assertThat(tab.homeProject("Website Redesign")).containsText("0 To do, 0 In progress, 0 Done");
 			tab.assertFitsTheWidth();
 
 			tab.navigateTo("Projects");
 			tab.page().getByLabel("Search by name", exact()).fill("mobile");
 			tab.button("Search").click();
 			assertThat(tab.projects()).hasCount(1);
+			assertThat(tab.projects().first()).containsText("1 To do, 1 In progress, 0 Done");
 			tab.link("Mobile App").click();
 			assertThat(tab.heading("Mobile App")).isVisible();
+			assertThat(tab.progress()).containsText("0% Done");
+			assertThat(tab.progress()).containsText("1 To do, 1 In progress, 0 Done");
 			assertThat(tab.members()).hasText(new String[] { "Ana Silva · Project Owner", "Rui Martins · Project Participant" });
 			assertThat(tab.taskCount()).hasText("2 tasks");
 			assertThat(tab.tasks().filter(new Locator.FilterOptions().setHasText("Design the screens")))
@@ -1002,9 +1007,13 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.filter("Filter by state", "To do")).isChecked();
 			assertThat(tab.page().getByText("No task matches the filters.")).isVisible();
 			assertThat(tab.taskCount()).hasText("0 tasks");
+			assertThat(tab.progress()).containsText("50% Done");
+			assertThat(tab.progress()).containsText("0 To do, 1 In progress, 1 Done");
 			tab.button("Clear filters").click();
 			assertThat(tab.taskCount()).hasText("2 tasks");
 			assertThat(tab.tasks().filter(new Locator.FilterOptions().setHasText("Design the screens"))).containsText("Done");
+			tab.navigateTo("Home");
+			assertThat(tab.homeProject("Mobile App")).containsText("0 To do, 1 In progress, 1 Done");
 		});
 
 		inATab(width, (tab) -> {
@@ -1046,12 +1055,97 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.heading("Side Project")).isVisible();
 			assertThat(tab.notice()).hasText("The project has been created.");
 			assertThat(tab.page().getByText("This project has no tasks yet.")).isVisible();
+			assertThat(tab.progress()).containsText("No tasks");
+			assertThat(tab.progress().locator("progress")).hasCount(0);
 			tab.navigateTo("Home");
 			assertThat(tab.page().getByText("1 project", new Page.GetByTextOptions().setExact(true))).isVisible();
+			assertThat(tab.homeProject("Side Project")).containsText("0 To do, 0 In progress, 0 Done");
 			tab.assertFitsTheWidth();
 		});
 		assertThat(this.jdbc.sql("SELECT state FROM task WHERE task_id = ?").param(design).query(String.class).single())
 			.isEqualTo("IN_PROGRESS");
+	}
+
+	/**
+	 * I5: the progress of a project and the task counts of each project (US-006, US-013, US-015, US-017,
+	 * US-025; EX-005, EX-026, EX-027), as the API states them, after each change and whatever the filters.
+	 */
+	@Test
+	void theProgressAndTheCountsFollowEachChangeButNotTheFilters() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID website = addProject("Website Redesign", null, ana, "PROJECT_OWNER");
+		UUID copy = addTask(website, "Write the copy", "TO_DO", "MEDIUM");
+		addTask(website, "Build the pages", "IN_PROGRESS", "MEDIUM");
+		addTask(website, "Choose the colours", "DONE", "LOW");
+		addTask(website, "Draw the logo", "DONE", "HIGH");
+		UUID thirds = addProject("Thirds", null, ana, "PROJECT_OWNER");
+		addTask(thirds, "One", "DONE", "MEDIUM");
+		addTask(thirds, "Two", "TO_DO", "MEDIUM");
+		addTask(thirds, "Three", "TO_DO", "MEDIUM");
+		addProject("Empty", null, ana, "PROJECT_OWNER");
+		UUID archive = addProject("Archive", null, ana, "PROJECT_OWNER");
+		addTask(archive, "Old work", "DONE", "MEDIUM");
+		addTask(archive, "Left over", "TO_DO", "MEDIUM");
+		this.jdbc.sql("UPDATE project SET state = 'COMPLETED' WHERE project_id = ?").param(archive).update();
+
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			assertThat(tab.homeProject("Archive")).containsText("Completed");
+			assertThat(tab.homeProject("Archive")).containsText("1 To do, 0 In progress, 1 Done");
+			assertThat(tab.homeProject("Website Redesign")).containsText("1 To do, 1 In progress, 2 Done");
+			assertThat(tab.page().getByText("% Done")).hasCount(0);
+
+			tab.navigateTo("Projects");
+			assertThat(tab.projects()).hasCount(4);
+			assertThat(tab.projects().filter(new Locator.FilterOptions().setHasText("Archive")))
+				.containsText("1 To do, 0 In progress, 1 Done");
+			assertThat(tab.projects().filter(new Locator.FilterOptions().setHasText("Empty")))
+				.containsText("0 To do, 0 In progress, 0 Done");
+
+			tab.link("Empty").click();
+			assertThat(tab.progress()).containsText("No tasks");
+			assertThat(tab.progress()).containsText("0 To do, 0 In progress, 0 Done");
+			assertThat(tab.progress().locator("progress")).hasCount(0);
+
+			tab.openProject("Thirds");
+			assertThat(tab.progress()).containsText("33% Done");
+			assertThat(tab.progress().locator("progress")).hasAttribute("value", "33");
+
+			tab.openProject("Archive");
+			assertThat(tab.progress()).containsText("50% Done");
+
+			tab.openProject("Website Redesign");
+			assertThat(tab.progress()).containsText("50% Done");
+			assertThat(tab.progress()).containsText("1 To do, 1 In progress, 2 Done");
+			assertThat(tab.progress().locator("progress")).hasAttribute("value", "50");
+			tab.filter("Filter by state", "Done").check();
+			assertThat(tab.tasks()).hasCount(2);
+			assertThat(tab.progress()).containsText("50% Done");
+			assertThat(tab.progress()).containsText("1 To do, 1 In progress, 2 Done");
+			tab.button("Clear filters").click();
+
+			tab.openTask("Write the copy");
+			tab.button("Delete task").click();
+			tab.button("Delete").click();
+			assertThat(tab.page().getByText("The task has been deleted.")).isVisible();
+			assertThat(tab.progress()).containsText("67% Done");
+			assertThat(tab.progress()).containsText("0 To do, 1 In progress, 2 Done");
+
+			tab.button("New task").click();
+			tab.page().getByLabel("Title", exact()).fill("Test the pages");
+			tab.button("Create task").click();
+			assertThat(tab.page().getByText("The task has been created.")).isVisible();
+			assertThat(tab.progress()).containsText("50% Done");
+			assertThat(tab.progress()).containsText("1 To do, 1 In progress, 2 Done");
+
+			tab.navigateTo("Home");
+			assertThat(tab.homeProject("Website Redesign")).containsText("1 To do, 1 In progress, 2 Done");
+		});
+		assertThat(this.jdbc.sql("SELECT deleted_at IS NOT NULL FROM task WHERE task_id = ?")
+			.param(copy)
+			.query(Boolean.class)
+			.single()).isTrue();
 	}
 
 	@Test
@@ -1423,6 +1517,19 @@ class UserInterfaceTests extends DatabaseTestSupport {
 
 		Locator taskCount() {
 			return this.page.locator("#task-count");
+		}
+
+		/** The progress panel of the Project detail. */
+		Locator progress() {
+			return this.page.getByRole(AriaRole.REGION, new Page.GetByRoleOptions().setName("Progress").setExact(true));
+		}
+
+		/** One row of the list of projects on Home. */
+		Locator homeProject(String name) {
+			return this.page
+				.getByRole(AriaRole.LIST, new Page.GetByRoleOptions().setName("My projects").setExact(true))
+				.getByRole(AriaRole.LISTITEM)
+				.filter(new Locator.FilterOptions().setHas(link(name)));
 		}
 
 		/** One checkbox of a group of filters. */
