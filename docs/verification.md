@@ -407,3 +407,18 @@ All commands ran with installed JDK 25.0.5 selected for the command (`export JAV
 - Three added browser checks passed: failed project deletion keeps the project with no success notice; failed assignment keeps the selected person with no success notice or assignment; comment markup is literal text, not elements.
 
 The full clean verification and clean-copy exercise are recorded separately when executed. The earlier “not tested” entries remain historical observations; later results supersede only the specifically covered gaps.
+
+### Behavior-preserving refactoring
+
+*Decision confirmed by the project team on 2026-11-12, delivery questions 10–11.* Extract the duplicated controller page/size parsing into `com.matriz.PageParameters`. The benefit is one implementation of defaults, accepted integers and error messages. Alternatives were keeping duplication, consolidating Unicode test vectors, or extracting task access/form mechanics; the latter options were broader or did not simplify production code.
+
+The helper is cross-cutting HTTP code in the base package, the location already authorized by [ADR-008](adr/ADR-008-domain-driven-design.md#1-packages-and-layers), not a new business module or module dependency. Access checks, query-validation order, media handling, transactions, 400 details and defaults remain unchanged. Existing project/task API tests cover defaults, ranges, malformed values, boundaries and access precedence; no uncovered behavior required a new test for this extraction.
+
+With the same command-local JDK selection, both runs used exactly `./mvnw -B clean verify`:
+
+| Run | Java tests | Frontend | Result |
+|---|---|---|---|
+| Before extraction, commit `f3740fc` | 695; 0 failures/errors/skips | Typecheck, 31 Vitest tests, Vite build passed | BUILD SUCCESS; 3m37s |
+| After extraction | 695; 0 failures/errors/skips | Typecheck, 31 Vitest tests, Vite build passed | BUILD SUCCESS; 3m34s |
+
+Both counts include 46 browser tests and the layering/module-boundary checks. The diff removes the two private parsers/constants, adds one base-package helper and changes the four call sites; it does not bundle any behavior correction.
