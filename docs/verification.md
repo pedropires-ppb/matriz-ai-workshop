@@ -16,7 +16,7 @@
 | 06 | Assignees | Automated and manual | Confirmed |
 | 07 | Comments | Automated and manual | Confirmed (browser rendering of markup not checked) |
 | 08 | Authorization in the API | Automated and manual | Partly confirmed; Bug 1 fixed with a regression test, live re-check pending (Step 5) |
-| 09 | Deletion and errors | — | Not run |
+| 09 | Deletion and errors | Automated and manual | Partly confirmed (failed project deletion and failed assignment not run in a browser) |
 
 ## Environment and conventions
 
@@ -212,6 +212,40 @@
 
 - **First run, discarded:** my first script also ran project-level operations as Eva on a project Eva owns, so it deleted her own project and its results for sets B, C, and E and the snapshot were meaningless; it also used a project that was already Completed. I repeated the whole matrix with attack-only operations on fresh Active projects; only that second run is recorded above. The first run did show the `DELETE member` difference of Bug 1.
 - **Not verified here:** the authorization of the `eligible-participants` search against a *large* directory, and the display-name disclosure to every Project Owner ([A-030](constraints.md#assumptions) / [OQ-011](constraints.md#open-questions)), which is a recorded privacy risk, not tested here. Concurrent permission changes (a person removed while they send a request) are covered by `ParticipantsApiTests` (a simultaneous-removal test) but were not run by hand. Rate limiting and brute force are [Open OQ-027](constraints.md#open-questions).
+
+## Case 09 — Deletion and errors
+
+- **Expected:** deleting respects the dependencies; an API error produces no success message and does not lose what the person typed ([US-016](user-stories.md#us-016--delete-project), [US-017](user-stories.md#us-017--delete-task); [EX-006](user-stories.md#edge-cases-and-exceptions), [EX-007](user-stories.md#edge-cases-and-exceptions), [EX-015](user-stories.md#edge-cases-and-exceptions), [EX-016](user-stories.md#edge-cases-and-exceptions), [EX-017](user-stories.md#edge-cases-and-exceptions), [EX-018](user-stories.md#edge-cases-and-exceptions); [A-022](constraints.md#assumptions)). The rows below describe what was observed; the acceptance-criterion-by-criterion traceability is in the [I12 record](evidence/I12-verification.md).
+- **Type:** automated and manual. **Status: Partly confirmed.** The backend rules are confirmed by tests and by hand. In the browser, only the failures I forced or that existing tests force were checked (task creation, lists that fail to load, a repeated click, and, by hand, a failed task deletion, comment, and state change). A failed *project* deletion and a failed *assignment* were not run in a browser.
+- **Automated evidence** (baseline build, all passed): `ProjectApiTests` (`theProjectOwnerDeletesAnActiveProjectAndItDisappearsEverywhere`, `aProjectParticipantCannotDelete`, `aNonMemberCannotDeleteAndTheProjectStays`, `aCompletedProjectCannotBeDeleted`, `aDeletedProjectStaysDeletedWhenTheNameIsReused`), `TaskApiTests.aDeletedTaskIsInNoReadPathAndItsAssignmentsAreRemoved`, `AssignmentApiTests` (`aDeletedTaskCannotBeAssignedOrUnassignedAndItsAssignmentsAreRemoved`, `aProjectParticipantCannotCreateEditOrDeleteATaskEvenWhenAssigned`), `ParticipantsApiTests` (`aMemberAssignedToATaskInAnyStateCannotBeRemoved`, `unassigningOrDeletingTheTaskMakesTheMemberRemovable`), `CommentApiTests` (`aDeletedTaskOrProjectHasNoCommentsToAddOrRead`, `aDeletedProjectHasNoCommentsToAddOrRead`), `ProjectRepositoryTests.aDeletedProjectIsNotFoundAndNotListedButItsRowsStay`. In the browser (`UserInterfaceTests`, rerun by hand for this case: 5 tests, 0 failures, command `./mvnw -B test -Dtest='UserInterfaceTests#…'` with JDK 25): `aFailedSubmissionKeepsWhatWasTyped` (a forced `500` on creating a task: an alert, the title, description, and priority kept, nothing stored, and a second click then creates exactly one task), `aListThatFailsToLoadOffersRetryAndShowsLoadingWhileItWaits`, `aRepeatedClickSendsOneRequestAndCreatesOneRecord`, `aProjectsTasksArePagedAndTheLastPageIsLeftWhenItsOnlyTaskIsDeleted`, and `theMembersPanelGuardsEachChangeAndOnlyTheProjectOwnerOfAnActiveProjectSeesIt`. `confirmingTheDeletionRemovesTheProjectFromTheListAndEverywhere` passed in the baseline.
+- **Manual evidence, backend** (fresh database; project “Case 09 Deletion”: Ana owner, Rui participant assigned to a To do task that has a comment, one In progress task, two Done tasks):
+
+| Step | Action | Observed |
+|---|---|---|
+| 1 | Rui (participant) deletes a task; deletes the project | `403`, `403` |
+| 2 | Ana removes Rui while he is assigned | `409` (nothing removed) |
+| 3 | Ana deletes the To do task that is assigned to Rui and has a comment | `204` |
+| 4 | After step 3: `GET` the task (Ana and Rui), list its comments, assign someone to it, delete it again | `404` ×5 |
+| 5 | The task list and the progress after step 3 | the three other tasks; 0 To do, 1 In progress, 2 Done → 67% |
+| 6 | The database after step 3 | the task row stays (`deleted_at` set), its comment row stays, its assignment rows are gone (0) ([A-022](constraints.md#assumptions)) |
+| 7 | Ana removes Rui | `204` (he is no longer assigned) |
+| 8 | Ana completes the project while a task is In progress | `409`; after she deletes that task, completing works: `200` |
+| 9 | In the Completed project, Ana deletes a task; deletes the project | `409`, `409`; the project stays Completed with 0 To do, 0 In progress, 2 Done |
+| 10 | Ana deletes an Active project that has a member, an assigned task, and a comment | `204` |
+| 11 | After step 10: `GET` the project (Ana and Rui), its tasks, the task, its comments, its members | `404` ×6; the project is in no list; a search for the name from Rui's list returns nothing |
+| 12 | The database after step 10 | the project row is marked deleted; its task, comment, 2 memberships, and 1 assignment rows are all kept; no task without a project, no comment without a task, no assignment without a task (0, 0, 0) |
+
+- **Manual evidence, browser** (Chromium headless shell, driven by a throwaway script kept outside the repository, against the same running application; the project “Case 09 UI probe”: one To do task and one In progress task; I forced the failures with request interception, so these responses are stubs, not real server behaviour):
+
+| Step | Action | Observed |
+|---|---|---|
+| A | Open the project with a task In progress | the “Complete project” button is disabled, with the reason “Unavailable while tasks are To do or In progress.” (the `409` of step 8 is not reachable from this screen) |
+| B | Task detail: the deletion request answers `500` | an alert “Something went wrong. Please try again.”; no success message; the person stays on the task; by the API afterwards the task still exists |
+| C | The comment request answers `409` | the alert “The project is Completed; it cannot be changed.” (the screen maps any `409` on a comment to that text, which is the only real cause of a `409` there); no success message; the typed comment stays in the box; by the API afterwards the task still has 0 comments |
+| D | The state request answers `500`; the selector is set to Done | an alert; no success message; the selector shows To do again; by the API afterwards both tasks keep their states |
+
+- **Observation (not investigated):** in steps C and D the alert of step B stayed on the screen, so two alerts showed at once. The [I13 evidence](evidence/I13-user-interface-consolidation-verification.md) already lists that two notices can show at once on Task detail, one per panel (the details panel's and the comments panel's). What I saw is that an old alert of the details panel is not cleared when a later action in another panel fails. [Proposal] keep it as a known limitation for the project team to rank; no requirement says when an alert must go away.
+- **Not verified here:** a failed *project* deletion and a failed *assignment* in the browser; the real-server `409` of step 9 on the screen (I did not look at whether the screen offers those buttons in a Completed project); a failure of the network itself (connection refused, a time-out) beyond the retry test for lists; whether a screen reader announces the alerts; whether the soft-deleted rows can be restored or purged, which no requirement defines (see [A-022](constraints.md#assumptions)).
 
 ## Bugs found
 
