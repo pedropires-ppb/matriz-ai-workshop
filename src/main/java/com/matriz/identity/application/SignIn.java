@@ -8,6 +8,7 @@ import com.matriz.identity.domain.LoginName;
 import com.matriz.identity.domain.PasswordVerifier;
 import com.matriz.identity.domain.Person;
 import com.matriz.identity.domain.PersonRepository;
+import com.matriz.identity.domain.StorableText;
 
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -35,10 +36,13 @@ public class SignIn {
 	/**
 	 * Returns the new access token and the signed-in person, or nothing if the login name or the
 	 * password is incorrect. The login name may be in any letter case; the password must not be empty.
+	 * A login name that the database cannot keep (Assumption A-037) belongs to no one, so it is
+	 * incorrect like any unknown login name, and the password is checked all the same.
 	 */
 	@Transactional(readOnly = true)
 	public Optional<SignedIn> signIn(String loginName, String password) {
-		Optional<Person> person = this.people.findByLoginName(LoginName.entered(loginName));
+		Optional<Person> person = StorableText.isStorable(loginName)
+				? this.people.findByLoginName(LoginName.entered(loginName)) : Optional.empty();
 		boolean matches = this.passwords.matches(password, person.map(Person::passwordHash));
 		if (!matches || person.isEmpty()) {
 			return Optional.empty();

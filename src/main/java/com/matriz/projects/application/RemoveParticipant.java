@@ -38,8 +38,8 @@ public class RemoveParticipant {
 
 	/**
 	 * @param removed the identifier of the person to remove, as sent
-	 * @throws ProjectNotFoundException if there is no such project, or the person is not a member
-	 * @throws MemberNotFoundException if the person to remove is not a member
+	 * @throws MemberNotFoundException if there is no such project, the project is deleted, the person
+	 * is not a member, or the person to remove is not a member
 	 * @throws NotProjectOwnerException if the person is a Project Participant
 	 * @throws ProjectCompletedException if the project is Completed
 	 * @throws MembershipConflictException if the person to remove is the Project Owner, or is assigned
@@ -47,7 +47,7 @@ public class RemoveParticipant {
 	 */
 	@Transactional
 	public void remove(PersonId person, ProjectId id, String removed) {
-		Project project = this.projects.findByIdForUpdate(id).orElseThrow(ProjectNotFoundException::new);
+		Project project = this.projects.findByIdForUpdate(id).orElseThrow(MemberNotFoundException::new);
 		AccessDecision decision = this.policy.decide(ProjectAction.MANAGE_MEMBERS, project.state(),
 				project.roleOf(person));
 		if (decision == AccessDecision.NOT_FOUND) {

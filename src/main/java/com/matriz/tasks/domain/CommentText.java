@@ -17,10 +17,18 @@ public record CommentText(@Column(name = "text") String value) {
 
 	public static final String TOO_LONG = "The text must have at most " + MAXIMUM_LENGTH + " characters.";
 
-	/** @throws IllegalArgumentException with the text to show, if the text is empty after trimming or too long */
+	public static final String CANNOT_BE_STORED = "The text contains a character that cannot be stored.";
+
+	/**
+	 * @throws IllegalArgumentException with the text to show, if the text is empty after trimming, too
+	 * long, or has a character that cannot be stored (Assumption A-037)
+	 */
 	public CommentText {
 		if (value == null) {
 			throw new IllegalArgumentException(REQUIRED);
+		}
+		if (!StorableText.isStorable(value)) {
+			throw new IllegalArgumentException(CANNOT_BE_STORED);
 		}
 		value = Whitespace.trim(value);
 		if (value.isEmpty()) {

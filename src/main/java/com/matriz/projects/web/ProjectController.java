@@ -18,6 +18,7 @@ import com.matriz.projects.application.MemberNotFoundException;
 import com.matriz.projects.application.ProjectNotFoundException;
 import com.matriz.projects.application.RemoveParticipant;
 import com.matriz.projects.application.UpdateProject;
+import com.matriz.projects.domain.StorableText;
 import com.matriz.projects.domain.Whitespace;
 
 import jakarta.servlet.http.HttpServletRequest;
@@ -122,6 +123,7 @@ class ProjectController {
 		if (name != null && Whitespace.isBlank(name)) {
 			throw badRequest("The query parameter name must not be empty.");
 		}
+		requireStorable(name);
 		int pageNumber = integer("page", page, 1, 1, Integer.MAX_VALUE, "an integer of at least 1");
 		int pageSize = integer("size", size, DEFAULT_SIZE, 1, MAXIMUM_SIZE, "an integer from 1 to 100");
 		return ProjectPageResponse.of(this.listProjects.list(person.personId(), name, pageNumber, pageSize));
@@ -175,6 +177,7 @@ class ProjectController {
 		if (name != null && Whitespace.isBlank(name)) {
 			throw badRequest("The query parameter name must not be empty.");
 		}
+		requireStorable(name);
 		return this.listEligibleParticipants.list(person.personId(), id, name)
 			.stream()
 			.map((named) -> new MemberResponse.Person(named.personId().toString(), named.displayName()))
@@ -269,6 +272,13 @@ class ProjectController {
 			// Falls through to the same refusal as a number out of range.
 		}
 		throw badRequest("The query parameter " + name + " must be " + expected + ".");
+	}
+
+	/** Assumption A-037: the database cannot keep such a text, and a search for it is not a search. */
+	private static void requireStorable(String name) {
+		if (name != null && !StorableText.isStorable(name)) {
+			throw badRequest("The query parameter name must not contain a character that cannot be stored.");
+		}
 	}
 
 	private static ErrorResponseException badRequest(String detail) {

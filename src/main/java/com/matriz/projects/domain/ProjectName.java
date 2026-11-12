@@ -17,10 +17,18 @@ public record ProjectName(@Column(name = "name") String value) {
 
 	public static final String TOO_LONG = "The name must have at most " + MAXIMUM_LENGTH + " characters.";
 
-	/** @throws IllegalArgumentException with the text to show, if the name is empty or too long */
+	public static final String CANNOT_BE_STORED = "The name contains a character that cannot be stored.";
+
+	/**
+	 * @throws IllegalArgumentException with the text to show, if the name is empty, too long, or has a
+	 * character that cannot be stored (Assumption A-037)
+	 */
 	public ProjectName {
 		if (value == null) {
 			throw new IllegalArgumentException(REQUIRED);
+		}
+		if (!StorableText.isStorable(value)) {
+			throw new IllegalArgumentException(CANNOT_BE_STORED);
 		}
 		value = Whitespace.trim(value);
 		if (value.isEmpty()) {

@@ -15,10 +15,18 @@ public record TaskDescription(@Column(name = "description") String value) {
 
 	public static final String TOO_LONG = "The description must have at most " + MAXIMUM_LENGTH + " characters.";
 
-	/** @throws IllegalArgumentException with the text to show, if the description is empty or too long */
+	public static final String CANNOT_BE_STORED = "The description contains a character that cannot be stored.";
+
+	/**
+	 * @throws IllegalArgumentException with the text to show, if the description is empty, too long, or
+	 * has a character that cannot be stored (Assumption A-037)
+	 */
 	public TaskDescription {
 		if (value == null) {
 			throw new IllegalArgumentException("A description cannot be absent; use no description instead.");
+		}
+		if (!StorableText.isStorable(value)) {
+			throw new IllegalArgumentException(CANNOT_BE_STORED);
 		}
 		value = Whitespace.trim(value);
 		if (value.isEmpty()) {

@@ -253,6 +253,17 @@ class ParticipantsApiTests extends DatabaseTestSupport {
 	}
 
 	@Test
+	void aProjectThatDoesNotExistOrIsDeletedAnswersTheRemovalOfAMemberLikeAPersonWhoIsNotAMember() throws Exception {
+		String unknown = PROJECTS + "/" + UUID.randomUUID() + "/members/" + this.rui.id();
+		assertProblem(this.mvc.perform(withToken(delete(unknown), this.anaToken)), 404, "Not Found", MEMBER_NOT_FOUND);
+
+		this.mvc.perform(withToken(delete(PROJECTS + "/" + this.project), this.anaToken))
+			.andExpect(status().isNoContent());
+		assertProblem(remove(this.anaToken, this.rui.id().toString()), 404, "Not Found", MEMBER_NOT_FOUND);
+		assertProblem(remove(this.danielToken, this.rui.id().toString()), 404, "Not Found", MEMBER_NOT_FOUND);
+	}
+
+	@Test
 	void aParticipantCannotRemoveAnyoneIncludingThemselves() throws Exception {
 		assertProblem(remove(this.ruiToken, this.rui.id().toString()), 403, "Forbidden", NOT_OWNER);
 		assertProblem(remove(this.ruiToken, this.ana.id().toString()), 403, "Forbidden", NOT_OWNER);
