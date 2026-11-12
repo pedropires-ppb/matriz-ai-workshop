@@ -17,10 +17,18 @@ public record TaskTitle(@Column(name = "title") String value) {
 
 	public static final String TOO_LONG = "The title must have at most " + MAXIMUM_LENGTH + " characters.";
 
-	/** @throws IllegalArgumentException with the text to show, if the title is empty or too long */
+	public static final String CANNOT_BE_STORED = "The title contains a character that cannot be stored.";
+
+	/**
+	 * @throws IllegalArgumentException with the text to show, if the title is empty, too long, or has a
+	 * character that cannot be stored (Assumption A-037)
+	 */
 	public TaskTitle {
 		if (value == null) {
 			throw new IllegalArgumentException(REQUIRED);
+		}
+		if (!StorableText.isStorable(value)) {
+			throw new IllegalArgumentException(CANNOT_BE_STORED);
 		}
 		value = Whitespace.trim(value);
 		if (value.isEmpty()) {
