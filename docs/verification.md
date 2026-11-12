@@ -10,7 +10,7 @@
 |---|---|---|---|
 | 01 | Access to the application | Automated and manual | Confirmed |
 | 02 | Project management | Automated and manual | Confirmed |
-| 03 | Task persistence | Automated and manual | Partly confirmed (no automated restart test yet; added in Step 4) |
+| 03 | Task persistence | Automated and manual | Confirmed (restart: automated and manual; “without a reload”: Playwright only) |
 | 04 | Data validation | Automated and manual | Confirmed (Bug 2 found, fixed; other unusual text is OQ-031) |
 | 05 | State and priority | Automated and manual | Confirmed |
 | 06 | Assignees | Automated and manual | Confirmed |
@@ -81,8 +81,8 @@
 ## Case 03 — Task persistence
 
 - **Expected:** a created task appears without a reload, and it stays after the backend restarts ([US-003](user-stories.md#us-003--create-task), [US-004](user-stories.md#us-004--view-tasks)).
-- **Type:** automated (appears without a reload; creation followed by a query) and manual (the restart). **Status: Partly confirmed** until the automated restart test of Step 4 exists; the manual restart check itself is Confirmed.
-- **Automated evidence** (baseline build, all passed): `UserInterfaceTests.theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage` and `…assignsSeveralMembersAndRemovesEachOneWithoutReloadingThePage` (Playwright, Chromium); `TaskApiTests` (93) and `TaskRepositoryTests` (9). No existing automated test restarts the backend over a task: `SignOutAfterRestartTests` restarts it only for tokens, and `DemoDataTests` only for demonstration data. A new test will fill that gap (Step 4).
+- **Type:** automated (appears without a reload; creation followed by a query; the restart) and manual (the restart, by hand). **Status: Confirmed** for the data after a restart; “appears without a reload” rests on the Playwright tests only (not by hand, see below), so the status of that half is automated-only.
+- **Automated evidence** (baseline build, all passed): `UserInterfaceTests.theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage` and `…assignsSeveralMembersAndRemovesEachOneWithoutReloadingThePage` (Playwright, Chromium); `TaskApiTests` (93) and `TaskRepositoryTests` (9). Before this exercise no automated test restarted the backend over a task: `SignOutAfterRestartTests` restarts it only for tokens, and `DemoDataTests` only for demonstration data. The new `DataAfterRestartTests` fills that gap ([Step 4](#the-three-automated-tests)): it creates a project, two tasks, an assignee, a comment, and a state change over real HTTP, deletes one task, restarts the application on the same database, and compares five reads whole (project, task list, task, comments, members), which are identical; the deleted task is still `404`.
 - **Manual evidence** (fresh database; ids as returned by the API):
 
 | Step | Action | Observed |
@@ -193,7 +193,7 @@
 
 - **Expected:** another person cannot access or change a resource without permission, even by changing the identifiers in the request: a non-member gets the same `404` as for a resource that does not exist, a Project Participant gets `403` for owner-only operations, and nothing changes ([EX-003](user-stories.md#edge-cases-and-exceptions), [EX-012](user-stories.md#edge-cases-and-exceptions), [EX-016](user-stories.md#edge-cases-and-exceptions), [EX-019](user-stories.md#edge-cases-and-exceptions), [EX-021](user-stories.md#edge-cases-and-exceptions); [A-022](constraints.md#assumptions); [NFR-001](requirements.md#non-functional-requirements-and-unresolved-quality-criteria); permission matrix in [requirements](requirements.md#user-types)).
 - **Type:** automated and manual. **Status: Partly confirmed** at the manual run, and **Confirmed** for the sets above once [Bug 1](#bug-1--the-removal-of-a-member-told-a-non-member-whether-a-project-exists) was fixed and its regression test passed. The running application used for the manual run was built before the fix; I will repeat set A on a rebuilt jar in Step 5 and record the result here.
-- **Automated evidence** (baseline build, all passed): `EveryOperationRequiresATokenTests` (45), `ProjectApiTests` (67), `TaskApiTests` (93), `AssignmentApiTests` (21, including `aTaskOfAnotherProjectIsNotFoundThroughThisOne`), `ParticipantsApiTests` (27), `MembersApiTests` (8), `CommentApiTests` (36), `ProblemDetailsTests` (16), `TaskAccessRulesTests` (7), `ProjectAccessRulesTests` (5), and in `UserInterfaceTests` the tests of the participant who cannot edit. The new class `CrossProjectAccessTests` (Step 4) adds the missing identifier-swapping checks for comments, state, assignees, and members.
+- **Automated evidence** (baseline build, all passed): `EveryOperationRequiresATokenTests` (45), `ProjectApiTests` (67), `TaskApiTests` (93), `AssignmentApiTests` (21, including `aTaskOfAnotherProjectIsNotFoundThroughThisOne`), `ParticipantsApiTests` (27), `MembersApiTests` (8), `CommentApiTests` (36), `ProblemDetailsTests` (16), `TaskAccessRulesTests` (7), `ProjectAccessRulesTests` (5), and in `UserInterfaceTests` the tests of the participant who cannot edit. The new class `CrossProjectAccessTests` ([Step 4](#the-three-automated-tests)) adds the missing identifier-swapping checks: 56 task operations (read, edit, state, delete, comments, assignees) by three people across two projects, and the removal, addition, and listing of members through the wrong project, all `404`, with a fingerprint of the five data tables unchanged.
 - **Manual evidence** (fresh database; Ana owner of “Case 08 Ana project” with Rui as participant, Eva owner of her own project and not a member of Ana's; a snapshot hash of both projects, their tasks, comments, and members taken before and after):
 
 | Set | Request | Observed |
@@ -246,6 +246,42 @@
 
 - **Observation (not investigated):** in steps C and D the alert of step B stayed on the screen, so two alerts showed at once. The [I13 evidence](evidence/I13-user-interface-consolidation-verification.md) already lists that two notices can show at once on Task detail, one per panel (the details panel's and the comments panel's). What I saw is that an old alert of the details panel is not cleared when a later action in another panel fails. [Proposal] keep it as a known limitation for the project team to rank; no requirement says when an alert must go away.
 - **Not verified here:** a failed *project* deletion and a failed *assignment* in the browser; the real-server `409` of step 9 on the screen (I did not look at whether the screen offers those buttons in a Completed project); a failure of the network itself (connection refused, a time-out) beyond the retry test for lists; whether a screen reader announces the alerts; whether the soft-deleted rows can be restored or purged, which no requirement defines (see [A-022](constraints.md#assumptions)).
+
+## The three automated tests
+
+Command for each (JDK 25; Docker running, for Testcontainers PostgreSQL): `./mvnw -B test -Dtest=<Class>`. For each test I broke the rule it checks on purpose, ran it, and reverted the break with `git checkout` (the working tree was clean again afterwards, and each test was green again).
+
+| # | Kind | Class (file under `src/test/java/com/matriz/`) | New or extended | Result with the rule intact | Result with the rule broken |
+|---|---|---|---|---|---|
+| 1 | Validation rule | `UnusualTextTests` | New: no existing test covered control characters, unpaired surrogates, or invisible characters | 55 tests, 0 failures | break: `StorableText.isStorable` in the three modules accepts everything (the loop does not run) → 55 tests, **33 failures** |
+| 2 | Authorization | `CrossProjectAccessTests` | New: existing classes swap identifiers for tasks only; this one covers comments, state, assignees, members, and every person | 2 tests, 0 failures | break 1: the task lookup in `SpringDataTaskRepository` ignores the project of the path → `ana GET …/tasks/{task of the other project}` answers `200` with the task, test **fails**. Break 2: `RemoveParticipant` does not answer `404` for a non-member → the member test **fails** |
+| 3 | Creation followed by a query that checks persistence | `DataAfterRestartTests` | New: no test restarted the backend over project data | 1 test, 0 failures | break 1: `JpaCommentRepository.save` does not save → **fails** (the comment list is empty); break 2: the task lookup ignores `deleted_at` → after the restart the deleted task answers `200` instead of `404`, **fails** |
+
+What each one asserts:
+
+1. `UnusualTextTests` sends U+0000, unpaired surrogates, zero-width characters, BEL, U+202E, and CR/LF in a project name and description, a task title and description, a comment, an edit, a search, and a sign-in. Rule: a refusal with the field named (`422`, `400`, or `401`), or a text that is read back exactly as sent; never a `5xx`, never a changed text, and nothing stored for a refused request ([Bug 2](#bug-2--text-with-the-null-character-or-an-unpaired-surrogate-gave-a-server-error-or-was-changed), [A-037](constraints.md#assumptions), [OQ-031](constraints.md#open-questions)).
+2. `CrossProjectAccessTests` has Ana owning project A and Eva owning project B, Rui a participant of both, and Ana's task assigned to Rui. Seven combinations of person, project, and task (a non-member, or a task of another project) each try eight operations; every one is `404` with the same text as for a task that does not exist; a second test does the same for member removal, addition, and the two member lists. A fingerprint (an MD5 of every row) of `project`, `task`, `comment`, `membership`, and `assignment` is identical before and after.
+3. `DataAfterRestartTests` runs the whole application on a real port with a real PostgreSQL: creates a project, two tasks, an assignee, a comment, and a state change, and deletes one task; reads five resources; stops the application; starts it again on the same database; reads the same five resources and asserts that they are equal as whole bodies; and asserts that the deleted task is still `404`.
+
+Output of the last green run of each (`-Dtest=…`):
+
+```
+CrossProjectAccessTests  Tests run: 2, Failures: 0, Errors: 0, Skipped: 0   BUILD SUCCESS
+DataAfterRestartTests    Tests run: 1, Failures: 0, Errors: 0, Skipped: 0   BUILD SUCCESS
+UnusualTextTests         Tests run: 55, Failures: 0, Errors: 0, Skipped: 0  BUILD SUCCESS
+```
+
+Output with the rule broken (the summary line of each run, and the first failing assertion):
+
+```
+UnusualTextTests          Tests run: 55, Failures: 33   BUILD FAILURE
+CrossProjectAccessTests   Tests run: 2, Failures: 1     BUILD FAILURE  (…:109 [ana GET /api/projects/…/tasks/… -> {"taskId":…}] expected: 404)
+CrossProjectAccessTests   Tests run: 2, Failures: 1     BUILD FAILURE  (aMemberOfOneProjectNamedThroughAnotherIs…:132)
+DataAfterRestartTests     Tests run: 1, Failures: 1     BUILD FAILURE  (:77, the comment list holds no comment)
+DataAfterRestartTests     Tests run: 1, Failures: 1     BUILD FAILURE  (:86 GET deleted task … expected: 404)
+```
+
+Limitation: the restart test stops and starts the Spring application in the same JVM against the same PostgreSQL; it does not restart PostgreSQL, and it is not a crash. The manual check in [Case 03](#case-03--task-persistence) restarted a separate Java process.
 
 ## Bugs found
 
