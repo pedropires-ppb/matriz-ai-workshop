@@ -296,6 +296,26 @@ class AccessTokenTests extends DatabaseTestSupport {
 	}
 
 	@ParameterizedTest
+	@ValueSource(strings = { "HEAD", "OPTIONS" })
+	void frameworkMethodsNotDeclaredInTheContractAreRefusedAfterAuthentication(String method) throws Exception {
+		for (String path : List.of(ME, SESSION)) {
+			assertNoToken(this.mvc.perform(request(HttpMethod.valueOf(method), path)));
+			ResultActions result = this.mvc.perform(request(HttpMethod.valueOf(method), path)
+				.header(HttpHeaders.AUTHORIZATION, bearer(this.anaToken))).andExpect(status().isMethodNotAllowed());
+			assertThat(allowed(result)).containsExactlyInAnyOrderElementsOf(
+					path.equals(ME) ? List.of("GET") : List.of("POST", "DELETE"));
+		}
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "HEAD", "OPTIONS" })
+	void frameworkMethodsWithASignedOutTokenAreFirstUnauthorized(String method) throws Exception {
+		TestAccess.signOut(this.mvc, this.anaToken);
+		assertInvalidToken(this.mvc.perform(request(HttpMethod.valueOf(method), ME)
+			.header(HttpHeaders.AUTHORIZATION, bearer(this.anaToken))));
+	}
+
+	@ParameterizedTest
 	@ValueSource(strings = { "GET", "PUT", "PATCH" })
 	void anUnsupportedMethodWithoutATokenIsFirstUnauthorized(String method) throws Exception {
 		assertNoToken(this.mvc.perform(request(HttpMethod.valueOf(method), SESSION)));
