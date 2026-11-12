@@ -434,3 +434,13 @@ This harness validates named JSON schemas plus explicitly asserted route/status/
 The register, stories, plan, architecture, historical ADR open points, I12 header and frozen wireframe now have dated corrections/resolution links. Assumption A-024 and unreviewed details of A-034–A-036 keep their pending status; no client answer or increment acceptance is inferred. The logical data model agrees with V1–V6 and needed no migration/model change. AGENTS.md changes only the approved command section and current-phase wording. Compose now supports an isolated host port through `MATRIZ_DB_PORT`, default 5432.
 
 A local checker found **2723 valid relative inline Markdown links/anchors across 30 tracked documents**; external links were not fetched. `docker compose --env-file .env.example config --quiet` and `git diff --check` passed. No developer `.env` or database was used.
+
+### Three examples of AI use
+
+*Selected and confirmed by the project team's member on 2026-11-12, delivery questions 14–16. Goals/decisions below are sourced from that confirmation and the linked repository records; they do not claim that the developer personally ran the commands.*
+
+| Goal of the request | Developer's decision | How it was verified |
+|---|---|---|
+| Review direct API authorization and check that an outsider cannot discover a project through member removal. | Approve the uniform 404 correction after the AI identified the disclosure; keep the approved permission policy, not a new role rule. | [Bug 1](#bugs-found) and [Case 08](#case-08--authorization-in-the-api) record the failing/passing authorization test and live comparison of existing, missing and malformed projects. |
+| Investigate unusual text that could not be persisted unchanged. | Approve 422 on text fields, 400 on searches and generic 401 on login names containing NUL/unpaired surrogates; leave other invisible characters open as [OQ-031](constraints.md#open-questions). | [Bug 2](#bugs-found) records the live read-back check and 55 passing `UnusualTextTests`; the [mutation check](#the-three-automated-tests) made 33 tests fail when the storage guard was disabled. |
+| Check invalid-request handling against ADR-004 rather than adopting the AI's suggested status blindly. | **Correct the suggestion:** a well-formed JSON value of the wrong type is 422, not the assistant's proposed 400; reserve 400 for malformed JSON/bad query parameters. | [Project-management decision 11](implementation-plan.md#decisions-affecting-the-increments) records the correction. `ProjectApiTests` asserts the 422/field-error behavior; it also ran in both successful [before/after refactoring checks](#behavior-preserving-refactoring). |
