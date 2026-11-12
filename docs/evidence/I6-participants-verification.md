@@ -113,4 +113,4 @@ Markers 10–12 of the [Project dashboard wireframe](../ui/project-dashboard.md)
 - **No paging** of the eligible people or of the members ([A-030](../constraints.md#assumptions), [A-034](../constraints.md#assumptions)).
 - **A 404 on removal** (the person was removed elsewhere) shows the generic "This project does not exist or is not accessible." after the list is fetched again. The I6 decisions did not give a specific message.
 - **New message:** "This person was not found." for a 422 on adding, which can only happen if a person disappears between the search and the click. It is not in the I6 decisions, and is left to the team's review.
-- **The exception to rule 2:** I5 and I8 are still Awaiting review.
+- ~~**The exception to rule 2:** I5 and I8 are still Awaiting review.~~ *Resolved on 2026-11-12: the project team accepted I5, I8, and I6 (the conversation “Implement the Matriz front end”, the acceptance review).*

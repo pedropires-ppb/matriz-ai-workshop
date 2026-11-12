@@ -127,6 +127,6 @@ Markers 11 and 12 (adding and removing participants, the rest of I6) are still n
 ## 6. Still open
 
 - **Completing a project with zero tasks:** allowed, but the client has not confirmed it ([Assumption A-007](../constraints.md#assumptions); [OQ-006](../constraints.md#open-questions)). Reopening a project is not defined.
-- **The exception to rule 2:** I8 depends on I5, which is still Awaiting review.
+- ~~**The exception to rule 2:** I8 depends on I5, which is still Awaiting review.~~ *Resolved on 2026-11-12: the project team accepted I5, I8, and I6 (the conversation “Implement the Matriz front end”, the acceptance review).*
 - **The style of the Complete button:** in the confirmation, "Complete" uses the shared danger style of `ConfirmBox`, as "Delete" does. The I8 decisions did not settle the style, so it is left to the team's review.
 - **Simultaneous change moved to I6:** removing a participant while that participant assigns themselves is now tested in I6 (I8 decision 7).
