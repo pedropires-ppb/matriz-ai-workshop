@@ -9,7 +9,7 @@
 | Case | Scenario | Type | Status |
 |---|---|---|---|
 | 01 | Access to the application | Automated and manual | Confirmed |
-| 02 | Project management | — | Not run |
+| 02 | Project management | Automated and manual | Confirmed |
 | 03 | Task persistence | — | Not run |
 | 04 | Data validation | — | Not run |
 | 05 | State and priority | — | Not run |
@@ -53,3 +53,27 @@
 | 10 | Sign-in with an empty login name and password | `422` |
 
 - **Not verified here:** the absence of any limit on failed sign-ins is a recorded limitation ([OQ-027](constraints.md#open-questions)); it is reviewed in the [I12 record](evidence/I12-verification.md). A failure while a token is checked gives `500`, not `401` (`TokenCheckFailureTests`; [I2 record](evidence/I2-verification.md#13-not-yet-done-and-still-open), point 4); recorded as a known limitation, not fixed. The expiry after 8 hours and the effect of a new signing key are checked by `AccessTokenTests` and `SignOutAfterRestartTests`, not by hand.
+
+## Case 02 — Project management
+
+- **Expected:** creating, searching, editing, and deleting work according to the permissions ([US-001](user-stories.md#us-001--create-project), [US-007](user-stories.md#us-007--view-accessible-projects), [US-008](user-stories.md#us-008--rename-project), [US-016](user-stories.md#us-016--delete-project), [US-023](user-stories.md#us-023--search-projects); [EX-003](user-stories.md#edge-cases-and-exceptions), [EX-016](user-stories.md#edge-cases-and-exceptions), [EX-025](user-stories.md#edge-cases-and-exceptions)): the Project Owner can do all four; a Project Participant can view but not edit or delete (403); a non-member sees nothing (404) and the data stays unchanged.
+- **Type:** automated and manual. **Status: Confirmed.**
+- **Automated evidence** (baseline build, all passed): `ProjectApiTests` (67), `ProjectRepositoryTests` (5), `ProjectDomainTests` (22), `ParticipantsApiTests` (27), `MembersApiTests` (8), and in `UserInterfaceTests` the project tests (create, edit, delete with a confirmation, paging and search, the participant who cannot edit, at widths 390 and 1280).
+- **Manual evidence** (fresh database; ana is the owner, rui a participant, eva a non-member):
+
+| Step | Request | Observed |
+|---|---|---|
+| 1 | Ana creates a project named `"  Verif Árvore  "` with a description | `201`; the name is stored trimmed (“Verif Árvore”); `myRole` PROJECT_OWNER; `state` ACTIVE; no percentage (no tasks) |
+| 2 | Ana lists her projects | 4 projects, including the new one; the list holds only Ana's projects |
+| 3 | Search `name=VERIF` | 1 project (letter case ignored) |
+| 4 | Search `name=arvore` | 0 projects: accents are not ignored today; the team has not decided this ([OQ-026](constraints.md#open-questions), interim answer) |
+| 5 | Eva searches `name=verif` | 0 projects (a non-member's search never shows it, [EX-025](user-stories.md#edge-cases-and-exceptions)) |
+| 6 | Ana renames the project and removes its description | `200`, then again `200` with another name |
+| 7 | Ana adds Rui as a participant | `201`, role PROJECT_PARTICIPANT |
+| 8 | Rui views the project | `200` |
+| 9 | Rui edits it, and Rui deletes it | `403` each, “Only the Project Owner of this project can do this.”; the project is unchanged afterwards |
+| 10 | Eva views, edits, and deletes it | `404` each; the project is unchanged afterwards |
+| 11 | Ana deletes the project | `204`; then Ana and Rui get `404`, and Ana's search no longer lists it |
+| 12 | psql on the fresh database | the project row is kept with `deleted_at` set, and its 2 memberships are kept ([A-022](constraints.md#assumptions)) |
+
+- **Not verified here:** paging with many projects, and performance (see the [I12 record](evidence/I12-verification.md)); the name search matches partial words ignoring letter case ([A-024](constraints.md#assumptions)); whether accents are ignored is still [Open OQ-026](constraints.md#open-questions). Deleting a Completed project ([EX-015](user-stories.md#edge-cases-and-exceptions)) was not run by hand; it is covered only by the automated `ProjectApiTests`.
