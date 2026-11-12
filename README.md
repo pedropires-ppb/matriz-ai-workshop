@@ -221,10 +221,12 @@ Every Member can read/add comments, including in Completed projects. Text has 1â
 
 | Operation | Request | Success |
 |---|---|---|
-| Assign / unassign | `POST /api/projects/{projectId}/tasks/{taskId}/assignees` with `personId`; `DELETE /api/projects/{projectId}/tasks/{taskId}/assignees/{personId}` | 200 / 204 |
+| Assign / unassign | `POST /api/projects/{projectId}/tasks/{taskId}/assignees` with `personId`; `DELETE /api/projects/{projectId}/tasks/{taskId}/assignees/{personId}` | 200 / 200, each with the updated Task |
 | Read / add comments | `GET` / `POST /api/projects/{projectId}/tasks/{taskId}/comments`, POST with `text` only | 200 / 201 with `Location` |
 
 Across forms, A-037 refuses NUL/unpaired-surrogate text rather than silently changing it; approved whitespace and code-point limits match the server. No notification, attachment, account administration or restore interface is included.
+
+*Unassignment summary corrected during the final review on 2026-11-12: the previous README said 204, but the controller, tests and OpenAPI already specify 200 with a Task. No implementation or rule was changed.*
 
 ### Manage members
 
