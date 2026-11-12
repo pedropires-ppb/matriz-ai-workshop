@@ -19,6 +19,17 @@ describe('textLength', () => {
 });
 
 describe('checkText', () => {
+  it('refuses NUL and lone surrogates but preserves valid pairs and other invisible characters', () => {
+    for (const text of ['a\u0000b', '\ud800', '\udfff']) {
+      expect(checkText(text, RULES.projectName)).toBe('This text contains a character that cannot be stored.');
+      expect(checkText(text, RULES.projectDescription)).toBe('This text contains a character that cannot be stored.');
+      expect(checkText(text, RULES.comment)).toBe('This text contains a character that cannot be stored.');
+    }
+    for (const text of ['😀', '\ufeff', '\u200b']) {
+      expect(checkText(text, RULES.projectName)).toBeUndefined();
+    }
+  });
+
   it('refuses a blank required text, and accepts a blank optional one', () => {
     expect(checkText('   ', RULES.projectName)).toBe(messages.nameRequired);
     expect(checkText('', RULES.projectDescription)).toBeUndefined();
@@ -44,6 +55,16 @@ describe('checkFields', () => {
 });
 
 describe('fieldMessagesFrom', () => {
+  it('does not describe invalid characters or unexpected field errors as excessive length', () => {
+    expect(fieldMessagesFrom([
+      { pointer: '/name', detail: 'name contains a character that cannot be stored' },
+      { pointer: '/description', detail: 'description must be a text or null' },
+    ], { name: RULES.projectName, description: RULES.projectDescription })).toEqual({
+      name: 'This text contains a character that cannot be stored.',
+      description: 'description must be a text or null',
+    });
+  });
+
   it('turns the API problems into the User interface messages, by pointer', () => {
     const rules = { title: RULES.taskTitle, description: RULES.taskDescription };
     expect(

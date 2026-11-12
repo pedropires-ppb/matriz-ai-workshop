@@ -30,6 +30,12 @@ export const RULES = {
 
 /** The message for a text that breaks its rule, or `undefined`. */
 export function checkText(text: string, rule: TextRule): string | undefined {
+  for (const character of text) {
+    const unit = character.charCodeAt(0);
+    if (unit === 0 || (character.length === 1 && unit >= 0xd800 && unit <= 0xdfff)) {
+      return messages.unstorableText;
+    }
+  }
   const length = textLength(text);
   if (length === 0 && rule.required !== undefined) {
     return rule.required;
@@ -62,7 +68,15 @@ export function fieldMessagesFrom<K extends string>(problems: FieldProblem[], ru
     const field = problem.pointer.replace(/^\//, '') as K;
     const rule = rules[field];
     if (rule !== undefined) {
-      found[field] = rule.required !== undefined && problem.detail.includes('required') ? rule.required : rule.tooLong;
+      if (rule.required !== undefined && problem.detail.includes('required')) {
+        found[field] = rule.required;
+      } else if (problem.detail.includes('cannot be stored')) {
+        found[field] = messages.unstorableText;
+      } else if (problem.detail.includes('at most') || problem.detail.includes('too long')) {
+        found[field] = rule.tooLong;
+      } else {
+        found[field] = problem.detail;
+      }
     }
   }
   return found;
