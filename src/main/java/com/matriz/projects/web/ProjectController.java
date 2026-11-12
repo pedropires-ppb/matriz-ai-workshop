@@ -174,6 +174,7 @@ class ProjectController {
 	List<MemberResponse.Person> eligibleParticipants(SignedInPerson person, @PathVariable String projectId,
 			@RequestParam(name = "name", required = false) String name) {
 		ProjectId id = id(projectId);
+		this.listEligibleParticipants.checkCanList(person.personId(), id);
 		if (name != null && Whitespace.isBlank(name)) {
 			throw badRequest("The query parameter name must not be empty.");
 		}

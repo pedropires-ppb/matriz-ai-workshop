@@ -332,6 +332,19 @@ class ParticipantsApiTests extends DatabaseTestSupport {
 	}
 
 	@Test
+	void eligibleSearchChecksVisibilityAndPermissionBeforeInvalidQueryText() throws Exception {
+		for (String name : List.of("", "   ", "\u0000", "\ud800")) {
+			assertProblem(eligible(this.danielToken, name), 404, "Not Found", NOT_FOUND);
+			assertProblem(eligible(this.ruiToken, name), 403, "Forbidden", NOT_OWNER);
+			assertProblem(this.mvc.perform(withToken(
+					get(PROJECTS + "/" + UUID.randomUUID() + "/eligible-participants").queryParam("name", name),
+					this.anaToken)), 404, "Not Found", NOT_FOUND);
+			eligible(this.anaToken, name).andExpect(status().isBadRequest());
+		}
+		assertThat(memberCount()).isEqualTo(2);
+	}
+
+	@Test
 	void requestsWithoutATokenAreRefused() throws Exception {
 		TestAccess.assertNoToken(this.mvc.perform(get(PROJECTS + "/" + this.project + "/eligible-participants")));
 		TestAccess.assertNoToken(this.mvc.perform(delete(PROJECTS + "/" + this.project + "/members/" + this.rui.id())));

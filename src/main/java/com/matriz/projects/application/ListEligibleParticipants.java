@@ -44,11 +44,21 @@ public class ListEligibleParticipants {
 	 */
 	@Transactional(readOnly = true)
 	public List<NamedPerson> list(PersonId person, ProjectId id, String nameContains) {
+		Project project = accessibleProject(person, id);
+		List<PersonId> members = project.members().stream().map(Membership::personId).toList();
+		return this.people.findOthers(members, nameContains == null ? null : Whitespace.trim(nameContains));
+	}
+
+	@Transactional(readOnly = true)
+	public void checkCanList(PersonId person, ProjectId id) {
+		accessibleProject(person, id);
+	}
+
+	private Project accessibleProject(PersonId person, ProjectId id) {
 		Project project = this.projects.findById(id).orElseThrow(ProjectNotFoundException::new);
 		ProjectRules.requireMemberWithPermission(this.policy.decide(ProjectAction.LIST_ELIGIBLE_PARTICIPANTS,
 				project.state(), project.roleOf(person)));
-		List<PersonId> members = project.members().stream().map(Membership::personId).toList();
-		return this.people.findOthers(members, nameContains == null ? null : Whitespace.trim(nameContains));
+		return project;
 	}
 
 }
