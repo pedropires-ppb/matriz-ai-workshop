@@ -1,6 +1,6 @@
 # Matriz — Verification of the nine scenarios (exercise “Verify the MVP”, 2026-11-12)
 
-**Status:** In progress. Part of increment [I12](implementation-plan.md#i12--release-verification), which is Under way. The rest of I12 is in the [I12 verification record](evidence/I12-verification.md). Nothing here is a client approval ([OQ-016](constraints.md#open-questions)).
+**Status:** Awaiting review. Part of increment [I12](implementation-plan.md#i12--release-verification), which is Awaiting review, not Accepted. The rest of I12 is in the [I12 verification record](evidence/I12-verification.md). Nothing here is a client approval ([OQ-016](constraints.md#open-questions)).
 
 **Decisions of the project team's member for this exercise** (the conversation “Verify the MVP”): the scope is the nine scenarios plus the rest of I12; the evidence is text only, with every secret masked and fictitious names only; the automated tests use their own databases, and the manual checks use a fresh database, not the developer's local one; a known problem is recorded as a known limitation and not fixed; a defect is fixed only after the diagnosis is approved.
 
@@ -25,10 +25,10 @@
 | Machine | macOS, arm64; Docker 28.3.2; Node.js 24.8.0 (the build uses its own pinned Node.js) |
 | JDK | Temurin 25.0.3, selected with `JAVA_HOME` for each command (the shell's default is JDK 21, which the build refuses) |
 | Automated tests | Their own PostgreSQL containers (Testcontainers), with no demonstration data |
-| Manual checks | The jar of the baseline build, on port 18080, against a fresh PostgreSQL 18.6 from a separate Compose project (`docker compose -p matriz-ex8`, its own volume, started empty). The developer's local volume was not touched. The four demonstration people, with passwords and a signing key generated for the run, kept outside the repository and not recorded here |
+| Manual checks | The jar of the baseline build (cases 01–09, before the two fixes) and, for the re-checks after the fixes, the jar of the final build, on port 18080, against a fresh PostgreSQL 18.6 from a separate Compose project (`docker compose -p matriz-ex8`, its own volume, started empty). The developer's local volume was not touched. The four demonstration people, with passwords and a signing key generated for the run, kept outside the repository and not recorded here |
 | Masking | Tokens, passwords, hashes, and keys are never written here; `<masked>` marks where one was |
 
-**Baseline.** `JAVA_HOME=<JDK 25> ./mvnw -B clean verify` ended with `BUILD SUCCESS` (exit 0, 3 min 25 s): **626 backend tests, 0 failures, 0 errors, 0 skipped**, and **23 front-end unit tests** (Vitest, 5 files), including `UserInterfaceTests` (43, Playwright, Chromium). The raw log is outside the repository.
+**Baseline.** `JAVA_HOME=<JDK 25> ./mvnw -B clean verify` ended with `BUILD SUCCESS` (exit 0, 3 min 25 s): **626 backend tests, 0 failures, 0 errors, 0 skipped**, and **23 front-end unit tests** (Vitest, 5 files), including `UserInterfaceTests` (43, Playwright, Chromium). The raw log is outside the repository. **Final build** (after the fixes of Bug 1 and Bug 2 and the three new test classes): the same command ended with `BUILD SUCCESS` (exit 0, 3 min 40 s): **685 backend tests, 0 failures, 0 errors, 0 skipped**, and **23 front-end unit tests**.
 
 **Types.** *Automated* means a test in the build that fails if the behaviour breaks. *Manual* means a command or a step that I ran once; it proves the behaviour of that run only.
 
@@ -306,3 +306,71 @@ Limitation: the restart test stops and starts the Spring application in the same
 - **Fix** (approved by the project team's member, option 1): `StorableText.isStorable` in each of the modules `projects`, `tasks`, and `identity`; the five value objects `ProjectName`, `ProjectDescription`, `TaskTitle`, `TaskDescription`, and `CommentText` refuse such text with a message that names the field (`422`); the two search parameters `name` (`GET /api/projects` and `eligible-participants`) answer `400`; `SignIn` treats such a login name like an unknown login name (`401`, the password still checked). New [A-037](constraints.md#assumptions) and [OQ-031](constraints.md#open-questions) record the rule and what it leaves open. The messages and codes are not confirmed by the client.
 - **Regression tests:** `UnusualTextTests` (55): `anUnusualTextIsRefusedOrKeptWholeAndNeverAnError` (33, decision-neutral: never a server error, and what is kept is what was answered), and the new `aTextTheDatabaseCannotKeepIsRefusedOnItsFieldAndNothingIsStored` (12), `aDescriptionTheDatabaseCannotKeepIsRefusedWithNothingStored` (2), `anEditWithATextTheDatabaseCannotKeepRefusesItAndKeepsTheOldValues` (2), `aSearchTextTheDatabaseCannotKeepIsABadRequest` (4), `aSignInWithATextTheDatabaseCannotKeepIsAnIncorrectLoginLikeAnUnknownLoginName` (2). Without the fix: 32 of 54 failed. With the fix: 55 of 55 passed, and `ProjectApiTests` (67), `TaskApiTests` (93), `CommentApiTests` (36), `SignInTests` (27), `ParticipantsApiTests` (28), `ProjectDomainTests` (22), `TaskDomainTests` (19), `CommentTextTests` (11), `RequestSchemaTests` (13), `LayeringTests` (5), and `ModuleBoundaryTests` (4) passed. Command: `./mvnw -B test -Dtest='UnusualTextTests,…'`, JDK 25. The full `./mvnw -B clean verify` also passed afterwards (685 backend tests, 23 Vitest tests).
 - **Live re-check** (jar rebuilt after the fix): `POST /api/projects` with `a\u0000b` and with `a\ud800b` → `422` with the pointer `/name` and “The name contains a character that cannot be stored.”; `POST /api/session` with a NUL login name → `401` “The login name or password is incorrect.”; `GET /api/projects?name=a%00b` → `400`; a project named with a zero-width space (U+200B) → `201`, accepted ([OQ-031](constraints.md#open-questions)).
+
+## Commands run
+
+All with JDK 25 (`JAVA_HOME` set for each command), from the repository root, on the branch `week3-ex8`.
+
+| Command | Purpose | Result |
+|---|---|---|
+| `./mvnw -B clean verify` | Baseline, before any change | BUILD SUCCESS; 626 backend and 23 Vitest tests |
+| `./mvnw -B test -Dtest=ParticipantsApiTests` | Bug 1 regression test, red then green | 28 tests, 1 failure without the fix; 0 with it |
+| `./mvnw -B test -Dtest=UnusualTextTests` | Bug 2 and the validation test | 54 tests, 32 failures without the fix; 55 tests, 0 failures with it |
+| `./mvnw -B test -Dtest=CrossProjectAccessTests`, `…DataAfterRestartTests`, `…UnusualTextTests` | The three new tests, intact and with the rule broken | [Step 4](#the-three-automated-tests) |
+| `./mvnw -B clean verify` | Final build | BUILD SUCCESS; 685 backend and 23 Vitest tests |
+| `docker compose -p matriz-ex8 … up -d --wait`, `java -jar target/matriz-0.1.0-SNAPSHOT.jar` (port 18080), `curl` | The manual checks of cases 01–09 and the re-checks | As recorded in each case |
+| A throwaway browser script (headless Chromium, kept outside the repository) | The browser probes of Case 09, with request interception | As recorded in Case 09 |
+| A Python script (read-only) over the Markdown files | Link and anchor check | 2562 links, 0 broken |
+| `git clone` of the branch, `./mvnw -B package -DskipTests`, start of the jar | README step 3 on a fresh clone | Health `UP`, interface `200` |
+
+## Limitations
+
+- **Manual checks prove one run.** They are not repeatable tests; where a check matters, a test now exists or is proposed.
+- **Browser probes through my own throwaway script** (headless Chromium), because the project's Playwright tests run only inside the Java build. The failures were forced with request interception, so those responses are stubs. I did not use any other browser, and I did not test narrow screens by hand.
+- **Not a clean machine.** The Maven, Node.js, npm, Docker image, and Chromium downloads were cached.
+- **The restart** is a graceful stop and start of the Java process (and, in the automated test, of the Spring context). A crash, a restart of PostgreSQL, or a restore from a backup were not run.
+- **The data are small.** No check used more than a few dozen records, so nothing here says how the application behaves with many projects, tasks, or people ([OQ-010](constraints.md#open-questions)).
+- **Fixes after the baseline** were checked by the tests and by a repeat of only the affected manual checks (set A of Case 08 and the Bug 2 requests), not by repeating all nine cases on the final jar.
+- **Not independent.** The same assistant wrote the new tests and ran the checks; a human review of the tests' assertions is the check that is missing.
+
+## Not run
+
+- Cases that need a person or a tool I did not have: a screen reader and accessibility checks (NFR-007); response-time, availability, and concurrent-use checks (NFR-004–NFR-006); a legal or privacy review (NFR-003).
+- In a browser: a failed *project* deletion, a failed *assignment*, the rendering of markup in a comment, and the time zone of a comment's date ([Case 07](#case-07--comments), [Case 09](#case-09--deletion-and-errors)).
+- A crash or PostgreSQL restart ([Case 03](#case-03--task-persistence)).
+- The GitHub secret scanning of the hosted repository, and a dedicated secret scanner; a clean-machine run of the README; the whole README with its fixed Compose project (see the [I12 record](evidence/I12-verification.md#readme-on-a-clean-checkout)).
+- A criterion-by-criterion walk of every acceptance criterion of US-001–US-026 (see the [I12 record](evidence/I12-verification.md#user-stories-us-001us-026)).
+
+## Known problems
+
+Recorded as known limitations, not fixed, as the project team's member decided. None is a client decision yet.
+
+| Problem | Where it comes from |
+|---|---|
+| No limit on failed sign-ins: 30 wrong passwords, then the correct one worked | [OQ-027](constraints.md#open-questions); [I12 record](evidence/I12-verification.md#failed-sign-ins-oq-027) |
+| A failure while an access token is checked gives `500`, not `401` | [Case 01](#case-01--access-to-the-application); `TokenCheckFailureTests`; [I2 record](evidence/I2-verification.md#13-not-yet-done-and-still-open) |
+| A page reload signs the person out | [ADR-005](adr/ADR-005-authentication-with-jwt.md); [README](../README.md#use-the-user-interface) |
+| Two alerts can show at once on Task detail, and an old alert is not cleared by a later failure in another panel | [Case 09](#case-09--deletion-and-errors); [I13 record](evidence/I13-user-interface-consolidation-verification.md) |
+| A `404` on removing a member shows a generic message in the interface | [Case 09](#case-09--deletion-and-errors) |
+| Several assignees and self-assignment are the team's answer, not the client's | [OQ-025](constraints.md#open-questions), [A-020](constraints.md#assumptions) |
+| The percentage is rounded by a rule the client has not set | [A-026](constraints.md#assumptions) |
+| Every Project Owner can find any person by display name when adding participants | [A-030](constraints.md#assumptions), [OQ-011](constraints.md#open-questions) |
+| Soft deletion keeps rows (and a deleted task's comments) with no retention rule | [OQ-023](constraints.md#open-questions), [A-022](constraints.md#assumptions) |
+| The member list and the comment list are not paged | [A-034](constraints.md#assumptions), [A-036](constraints.md#assumptions) |
+| Invisible characters (zero-width, bidirectional, and control characters other than U+0000) are accepted and kept | [OQ-031](constraints.md#open-questions) |
+| NFR-003–NFR-007 cannot be verified; the interface is in English only | [OQ-010](constraints.md#open-questions), [OQ-011](constraints.md#open-questions), [OQ-013](constraints.md#open-questions) |
+| The README summary counts are out of date (A-033, OQ-030) | Reported, not changed ([I12 record](evidence/I12-verification.md#readme-on-a-clean-checkout)) |
+| The lone-surrogate replacement (`?`) is attributed to the database driver, which I did not trace | [Bug 2](#bug-2--text-with-the-null-character-or-an-unpaired-surrogate-gave-a-server-error-or-was-changed) |
+
+## Open questions for the client
+
+For the client, via the project team; the [register](constraints.md#open-questions) holds the wording.
+
+1. [OQ-027](constraints.md#open-questions): what limit applies to failed sign-ins, and what must happen after it?
+2. [OQ-031](constraints.md#open-questions): which invisible or control characters must a name, a title, a description, or a comment refuse or keep?
+3. [OQ-025](constraints.md#open-questions) and [A-020](constraints.md#assumptions): are several assignees and self-assignment wanted?
+4. [OQ-023](constraints.md#open-questions): for how long are deleted projects and tasks kept, and who may restore them?
+5. [OQ-010](constraints.md#open-questions): the response-time, availability, concurrent-use, and accessibility targets, so that NFR-004–NFR-007 can be verified.
+6. [OQ-016](constraints.md#open-questions): does the client approve the MVP?
+
+For the project team: review [A-037](constraints.md#assumptions) (the refusal rule of Bug 2), add the missing identifiers to the tests of EX-013, EX-015, EX-016, EX-017, EX-019, EX-021, and EX-025, and correct the README counts.
