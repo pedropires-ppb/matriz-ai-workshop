@@ -15,7 +15,7 @@
 | 05 | State and priority | Automated and manual | Confirmed |
 | 06 | Assignees | Automated and manual | Confirmed |
 | 07 | Comments | Automated and manual | Confirmed (browser rendering of markup not checked) |
-| 08 | Authorization in the API | — | Not run |
+| 08 | Authorization in the API | Automated and manual | Partly confirmed; Bug 1 fixed with a regression test, live re-check pending (Step 5) |
 | 09 | Deletion and errors | — | Not run |
 
 ## Environment and conventions
@@ -188,3 +188,39 @@
 | 8 | `PUT`, `PATCH`, and `DELETE` on a comment | `404` each (no operation exists to change or delete a comment, [A-023](constraints.md#assumptions); [outside the initial scope](requirements.md#outside-the-initial-scope)) |
 
 - **Not verified here:** the HTML text was returned as plain data in JSON; how the browser shows it (escaped, not interpreted) was not checked by hand; the Playwright test for comments does not use markup. I did not run a test that renders `<script>` text. [Proposal] check that in the browser as part of I12's remaining items. The date's time zone as shown in the browser was not checked by hand.
+
+## Case 08 — Authorization in the API
+
+- **Expected:** another person cannot access or change a resource without permission, even by changing the identifiers in the request: a non-member gets the same `404` as for a resource that does not exist, a Project Participant gets `403` for owner-only operations, and nothing changes ([EX-003](user-stories.md#edge-cases-and-exceptions), [EX-012](user-stories.md#edge-cases-and-exceptions), [EX-016](user-stories.md#edge-cases-and-exceptions), [EX-019](user-stories.md#edge-cases-and-exceptions), [EX-021](user-stories.md#edge-cases-and-exceptions); [A-022](constraints.md#assumptions); [NFR-001](requirements.md#non-functional-requirements-and-unresolved-quality-criteria); permission matrix in [requirements](requirements.md#user-types)).
+- **Type:** automated and manual. **Status: Partly confirmed** at the manual run, and **Confirmed** for the sets above once [Bug 1](#bug-1--the-removal-of-a-member-told-a-non-member-whether-a-project-exists) was fixed and its regression test passed. The running application used for the manual run was built before the fix; I will repeat set A on a rebuilt jar in Step 5 and record the result here.
+- **Automated evidence** (baseline build, all passed): `EveryOperationRequiresATokenTests` (45), `ProjectApiTests` (67), `TaskApiTests` (93), `AssignmentApiTests` (21, including `aTaskOfAnotherProjectIsNotFoundThroughThisOne`), `ParticipantsApiTests` (27), `MembersApiTests` (8), `CommentApiTests` (36), `ProblemDetailsTests` (16), `TaskAccessRulesTests` (7), `ProjectAccessRulesTests` (5), and in `UserInterfaceTests` the tests of the participant who cannot edit. The new class `CrossProjectAccessTests` (Step 4) adds the missing identifier-swapping checks for comments, state, assignees, and members.
+- **Manual evidence** (fresh database; Ana owner of “Case 08 Ana project” with Rui as participant, Eva owner of her own project and not a member of Ana's; a snapshot hash of both projects, their tasks, comments, and members taken before and after):
+
+| Set | Request | Observed |
+|---|---|---|
+| A | Eva → Ana's project and task, 18 operations (project, members, eligible people, tasks, task, state, assignees, comments; read and write) | `404` ×18; every response equal to the one for non-existent ids, except one (see Bug 1) |
+| B | Eva, owner of her project, uses Ana's task id under her own project, 8 task operations (also with Ana's and Rui's person ids) | `404` ×8 and ×8 |
+| C | Eva uses her own task id under Ana's project, 8 operations | `404` ×8 |
+| D | Rui (participant, not assignee) → 12 owner-only operations on Ana's project | `403` ×11 (edit, complete, delete the project; add and remove a member; the eligible people; create, edit, and delete a task; change a state; assign someone else); `404` ×1 (unassign Ana, who is not an assignee, [A-035](constraints.md#assumptions)) |
+| E | Rui → Eva's project (he is no member), 18 operations | `404` ×18 |
+| F | Rui (member of Ana's project) uses Eva's task id under it, 8 operations | `404` ×8 |
+| G | Ana → her own task id under Eva's project (she is no member), 8 operations | `404` ×8 |
+| H | `GET`, `PUT`, `PATCH`, `DELETE` of Eva's comment id under Ana's path | `404` ×4 |
+| I | Rui removes the Project Owner | `403` “Only the Project Owner of this project can do this.” |
+| J | Eva's token plus `X-Person-Id`, `X-User-Id`, `X-Forwarded-User`, or `X-HTTP-Method-Override` headers, or `?personId=` and `?authorId=` | `404` each; the identity comes only from the token |
+| K | Snapshot of both projects after sets A–J | identical hash before and after; Ana's data intact |
+
+- **First run, discarded:** my first script also ran project-level operations as Eva on a project Eva owns, so it deleted her own project and its results for sets B, C, and E and the snapshot were meaningless; it also used a project that was already Completed. I repeated the whole matrix with attack-only operations on fresh Active projects; only that second run is recorded above. The first run did show the `DELETE member` difference of Bug 1.
+- **Not verified here:** the authorization of the `eligible-participants` search against a *large* directory, and the display-name disclosure to every Project Owner ([A-030](constraints.md#assumptions) / [OQ-011](constraints.md#open-questions)), which is a recorded privacy risk, not tested here. Concurrent permission changes (a person removed while they send a request) are covered by `ParticipantsApiTests` (a simultaneous-removal test) but were not run by hand. Rate limiting and brute force are [Open OQ-027](constraints.md#open-questions).
+
+## Bugs found
+
+### Bug 1 — The removal of a member told a non-member whether a project exists
+
+- **Found in:** Case 08, manual run, set A.
+- **Steps:** as Eva, who is not a member of the project, `DELETE /api/projects/{projectId}/members/{personId}` with (1) the id of an existing project, (2) a valid id that does not exist, (3) the id of a deleted project, and (4) `not-a-uuid` as the project.
+- **Expected:** the same `404` for every project Eva cannot access ([EX-003](user-stories.md#edge-cases-and-exceptions); the 404 of this operation in `openapi.yaml` is “The project or member does not exist or is not accessible.”).
+- **Observed:** (1) and (4) “The project **or member** does not exist or is not accessible.”; (2) and (3) “The project does not exist or is not accessible.” Every other operation gave one text. Impact: Low. Anyone signed in could tell, from the text, whether a project identifier exists; the identifiers are random UUIDs, so guessing one is impractical.
+- **Cause:** `RemoveParticipant.remove` threw `ProjectNotFoundException` when the project was not found, and `MemberNotFoundException` (a different text) when the project existed but the caller was not a member. `ProjectController` already turned a malformed project id into `MemberNotFoundException`. The existing tests covered the non-member and the malformed id, never an unknown or deleted valid id.
+- **Fix** (approved by the project team's member): `RemoveParticipant.remove` throws `MemberNotFoundException` when the project is missing or deleted, so every refusal of this operation has one text. One line of code and its Javadoc; no other operation, message, or document changed.
+- **Regression test:** `ParticipantsApiTests.aProjectThatDoesNotExistOrIsDeletedAnswersTheRemovalOfAMemberLikeAPersonWhoIsNotAMember`. Without the fix: it failed (`JSON path "$.detail" expected:<The project or member does not exist or is not accessible.> but was:<The project does not exist or is not accessible.>`, 28 tests, 1 failure). With the fix: `ParticipantsApiTests` 28/28, `MembersApiTests` 8/8, `ProjectApiTests` 67/67, `LayeringTests` 5/5, and `ModuleBoundaryTests` 4/4 passed (command: `./mvnw -B test -Dtest='ParticipantsApiTests,MembersApiTests,ProjectApiTests,LayeringTests,ModuleBoundaryTests'`, JDK 25).
