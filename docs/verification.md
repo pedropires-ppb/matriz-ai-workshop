@@ -12,7 +12,7 @@
 | 02 | Project management | Automated and manual | Confirmed |
 | 03 | Task persistence | Automated and manual | Partly confirmed (no automated restart test yet; added in Step 4) |
 | 04 | Data validation | Automated and manual | Confirmed (control and zero-width text pending in Step 4) |
-| 05 | State and priority | — | Not run |
+| 05 | State and priority | Automated and manual | Confirmed |
 | 06 | Assignees | — | Not run |
 | 07 | Comments | — | Not run |
 | 08 | Authorization in the API | — | Not run |
@@ -120,3 +120,28 @@
 | Afterwards, the existing data | the task is still “Write the report”, IN_PROGRESS, HIGH; the project still has 1 task and the task 1 comment |
 
 - **Not verified here:** how the browser form shows each message was checked only by the two `UserInterfaceTests` above. Text made of control characters, zero-width characters, or lone surrogates is covered by no rule or decision ([A-033](constraints.md#assumptions) names only whitespace); it is probed by the new validation test in Step 4. Limits are in characters as the API counts them; a count by user-perceived character (emoji, combining marks) was not tested.
+
+## Case 05 — State and priority
+
+- **Expected:** editing a task's state or priority updates the task, the filters, and the counts coherently ([US-005](user-stories.md#us-005--change-task-state), [US-006](user-stories.md#us-006--view-progress), [US-018](user-stories.md#us-018--set-task-priority), [US-024](user-stories.md#us-024--filter-tasks); [EX-004](user-stories.md#edge-cases-and-exceptions), [EX-008](user-stories.md#edge-cases-and-exceptions), [EX-013](user-stories.md#edge-cases-and-exceptions); [A-011](constraints.md#assumptions), [A-024](constraints.md#assumptions)).
+- **Type:** automated and manual. **Status: Confirmed.**
+- **Automated evidence** (baseline build, all passed): `ProgressApiTests` (9, including `creatingEditingAndChangingTheStateOfTasksUpdatesTheProgress` and `taskFiltersNeverChangeTheProgress`), `ProgressDomainTests` (14), `TaskApiTests` (93), `CompletionApiTests` (32), and in `UserInterfaceTests` `theProgressAndTheCountsFollowEachChangeButNotTheFilters`, `theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage`, `aTaskCanBeEditedAndItsDescriptionCleared`, and `theProjectOwnerCompletesAProjectOnlyWhenNoTaskIsUnfinished`.
+- **Manual evidence** (fresh database; project “Case 05 State and priority”, four tasks T1 LOW, T2 MEDIUM, T3 HIGH, T4 HIGH, created To do):
+
+| Step | Action | Observed |
+|---|---|---|
+| 1 | Create the four tasks | each `201`, state TO_DO; priority as given (MEDIUM when absent); progress `4 / 0 / 0`, `percentDone` 0 |
+| 2 | T1 → Done, T2 and T3 → In progress | `200` each; progress `1 / 2 / 1`, 25% |
+| 3 | Filters `state=IN_PROGRESS`; `state=DONE`; `priority=HIGH`; `state=IN_PROGRESS&priority=HIGH`; `state=TO_DO&state=DONE` | T2+T3; T1; T3+T4; T3; T1+T4 (several values of one filter are alternatives; different filters combine). The filter never changed the progress |
+| 4 | An unknown filter value (`state=BOGUS`, `priority=urgent`) | `400`, “The query parameter state must be TO_DO, IN_PROGRESS, or DONE.” (and the priority equivalent) |
+| 5 | T1 Done → To do (any state to any state) | `200`; progress `2 / 2 / 0`, 0% |
+| 6 | Edit T2's priority to HIGH, then its title | `200`; the state and the other field stay; `priority=HIGH` now lists T2, T3, T4 and `priority=MEDIUM` lists none |
+| 7 | Priority `CRITICAL` | `422` |
+| 8 | All four Done | progress `0 / 0 / 4`, 100% |
+| 9 | Rui, not a member, changes a state | `404` |
+| 10 | Rui, a participant not assigned, changes a state; changes a priority | `403` “Only the Project Owner or an assignee of the task can change its state.”; `403` “Only the Project Owner of this project can do this.”; the task stays Done and LOW |
+| 11 | Ana assigns Rui; Rui moves T1 to In progress | `200`; progress `0 / 1 / 3`, 75% (this is the behaviour behind [A-020](constraints.md#assumptions) / [OQ-025](constraints.md#open-questions)) |
+| 12 | Ana tries to complete the project while T1 is In progress | `409` “The project has tasks that are To do or In progress; it remains Active.” |
+| 13 | All Done, Ana completes the project, then changes a task's state and priority | project `COMPLETED`; each change `409` “The project is Completed; it cannot be changed.”; the task keeps Done and LOW; progress stays 100% |
+
+- **Not verified here:** the rounding of the percentage at the edges (for example 199 of 200 showing 100%, [A-026](constraints.md#assumptions)) is covered by `ProgressDomainTests`, not run by hand. The first run of my script stopped on the error body of the invalid filter (my script's mistake) and a later step I wrote tested an Active project by accident (the project had not completed, step 12); both were repeated correctly and only the corrected results are recorded.
