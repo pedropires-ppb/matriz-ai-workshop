@@ -31,10 +31,7 @@ class HealthCheckTests extends DatabaseTestSupport {
 
 	@Test
 	void noOtherActuatorEndpointIsExposed() throws Exception {
-		this.mvc.perform(get("/actuator"))
-			.andExpect(jsonPath("$._links.health").exists())
-			.andExpect(jsonPath("$._links.env").doesNotExist())
-			.andExpect(jsonPath("$._links.info").doesNotExist());
+		this.mvc.perform(get("/actuator")).andExpect(status().isNotFound());
 		this.mvc.perform(get("/actuator/env")).andExpect(status().isNotFound());
 		this.mvc.perform(get("/actuator/info")).andExpect(status().isNotFound());
 	}

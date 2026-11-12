@@ -6,7 +6,7 @@ import ProjectForm from './ProjectForm';
 import { createProject, listProjects } from './projectsApi';
 import { ALL_PROJECTS, FIRST_PAGE, NEW_PROJECT, type ProjectsRoute } from './router';
 import { useApi, useLoad } from './session';
-import { refusal } from './validation';
+import { refusal, trimText } from './validation';
 
 const PAGE_SIZE = 20;
 
@@ -33,7 +33,7 @@ export default function ProjectsScreen({ route, notice }: { route: ProjectsRoute
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    go({ ...ALL_PROJECTS, name: searchText.trim() });
+    go({ ...ALL_PROJECTS, name: trimText(searchText) });
   }
 
   return (

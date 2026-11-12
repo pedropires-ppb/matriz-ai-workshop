@@ -10,11 +10,12 @@ import com.matriz.projects.domain.ProjectListing;
 import com.matriz.projects.domain.ProjectName;
 
 /** A row of the list query, before it becomes a {@link ProjectListing}. */
-record ListingRow(UUID id, String name, String description, ProjectState state, MemberRole role) {
+record ListingRow(UUID id, String name, String description, String state, String role) {
 
 	ProjectListing toListing() {
 		return new ProjectListing(new ProjectId(this.id), new ProjectName(this.name),
-				this.description == null ? null : new ProjectDescription(this.description), this.state, this.role);
+				this.description == null ? null : new ProjectDescription(this.description),
+				ProjectState.valueOf(this.state), MemberRole.valueOf(this.role));
 	}
 
 }

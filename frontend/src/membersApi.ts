@@ -1,6 +1,7 @@
 // The member operations of the Matriz API (openapi.yaml).
 import { call, type PersonSummary, type Result, sending, type Session } from './http';
 import type { MemberRole } from './projectsApi';
+import { trimText } from './validation';
 
 /** A member of a project (Member): the Project Owner comes first, then the others by display name. */
 export interface Member {
@@ -24,7 +25,8 @@ export function listProjectMembers(session: Session, projectId: string): Promise
  * member, whose display name contains `name` when it is not blank (Assumption A-030).
  */
 export function listEligibleParticipants(session: Session, projectId: string, name: string): Promise<Result<PersonSummary[]>> {
-  const query = name.trim() === '' ? '' : `?${new URLSearchParams({ name: name.trim() }).toString()}`;
+  const trimmed = trimText(name);
+  const query = trimmed === '' ? '' : `?${new URLSearchParams({ name: trimmed }).toString()}`;
   return call(session, `/projects/${encodeURIComponent(projectId)}/eligible-participants${query}`);
 }
 

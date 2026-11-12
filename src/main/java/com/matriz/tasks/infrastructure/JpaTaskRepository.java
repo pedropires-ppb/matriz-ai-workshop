@@ -15,8 +15,6 @@ import com.matriz.tasks.TaskState;
 import com.matriz.tasks.domain.Task;
 import com.matriz.tasks.domain.TaskRepository;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 /** {@link TaskRepository} with Spring Data JPA (ADR-008 decision 4). */
@@ -60,10 +58,14 @@ class JpaTaskRepository implements TaskRepository {
 	@Override
 	public TaskPage find(ProjectId project, Set<TaskState> states, Set<TaskPriority> priorities, int page,
 			int size) {
-		Page<Task> found = this.tasks.findPage(project.value(),
-				states.isEmpty() ? EnumSet.allOf(TaskState.class) : states,
-				priorities.isEmpty() ? EnumSet.allOf(TaskPriority.class) : priorities, PageRequest.of(page - 1, size));
-		return new TaskPage(found.getContent(), found.getTotalElements());
+		Set<TaskState> includedStates = states.isEmpty() ? EnumSet.allOf(TaskState.class) : states;
+		Set<TaskPriority> includedPriorities = priorities.isEmpty() ? EnumSet.allOf(TaskPriority.class) : priorities;
+		long total = this.tasks.countPage(project.value(), includedStates, includedPriorities);
+		long offset = (long) (page - 1) * size;
+		List<Task> found = offset >= total ? List.of() : this.tasks.findPage(project.value(),
+				includedStates.stream().map(Enum::name).toList(),
+				includedPriorities.stream().map(Enum::name).toList(), offset, size);
+		return new TaskPage(found, total);
 	}
 
 }

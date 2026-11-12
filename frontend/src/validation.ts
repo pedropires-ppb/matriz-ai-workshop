@@ -3,12 +3,14 @@
 import type { FieldProblem, Refused } from './http';
 import { messages } from './messages';
 
-/**
- * Counts characters as the API does: Unicode characters of the trimmed text, not UTF-16 units. `trim`
- * also removes the no-break spaces that the API treats as blank (Assumptions A-031, A-033, A-036).
- */
+/** Java whitespace plus Unicode space separators (A-033); FEFF and zero-width space are preserved. */
+export function trimText(text: string): string {
+  return text.replace(/^[\p{Zs}\u0009-\u000d\u001c-\u0020\u2028\u2029]+|[\p{Zs}\u0009-\u000d\u001c-\u0020\u2028\u2029]+$/gu, '');
+}
+
+/** Counts Unicode code points after the API's trimming, not UTF-16 units (A-031/A-033/A-036). */
 export function textLength(text: string): number {
-  return Array.from(text.trim()).length;
+  return Array.from(trimText(text)).length;
 }
 
 export interface TextRule {
@@ -28,6 +30,12 @@ export const RULES = {
 
 /** The message for a text that breaks its rule, or `undefined`. */
 export function checkText(text: string, rule: TextRule): string | undefined {
+  for (const character of text) {
+    const unit = character.charCodeAt(0);
+    if (unit === 0 || (character.length === 1 && unit >= 0xd800 && unit <= 0xdfff)) {
+      return messages.unstorableText;
+    }
+  }
   const length = textLength(text);
   if (length === 0 && rule.required !== undefined) {
     return rule.required;
@@ -60,7 +68,15 @@ export function fieldMessagesFrom<K extends string>(problems: FieldProblem[], ru
     const field = problem.pointer.replace(/^\//, '') as K;
     const rule = rules[field];
     if (rule !== undefined) {
-      found[field] = rule.required !== undefined && problem.detail.includes('required') ? rule.required : rule.tooLong;
+      if (rule.required !== undefined && problem.detail.includes('required')) {
+        found[field] = rule.required;
+      } else if (problem.detail.includes('cannot be stored')) {
+        found[field] = messages.unstorableText;
+      } else if (problem.detail.includes('at most') || problem.detail.includes('too long')) {
+        found[field] = rule.tooLong;
+      } else {
+        found[field] = problem.detail;
+      }
     }
   }
   return found;

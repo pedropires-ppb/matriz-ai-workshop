@@ -1,6 +1,7 @@
 // The task operations of the Matriz API (openapi.yaml).
 import { call, MERGE_PATCH_TYPE, type PersonSummary, type Result, sending, type Session } from './http';
 import type { Page } from './projectsApi';
+import { trimText } from './validation';
 
 export type TaskState = 'TO_DO' | 'IN_PROGRESS' | 'DONE';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
@@ -56,7 +57,7 @@ export function createTask(
   content: { title: string; description: string; priority: TaskPriority },
 ): Promise<Result<Task>> {
   const body: Record<string, string> = { title: content.title, priority: content.priority };
-  if (content.description.trim() !== '') {
+  if (trimText(content.description) !== '') {
     body.description = content.description;
   }
   return call(session, tasksPath(projectId), sending('POST', body));
@@ -79,7 +80,7 @@ export function updateTask(
     body.title = changes.title;
   }
   if (changes.description !== undefined) {
-    body.description = changes.description.trim() === '' ? null : changes.description;
+    body.description = trimText(changes.description) === '' ? null : changes.description;
   }
   if (changes.priority !== undefined) {
     body.priority = changes.priority;

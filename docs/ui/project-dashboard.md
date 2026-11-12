@@ -4,6 +4,8 @@
 
 **The drawing predates the team decisions of 2026-10-29 and has not been redrawn.** Where it, or the sections below that describe it, differs from [Changes after the team decisions of 2026-10-29](#changes-after-the-team-decisions-of-2026-10-29), that section prevails.
 
+*Implementation link added on 2026-11-12 by the project team's delivery decision 6:* this remains a historical proposal, not a pixel specification. The English implementation and its verification are described in [I13 evidence](../evidence/I13-user-interface-consolidation-verification.md) and the [current application guide](../../README.md). No drawing or approval status is changed.
+
 ![Low-fidelity wireframe of the proposed project dashboard, described in the text below](project-dashboard.svg)
 
 ## Screen

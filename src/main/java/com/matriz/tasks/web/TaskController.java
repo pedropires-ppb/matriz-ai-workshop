@@ -8,6 +8,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.function.Function;
 
+import com.matriz.PageParameters;
 import com.matriz.identity.SignedInPerson;
 import com.matriz.projects.ProjectId;
 import com.matriz.tasks.TaskAction;
@@ -71,10 +72,6 @@ class TaskController {
 	static final MediaType MERGE_PATCH = MediaType.parseMediaType("application/merge-patch+json");
 
 	static final String NOT_WELL_FORMED = "The request content is not well-formed JSON.";
-
-	static final int DEFAULT_SIZE = 20;
-
-	static final int MAXIMUM_SIZE = 100;
 
 	private final CheckTaskAccess checkAccess;
 
@@ -141,8 +138,8 @@ class TaskController {
 				"TO_DO, IN_PROGRESS, or DONE");
 		Set<TaskPriority> priorities = codes(request, "priority", TaskPriority.class, TaskPriority::valueOf,
 				"LOW, MEDIUM, or HIGH");
-		int pageNumber = integer("page", page, 1, 1, Integer.MAX_VALUE, "an integer of at least 1");
-		int pageSize = integer("size", size, DEFAULT_SIZE, 1, MAXIMUM_SIZE, "an integer from 1 to 100");
+		int pageNumber = PageParameters.page(page);
+		int pageSize = PageParameters.size(size);
 		return TaskResponse.Page
 			.of(this.listTasks.list(person.personId(), project, states, priorities, pageNumber, pageSize));
 	}
@@ -293,23 +290,6 @@ class TaskController {
 			}
 		}
 		return codes;
-	}
-
-	private static int integer(String name, String text, int defaultValue, int minimum, int maximum,
-			String expected) {
-		if (text == null) {
-			return defaultValue;
-		}
-		try {
-			int value = Integer.parseInt(text);
-			if (value >= minimum && value <= maximum) {
-				return value;
-			}
-		}
-		catch (NumberFormatException ex) {
-			// Falls through to the same refusal as a number out of range.
-		}
-		throw badRequest("The query parameter " + name + " must be " + expected + ".");
 	}
 
 	private static ErrorResponseException badRequest(String detail) {

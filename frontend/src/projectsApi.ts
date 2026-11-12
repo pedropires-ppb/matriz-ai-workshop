@@ -1,6 +1,7 @@
 // The project operations of the Matriz API (openapi.yaml).
 import { call, MERGE_PATCH_TYPE, type Result, sending, type Session } from './http';
 import type { TaskState } from './tasksApi';
+import { trimText } from './validation';
 
 export type ProjectState = 'ACTIVE' | 'COMPLETED';
 export type MemberRole = 'PROJECT_OWNER' | 'PROJECT_PARTICIPANT';
@@ -80,7 +81,7 @@ export function listProjects(
 
 /** `POST /api/projects` (createProject). The Project Owner is the signed-in person. */
 export function createProject(session: Session, content: ProjectContent): Promise<Result<Project>> {
-  const body = content.description.trim() === '' ? { name: content.name } : content;
+  const body = trimText(content.description) === '' ? { name: content.name } : content;
   return call(session, '/projects', sending('POST', body));
 }
 
@@ -91,7 +92,7 @@ export function getProject(session: Session, projectId: string): Promise<Result<
 
 /** `PATCH /api/projects/{projectId}` (updateProject): the name and the description. */
 export function updateProject(session: Session, projectId: string, content: ProjectContent): Promise<Result<Project>> {
-  const body = { name: content.name, description: content.description.trim() === '' ? null : content.description };
+  const body = { name: content.name, description: trimText(content.description) === '' ? null : content.description };
   return call(session, projectPath(projectId), sending('PATCH', body, MERGE_PATCH_TYPE));
 }
 

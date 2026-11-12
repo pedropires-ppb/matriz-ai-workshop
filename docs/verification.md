@@ -241,7 +241,7 @@
 |---|---|---|
 | A | Open the project with a task In progress | the “Complete project” button is disabled, with the reason “Unavailable while tasks are To do or In progress.” (the `409` of step 8 is not reachable from this screen) |
 | B | Task detail: the deletion request answers `500` | an alert “Something went wrong. Please try again.”; no success message; the person stays on the task; by the API afterwards the task still exists |
-| C | The comment request answers `409` | the alert “The project is Completed; it cannot be changed.” (the screen maps any `409` on a comment to that text, which is the only real cause of a `409` there); no success message; the typed comment stays in the box; by the API afterwards the task still has 0 comments |
+| C | The comment request answers `409` | the alert “The project is Completed; it cannot be changed.”; no success message; the typed comment stays in the box; by the API afterwards the task still has 0 comments. *Explanation corrected on 2026-11-12 by the project team's delivery decision 6: the intercepted 409 is only a stub, not a valid Completed-project refusal; comments are allowed there under [Assumption A-023](constraints.md#assumptions) and [Assumption A-036](constraints.md#assumptions). The observed output is preserved.* |
 | D | The state request answers `500`; the selector is set to Done | an alert; no success message; the selector shows To do again; by the API afterwards both tasks keep their states |
 
 - **Observation (not investigated):** in steps C and D the alert of step B stayed on the screen, so two alerts showed at once. The [I13 evidence](evidence/I13-user-interface-consolidation-verification.md) already lists that two notices can show at once on Task detail, one per panel (the details panel's and the comments panel's). What I saw is that an old alert of the details panel is not cleared when a later action in another panel fails. [Proposal] keep it as a known limitation for the project team to rank; no requirement says when an alert must go away.
@@ -374,3 +374,125 @@ For the client, via the project team; the [register](constraints.md#open-questio
 6. [OQ-016](constraints.md#open-questions): does the client approve the MVP?
 
 For the project team: review [A-037](constraints.md#assumptions) (the refusal rule of Bug 2), add the missing identifiers to the tests of EX-013, EX-015, EX-016, EX-017, EX-019, EX-021, and EX-025, and correct the README counts.
+
+## Delivery review — 2026-11-12
+
+*Added by the assistant following the project team's confirmed decisions in “Lab Worksheet 03 — Review and prepare the delivery”, questions 1–20 and the subsequent findings approvals. This is a new delivery record, not a replacement of the earlier I12 observations. I12 remains Awaiting review; client validation remains pending.*
+
+### Review scope and findings
+
+The fixed comparison was `git diff c888aa9...f716bc4`: ten commits and 309 changed files, including the first implementation. Two independent review axes inspected documented standards and specification conformance. The order was configuration/migrations, Identity/HTTP, Projects/membership, Tasks/assignments/comments/progress, frontend, then contract/documents. Test sources were sampled by behavior and assertion, not read exhaustively. Passing tests do not certify every acceptance criterion.
+
+| Finding | Team decision and disposition | Regression evidence |
+|---|---|---|
+| Eligible-participant query validation preceded visibility/role checks (ADR-004) | Approved correction; access is checked before query validation and rechecked when listing (`b86dbba`). | New combined blank/NUL/lone-surrogate queries initially returned 400 instead of 404/403; now pass in `ParticipantsApiTests`. |
+| Actuator discovery exceeded the health-only decision (ADR-007) | Approved correction; disable discovery (`0112a5a`). | The replacement assertion first failed with 200 instead of 404; `HealthCheckTests` now passes, including health. |
+| Frontend trimming differed from [Assumption A-033](constraints.md#assumptions) | Approved correction across validation, description payloads and searches (`3a017be`). | Five new Vitest checks failed first; FEFF/zero-width text is preserved, Java whitespace is trimmed and boundary lengths agree. |
+| Invalid-character errors were described as excessive length | Approved [Assumption A-037](constraints.md#assumptions) client validation and accurate field explanations (`03d932b`). | Two new Vitest checks failed first; all 31 frontend tests, typecheck and production build then passed. |
+| Accepted extreme pages produced 500 rather than empty pages | Reproduced by the approved gap checks; team separately approved correction (`acbacfc`). | Project/task API regressions failed at `page=2147483647&size=100`, then passed. Filtered counts precede fetches; PostgreSQL receives long offsets, avoiding JPA's integer-offset limit without a smaller business page limit. |
+| Implicit HEAD/OPTIONS extended the API beyond ADR-004 | Reproduced by the approved gap checks; team separately approved an API-only correction (`2cbff75`). | Two method cases failed with 200 instead of 405. Declared Allow values and missing/ended-token precedence now pass. Health/static resources are outside the guard. |
+| Contract length/status prose differs from implementation | Reconcile under the approved Step C, preserving existing rules. | Existing contract checks are component/property/token assertions, not a complete operation-aware checker. |
+
+No excluded product-feature or dependency scope creep was identified within the inspected surfaces. Local patterns over 102 reachable commits and 675 unique text blobs found no high-confidence real secret/token/application-personal-data exposure. This cannot prove absence; unreachable objects, uncached remote history and hosted scanning were outside scope. Contributor metadata exists. Ignored dotenv contents were not inspected.
+
+### Checks performed
+
+All commands ran with installed JDK 25.0.5 selected for the command (`export JAVA_HOME="$(/usr/libexec/java_home -v 25)"; export PATH="$JAVA_HOME/bin:$PATH"` on this macOS host). The first baseline attempt used the default JDK 21 and stopped at Enforcer before compilation; no global Java configuration or dependency manifest was changed.
+
+- Initial targeted baseline: 414 Java tests, including 43 browser tests, plus 23 Vitest tests; typecheck/build passed.
+- `./mvnw -B -Dtest=ParticipantsApiTests,HealthCheckTests,EveryOperationRequiresATokenTests,LayeringTests,ModuleBoundaryTests test`: 85 tests passed after the first two fixes.
+- `./mvnw -B -Dtest=ProjectRepositoryTests,TaskRepositoryTests,ProjectApiTests,TaskApiTests,LayeringTests,ModuleBoundaryTests test`: 185 tests passed after the pagination correction.
+- `./mvnw -B -Dtest=AccessTokenTests,EveryOperationRequiresATokenTests,HealthCheckTests,LayeringTests,ModuleBoundaryTests test`: 107 tests passed after the method correction.
+- From `frontend`, with `PATH="$PWD/node:$PATH"` exported: `npm run typecheck`, `npm test`, `npm run build`: passed; 31 tests.
+- Three added browser checks passed: failed project deletion keeps the project with no success notice; failed assignment keeps the selected person with no success notice or assignment; comment markup is literal text, not elements.
+
+The full clean verification and clean-copy exercise are recorded separately when executed. The earlier “not tested” entries remain historical observations; later results supersede only the specifically covered gaps.
+
+### Behavior-preserving refactoring
+
+*Decision confirmed by the project team on 2026-11-12, delivery questions 10–11.* Extract the duplicated controller page/size parsing into `com.matriz.PageParameters`. The benefit is one implementation of defaults, accepted integers and error messages. Alternatives were keeping duplication, consolidating Unicode test vectors, or extracting task access/form mechanics; the latter options were broader or did not simplify production code.
+
+The helper is cross-cutting HTTP code in the base package, the location already authorized by [ADR-008](adr/ADR-008-domain-driven-design.md#1-packages-and-layers), not a new business module or module dependency. Access checks, query-validation order, media handling, transactions, 400 details and defaults remain unchanged. Existing project/task API tests cover defaults, ranges, malformed values, boundaries and access precedence; no uncovered behavior required a new test for this extraction.
+
+With the same command-local JDK selection, both runs used exactly `./mvnw -B clean verify`:
+
+| Run | Java tests | Frontend | Result |
+|---|---|---|---|
+| Before extraction, commit `f3740fc` | 695; 0 failures/errors/skips | Typecheck, 31 Vitest tests, Vite build passed | BUILD SUCCESS; 3m37s |
+| After extraction | 695; 0 failures/errors/skips | Typecheck, 31 Vitest tests, Vite build passed | BUILD SUCCESS; 3m34s |
+
+Both counts include 46 browser tests and the layering/module-boundary checks. The diff removes the two private parsers/constants, adds one base-package helper and changes the four call sites; it does not bundle any behavior correction.
+
+### Contract and documentation reconciliation
+
+*Applied on 2026-11-12 under the project team's confirmed delivery decisions 3–9, 12 and 18.* The draft OpenAPI contract now separates normalized input text from bounded output strings, describes A-037, declares generic 500 responses on all 23 operations, bounds page inputs at 2147483647, covers task pagination in the general list rule and corrects validation examples. Required request text permits exactly 1–N Unicode code points after the approved trim; optional descriptions also permit blank text. These are existing implementation rules, not new product limits.
+
+`ContractTextTests` first failed all nine text/request combinations against the old raw-length schemas. After reconciliation, `./mvnw -B -Dtest=ContractTextTests,RequestSchemaTests,EveryOperationRequiresATokenTests test` passed **68 tests**, with no failures/errors/skips (14.162s). The new checks include padded supplementary characters at each limit, over-limit text, blank text, preserved FEFF, NUL/unpaired-surrogate refusal, all 23 server-error references and both technical page bounds. Existing request-property/media/parameter guards remain unchanged.
+
+This harness validates named JSON schemas plus explicitly asserted route/status/header cases; it is **not** a complete operation-aware OpenAPI/HTTP validator. In particular, property guards alone do not prove every authenticated response or `format`, and a no-token test does not prove a successful mapping. The API suites and source comparison remain necessary.
+
+The register, stories, plan, architecture, historical ADR open points, I12 header and frozen wireframe now have dated corrections/resolution links. Assumption A-024 and unreviewed details of A-034–A-036 keep their pending status; no client answer or increment acceptance is inferred. The logical data model agrees with V1–V6 and needed no migration/model change. AGENTS.md changes only the approved command section and current-phase wording. Compose now supports an isolated host port through `MATRIZ_DB_PORT`, default 5432.
+
+A local checker found **2723 valid relative inline Markdown links/anchors across 30 tracked documents**; external links were not fetched. `docker compose --env-file .env.example config --quiet` and `git diff --check` passed. No developer `.env` or database was used.
+
+### Three examples of AI use
+
+*Selected and confirmed by the project team's member on 2026-11-12, delivery questions 14–16. Goals/decisions below are sourced from that confirmation and the linked repository records; they do not claim that the developer personally ran the commands.*
+
+| Goal of the request | Developer's decision | How it was verified |
+|---|---|---|
+| Review direct API authorization and check that an outsider cannot discover a project through member removal. | Approve the uniform 404 correction after the AI identified the disclosure; keep the approved permission policy, not a new role rule. | [Bug 1](#bugs-found) and [Case 08](#case-08--authorization-in-the-api) record the failing/passing authorization test and live comparison of existing, missing and malformed projects. |
+| Investigate unusual text that could not be persisted unchanged. | Approve 422 on text fields, 400 on searches and generic 401 on login names containing NUL/unpaired surrogates; leave other invisible characters open as [OQ-031](constraints.md#open-questions). | [Bug 2](#bugs-found) records the live read-back check and 55 passing `UnusualTextTests`; the [mutation check](#the-three-automated-tests) made 33 tests fail when the storage guard was disabled. |
+| Check invalid-request handling against ADR-004 rather than adopting the AI's suggested status blindly. | **Correct the suggestion:** a well-formed JSON value of the wrong type is 422, not the assistant's proposed 400; reserve 400 for malformed JSON/bad query parameters. | [Project-management decision 11](implementation-plan.md#decisions-affecting-the-increments) records the correction. `ProjectApiTests` asserts the 422/field-error behavior; it also ran in both successful [before/after refactoring checks](#behavior-preserving-refactoring). |
+
+### Clean-copy delivery exercise
+
+Executed on 2026-11-12 under delivery decisions 18–19. The committed candidate was cloned locally with `git clone --no-hardlinks --branch week3-ex9`; no ignored configuration or generated dependencies were copied. The first clone at `63a59d0` passed full verification (705 Java tests, 31 Vitest, 3m40s). A final read-only reviewer found one documentation-only error: the new README unassignment summary said 204 although the existing controller/OpenAPI return 200 with a Task. It was independently checked and corrected in `a88c428`; there were no Critical/Important production-code findings. The fresh-clone recipe was then repeated from that corrected commit.
+
+Only the README was needed to configure/build/start the application. Its UI steps were automated with a throwaway Playwright source launcher outside the repository, using existing test dependencies; this is probe instrumentation, not an extra application setup step. The two temporary clones used unique paths; only the second started Compose project `matriz-ex9-20261112215110`, database port 15439 and application port 18089.
+
+| README step / command | Observed output |
+|---|---|
+| Clone, configuration derived from `.env.example`, `docker compose config --quiet` | Clean tracked tree; generated `.env` mode 600; only fictitious test passwords and a privately generated signing key. No developer `.env` read or copied. |
+| `./mvnw -B clean verify` in the corrected fresh clone | **BUILD SUCCESS**, 3m37s; **705 Java tests, 0 failures/errors/skips**, including 46 browser tests; **31 Vitest**, TypeScript and Vite build passed. |
+| `docker compose up -d --wait` | Only the named project's container/network/volume created; PostgreSQL 18.6 healthy on loopback port 15439. |
+| `java -jar target/matriz-0.1.0-SNAPSHOT.jar --server.port=18089` | Seven successful migrations: V1, demo 1.1, V2–V6; Tomcat on 18089; application started in 2.938s. |
+| Health request and the two README `psql` queries | Overall/db `UP`; Flyway at V6; exactly **4 people / 4 projects / 8 memberships / 9 tasks / 3 assignments / 2 comments** before adding verification rows. |
+| README sign-in and `/api/me` | Fictitious Ana authenticated; returned her fixed identifier/display name. The token was held only in the live API terminal's memory, never printed. |
+| README project/task creation | Project `aa171762-0765-4560-b329-b29d5ce9a533`, “Clean-copy delivery project”, Active; task `96c2cade-a918-469d-86bc-9fd162f2cab4`, “Clean-copy persistence task”, To do / High / no assignees. |
+| Open UI, sign in, open project/task, reload and sign in again | Live Chromium probe passed: same project/task displayed after reload, direct route preserved, no page errors. |
+| Stop only the backend and repeat the exact run command | PostgreSQL remained running; startup 3.052s; “Schema public is up to date. No migration necessary.” |
+| Repeat health and the two authenticated GET requests; repeat the UI probe | Same token remained valid; same identifiers/content persisted, project progress now counted one To do task; UI/reload/re-sign-in passed again. |
+
+Cleanup was **explicitly authorized immediately beforehand** for the exact resources. The backend was stopped; `docker compose down -v` removed only the named project's container, network and volume; filtered Docker queries confirmed all gone. Both exact clone directories (including their temporary `.env` files) were removed. The UI probe's first default Playwright initialization unexpectedly downloaded unused Firefox/WebKit caches; the probe then disabled auto-download, and only those two newly created cache directories were removed with approval. Existing Chromium/build caches, the original checkout/database and pre-existing containers were not removed. Port 18089 no longer served the application; the original working tree remained clean.
+
+This verifies the README on a clean copy on **macOS**, not every platform or every story in a complete manual walkthrough. No tag, push, merge, rebase, client approval or increment acceptance occurred.
+
+### Final delivery checks
+
+Run on the original `week3-ex9` checkout after the approved cleanup, 2026-11-12:
+
+| Check | Recorded result |
+|---|---|
+| `./mvnw -B clean verify` | **BUILD SUCCESS**, 3m33s, finished 23:31:21Z; **705 Java tests, 0 failures/errors/skips**, including 46 Playwright cases; frontend typecheck, 31 Vitest and production build passed. |
+| Standalone frontend typecheck / Vitest / Vite build | Passed; 6 Vitest files, **31 tests**; production build succeeded. |
+| Focused `RequestSchemaTests,ContractTextTests,EveryOperationRequiresATokenTests` command | **68 tests**, no failures/errors/skips; BUILD SUCCESS, 12.247s, finished 23:31:36Z. |
+| Tracked delivery manifest / wrapper / ignore policy | All 21 selected essentials tracked, including all six schema migrations, SQL demo migration, example configuration, wrapper and frontend manifests/lock; Unix wrapper executable. 316 tracked files; no tracked runtime `.env`, generated build/dependency tree or IDE metadata. |
+| Local reachable-history exposure scan | Before the final evidence commit: **116 commits, 726 unique text blobs, 10,995,434 bytes**, plus all commit messages; **0 high-confidence credential/private-key/JWT/credential-URL pattern hits**. |
+| Identifier and documentation checks | All **168** referenced numeric IDs found in the authoritative registers/ADR files; **3484** relative inline links/anchors valid across 30 Markdown files and OpenAPI prose; `git diff --check` passed. |
+
+The final contract prose also links the input limits explicitly to their existing assumptions; no constraint or behavior changed. The exposure scan is local and heuristic: ignored files, unreachable objects, unfetched remote references and GitHub's hosted scanner were not inspected. Application examples/data are recorded as fictitious; **Git contributor metadata remains intentionally present**, so this is not a claim that no personal metadata exists anywhere in Git or a GDPR-compliance finding.
+
+| Worksheet completion criterion | Status | Evidence |
+|---|---|---|
+| Application starts by following README | Met on macOS | Repeated fresh-clone configuration/build/start/health/schema/seed exercise above. |
+| Interface manages projects, tasks, assignees and comments | Met in checked scenarios | 46 passing `UserInterfaceTests` browser cases, including multi-role project/task/member/assignment/comment flows; live fresh-clone project/task display. |
+| Direct API authentication and authorization | Met in checked scenarios | Every guarded operation's token tests, distributed role/access API tests, approved access/method regressions and authenticated fresh-clone requests. |
+| Persistence after interface reload and backend restart | Met | Live UI reload/re-sign-in before and after restart; same token, project/task identifiers/content; `DataAfterRestartTests`. |
+| Loading, no data, success and error states | Met in checked scenarios | Browser/Vitest checks, including failed project deletion/assignment retaining state without success and literal markup rendering. |
+| Contract matches implementation and checks are recorded | Met for reviewed operations | All 23 operations mapped; corrected text/page/status/example rules, passing named-schema/API/header guards and recorded source review. The bounded harness is not an exhaustive operation-aware or format validator. |
+| Code reviewed and delivered version identified in Git | Met as a delivery candidate | Standards/Spec review plus one final read-only delivery review; approved fixes/regressions, separate refactoring and committed evidence on `week3-ex9`. |
+
+**No release acceptance is inferred.** I12 remains Awaiting review. A complete manual story-by-story walkthrough on every target platform was not run; target platforms/accessibility/quality measures and personal-data obligations remain open (OQ-010, OQ-011, OQ-021), and client scope approval OQ-016 is pending. The known session and self-assignment risks remain under OQ-027/OQ-025; other invisible-character policy remains OQ-031. The test records do not answer those questions.
+
+The project team's member will deliver the closing commit of `week3-ex9`, merge it onto `main`, then create the annotated tag **`v0.1.0-mvp-rc.1`**, with message **“Matriz proposed MVP delivery candidate; I12 Awaiting review; client validation pending.”** No integration command has been executed by the assistant.

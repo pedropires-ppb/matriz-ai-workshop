@@ -14,6 +14,12 @@ describe('parseRoute', () => {
     expect(parseRoute('#/projects/new')).toEqual(NEW_PROJECT);
   });
 
+  it('normalizes project searches with the backend whitespace rule', () => {
+    expect(parseRoute(`#/projects?${new URLSearchParams({ name: '\u001c\ufeff\u001f' })}`)).toEqual({
+      ...ALL_PROJECTS, name: '\ufeff',
+    });
+  });
+
   it('reads a project with its filters and page, in their canonical order, once each', () => {
     expect(parseRoute('#/projects/p-1?state=DONE&state=TO_DO&state=DONE&priority=HIGH&page=2')).toEqual({
       screen: 'project',

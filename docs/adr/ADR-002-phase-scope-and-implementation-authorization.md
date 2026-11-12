@@ -85,6 +85,8 @@ The workshop scope's terms are mapped to the [glossary](../requirements.md#gloss
 
 ## Open points
 
+*Resolution links added on 2026-11-12 by the project team's delivery decision 6; the original open-point list below is historical, not a list of current blockers.* Deletion details were decided for projects on 2026-11-02 and tasks on 2026-11-05 ([Assumption A-022](../constraints.md#assumptions)); comment details are recorded with their precise validation status in [Assumption A-036](../constraints.md#assumptions). Filters leaving progress unchanged are implemented and checked in [I5](../evidence/I5-progress-and-my-projects-verification.md). Login-name uniqueness is enforced by migration V1 and [ADR-007](ADR-007-build-persistence-and-demonstration-data.md#8-physical-schema); comment placement and the independent Comment aggregate are decided in [ADR-008](ADR-008-domain-driven-design.md). Client validation remains pending; these links do not retroactively approve every proposed comment detail or the pending detail of A-024.
+
 These details were not decided by the team. They are the assistant's proposed reading of the decisions, flagged where they are recorded, and need the team's and the client's confirmation:
 
 - How deletion works: only the Project Owner deletes, only in Active projects, after confirming, with no restore, and with the task's assignments removed ([Assumption A-022](../constraints.md#assumptions)).

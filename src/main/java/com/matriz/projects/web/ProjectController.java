@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.List;
 import java.util.UUID;
 
+import com.matriz.PageParameters;
 import com.matriz.identity.SignedInPerson;
 import com.matriz.projects.ProjectId;
 import com.matriz.projects.application.AddParticipant;
@@ -65,10 +66,6 @@ class ProjectController {
 
 	static final String NOT_WELL_FORMED = "The request content is not well-formed JSON.";
 
-	static final int DEFAULT_SIZE = 20;
-
-	static final int MAXIMUM_SIZE = 100;
-
 	private final CreateProject createProject;
 
 	private final ListProjects listProjects;
@@ -124,8 +121,8 @@ class ProjectController {
 			throw badRequest("The query parameter name must not be empty.");
 		}
 		requireStorable(name);
-		int pageNumber = integer("page", page, 1, 1, Integer.MAX_VALUE, "an integer of at least 1");
-		int pageSize = integer("size", size, DEFAULT_SIZE, 1, MAXIMUM_SIZE, "an integer from 1 to 100");
+		int pageNumber = PageParameters.page(page);
+		int pageSize = PageParameters.size(size);
 		return ProjectPageResponse.of(this.listProjects.list(person.personId(), name, pageNumber, pageSize));
 	}
 
@@ -174,6 +171,7 @@ class ProjectController {
 	List<MemberResponse.Person> eligibleParticipants(SignedInPerson person, @PathVariable String projectId,
 			@RequestParam(name = "name", required = false) String name) {
 		ProjectId id = id(projectId);
+		this.listEligibleParticipants.checkCanList(person.personId(), id);
 		if (name != null && Whitespace.isBlank(name)) {
 			throw badRequest("The query parameter name must not be empty.");
 		}
@@ -255,23 +253,6 @@ class ProjectController {
 			throw new HttpMessageNotReadableException(NOT_WELL_FORMED, new ServletServerHttpRequest(request));
 		}
 		return content;
-	}
-
-	private static int integer(String name, String text, int defaultValue, int minimum, int maximum,
-			String expected) {
-		if (text == null) {
-			return defaultValue;
-		}
-		try {
-			int value = Integer.parseInt(text);
-			if (value >= minimum && value <= maximum) {
-				return value;
-			}
-		}
-		catch (NumberFormatException ex) {
-			// Falls through to the same refusal as a number out of range.
-		}
-		throw badRequest("The query parameter " + name + " must be " + expected + ".");
 	}
 
 	/** Assumption A-037: the database cannot keep such a text, and a search for it is not a search. */

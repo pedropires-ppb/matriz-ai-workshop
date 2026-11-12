@@ -68,6 +68,7 @@ export const messages = {
   completeUnavailable: 'Unavailable while tasks are To do or In progress.',
   projectHasUnfinishedTasks: 'The project has tasks that are To do or In progress; it remains Active.',
   nameRequired: 'Name is required.',
+  unstorableText: 'This text contains a character that cannot be stored.',
   nameTooLong: 'Name must be at most 100 characters.',
   descriptionTooLong: 'Description must be at most 1000 characters.',
   invalidProject: 'The project is invalid. Please check the fields.',

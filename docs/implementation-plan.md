@@ -356,7 +356,7 @@ The status of each increment is kept in one place only: the **Status** column of
 ### I12 — Release verification
 
 - **Goal:** Verify the whole proposed MVP before presenting it to the client.
-- **Depends on:** I1–I11.
+- **Depends on:** I1–I11 and I13. *Reconciled on 2026-11-12 by the project team's delivery decision 6 with the Increments table; previously “I1–I11”.*
 - **Acceptance:**
   - every acceptance criterion of US-001–US-026 and every exceptional case EX-001–EX-032;
   - [NFR-001, NFR-002, and NFR-008](requirements.md#non-functional-requirements-and-unresolved-quality-criteria), verified as described there;
@@ -372,6 +372,8 @@ The status of each increment is kept in one place only: the **Status** column of
   - an updated list of open questions and assumptions for the client.
 - **Result:** a demonstrable release candidate. It becomes the MVP only when the client approves the scope ([OQ-016](constraints.md#open-questions)).
 - *Added on 2026-11-12 (the exercise “Verify the MVP”; plan revision under rule 7; confirmed by the user, the team's review pending):* the record is split in two. [verification.md](verification.md) holds nine scenarios (access, project management, task persistence, data validation, state and priority, assignees, comments, authorization in the API, deletion and errors), each with its expected result, observed result, evidence, type (automated or manual), and status. [evidence/I12-verification.md](evidence/I12-verification.md) holds the rest of I12 and links to it. Three automated tests are added (a validation rule, an authorization scenario, and a persistence check after a restart). Manual checks run on a fresh database that is not the developer's local one; the evidence in the repository is text only, with no secret. A known problem is recorded as a known limitation, not fixed, and a defect is fixed only after the project team's member approves the diagnosis.
+
+- *Delivery follow-up added on 2026-11-12 under the project team's confirmed delivery exercise:* the diff review, approved corrections, separate pagination refactoring, documentation/README reconciliation, AI-use examples, repeated isolated clean-copy exercise and final checks are in [verification.md](verification.md#final-delivery-checks). There was no previous delivery follow-up here. **I12 stays Awaiting review**; passing checks do not accept the increment or close OQ-016.
 
 ### I13 — User interface consolidation
 
@@ -394,6 +396,8 @@ The status of each increment is kept in one place only: the **Status** column of
   - the states, one request per repeated click, no duplicate records, totals from the API, a 401 leading to sign-in, no mocks, and no secrets.
 
 ## Decisions affecting the increments
+
+*Current-reading clarification added on 2026-11-12 by the project team's delivery decisions 5–6; the historical decision rows below remain intact. “Open for comments” in the naming row is superseded by [Assumption A-036](constraints.md#assumptions) and migration V6. A-030 no longer blocks I6: the 2026-11-09 decision and 2026-11-12 acceptance below supersede its earlier undecided wording. The I4 “until I7” state-change gap is closed by [Assumption A-035](constraints.md#assumptions), not an outstanding limitation. No increment status or client question is changed.*
 
 Interim answers are the team's ([interim team answers](constraints.md#interim-team-answers-2026-10-29)); the client's answers prevail.
 
