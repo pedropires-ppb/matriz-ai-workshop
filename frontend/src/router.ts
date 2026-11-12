@@ -3,6 +3,7 @@
 // token is kept in memory only, so a reload still signs the person out (ADR-005); after signing in again,
 // the person returns to the address.
 import { TASK_PRIORITIES, TASK_STATES, type TaskPriority, type TaskState } from './tasksApi';
+import { trimText } from './validation';
 
 /** The filters and the page of a project's task list, kept in the address. */
 export interface TaskListQuery {
@@ -69,7 +70,7 @@ export function parseRoute(hash: string): Route {
     return { screen: 'unknown' };
   }
   if (parts.length === 1) {
-    return { screen: 'projects', name: (parameters.get('name') ?? '').trim(), page: pageFrom(parameters), creating: false };
+    return { screen: 'projects', name: trimText(parameters.get('name') ?? ''), page: pageFrom(parameters), creating: false };
   }
   if (parts.length === 2 && parts[1] === 'new') {
     return NEW_PROJECT;

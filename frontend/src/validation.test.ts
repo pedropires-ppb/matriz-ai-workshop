@@ -8,6 +8,14 @@ describe('textLength', () => {
     expect(textLength('😀😀')).toBe(2);
     expect(textLength('\u00a0\u00a0')).toBe(0);
   });
+
+  it('uses Java whitespace plus space separators, without removing FEFF or zero-width space', () => {
+    expect(textLength('\u001c\u001d\u001e\u001f\u00a0\u2007\u202fabc\u3000')).toBe(3);
+    expect(textLength('\ufeff')).toBe(1);
+    expect(textLength('\u200b')).toBe(1);
+    expect(checkText('\u001cx\u001f', { maximum: 1, tooLong: 'too long' })).toBeUndefined();
+    expect(checkText('\ufeffx', { maximum: 1, tooLong: 'too long' })).toBe('too long');
+  });
 });
 
 describe('checkText', () => {

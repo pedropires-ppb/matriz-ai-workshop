@@ -3,12 +3,14 @@
 import type { FieldProblem, Refused } from './http';
 import { messages } from './messages';
 
-/**
- * Counts characters as the API does: Unicode characters of the trimmed text, not UTF-16 units. `trim`
- * also removes the no-break spaces that the API treats as blank (Assumptions A-031, A-033, A-036).
- */
+/** Java whitespace plus Unicode space separators (A-033); FEFF and zero-width space are preserved. */
+export function trimText(text: string): string {
+  return text.replace(/^[\p{Zs}\u0009-\u000d\u001c-\u0020\u2028\u2029]+|[\p{Zs}\u0009-\u000d\u001c-\u0020\u2028\u2029]+$/gu, '');
+}
+
+/** Counts Unicode code points after the API's trimming, not UTF-16 units (A-031/A-033/A-036). */
 export function textLength(text: string): number {
-  return Array.from(text.trim()).length;
+  return Array.from(trimText(text)).length;
 }
 
 export interface TextRule {
