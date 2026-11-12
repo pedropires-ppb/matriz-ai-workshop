@@ -241,7 +241,7 @@
 |---|---|---|
 | A | Open the project with a task In progress | the “Complete project” button is disabled, with the reason “Unavailable while tasks are To do or In progress.” (the `409` of step 8 is not reachable from this screen) |
 | B | Task detail: the deletion request answers `500` | an alert “Something went wrong. Please try again.”; no success message; the person stays on the task; by the API afterwards the task still exists |
-| C | The comment request answers `409` | the alert “The project is Completed; it cannot be changed.” (the screen maps any `409` on a comment to that text, which is the only real cause of a `409` there); no success message; the typed comment stays in the box; by the API afterwards the task still has 0 comments |
+| C | The comment request answers `409` | the alert “The project is Completed; it cannot be changed.”; no success message; the typed comment stays in the box; by the API afterwards the task still has 0 comments. *Explanation corrected on 2026-11-12 by the project team's delivery decision 6: the intercepted 409 is only a stub, not a valid Completed-project refusal; comments are allowed there under [Assumption A-023](constraints.md#assumptions) and [Assumption A-036](constraints.md#assumptions). The observed output is preserved.* |
 | D | The state request answers `500`; the selector is set to Done | an alert; no success message; the selector shows To do again; by the API afterwards both tasks keep their states |
 
 - **Observation (not investigated):** in steps C and D the alert of step B stayed on the screen, so two alerts showed at once. The [I13 evidence](evidence/I13-user-interface-consolidation-verification.md) already lists that two notices can show at once on Task detail, one per panel (the details panel's and the comments panel's). What I saw is that an old alert of the details panel is not cleared when a later action in another panel fails. [Proposal] keep it as a known limitation for the project team to rank; no requirement says when an alert must go away.
@@ -422,3 +422,15 @@ With the same command-local JDK selection, both runs used exactly `./mvnw -B cle
 | After extraction | 695; 0 failures/errors/skips | Typecheck, 31 Vitest tests, Vite build passed | BUILD SUCCESS; 3m34s |
 
 Both counts include 46 browser tests and the layering/module-boundary checks. The diff removes the two private parsers/constants, adds one base-package helper and changes the four call sites; it does not bundle any behavior correction.
+
+### Contract and documentation reconciliation
+
+*Applied on 2026-11-12 under the project team's confirmed delivery decisions 3–9, 12 and 18.* The draft OpenAPI contract now separates normalized input text from bounded output strings, describes A-037, declares generic 500 responses on all 23 operations, bounds page inputs at 2147483647, covers task pagination in the general list rule and corrects validation examples. Required request text permits exactly 1–N Unicode code points after the approved trim; optional descriptions also permit blank text. These are existing implementation rules, not new product limits.
+
+`ContractTextTests` first failed all nine text/request combinations against the old raw-length schemas. After reconciliation, `./mvnw -B -Dtest=ContractTextTests,RequestSchemaTests,EveryOperationRequiresATokenTests test` passed **68 tests**, with no failures/errors/skips (14.162s). The new checks include padded supplementary characters at each limit, over-limit text, blank text, preserved FEFF, NUL/unpaired-surrogate refusal, all 23 server-error references and both technical page bounds. Existing request-property/media/parameter guards remain unchanged.
+
+This harness validates named JSON schemas plus explicitly asserted route/status/header cases; it is **not** a complete operation-aware OpenAPI/HTTP validator. In particular, property guards alone do not prove every authenticated response or `format`, and a no-token test does not prove a successful mapping. The API suites and source comparison remain necessary.
+
+The register, stories, plan, architecture, historical ADR open points, I12 header and frozen wireframe now have dated corrections/resolution links. Assumption A-024 and unreviewed details of A-034–A-036 keep their pending status; no client answer or increment acceptance is inferred. The logical data model agrees with V1–V6 and needed no migration/model change. AGENTS.md changes only the approved command section and current-phase wording. Compose now supports an isolated host port through `MATRIZ_DB_PORT`, default 5432.
+
+A local checker found **2723 valid relative inline Markdown links/anchors across 30 tracked documents**; external links were not fetched. `docker compose --env-file .env.example config --quiet` and `git diff --check` passed. No developer `.env` or database was used.

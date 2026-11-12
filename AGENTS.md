@@ -72,11 +72,25 @@ Matriz is an application for work teams to organize projects (F01), manage tasks
 - Request explicit approval before destructive or irreversible actions.
 - When finished, report files changed, assumptions used, checks performed, and outstanding questions.
 
+## Run and verification commands
+
+*Added on 2026-11-12 by the project team's delivery decision 12; previously this file had no command reference. These commands do not change scope or acceptance. Run from the repository root with JDK 25+ and Docker available; see [README.md](README.md) for configuration, seed-before-first-start ordering and isolated verification.*
+
+| Purpose | Command / condition |
+|---|---|
+| Full build and verification | `./mvnw -B clean verify` — includes frontend installation, typecheck, Vitest, production build, Java/API/contract, Playwright and architecture tests; Testcontainers owns its databases. |
+| Package for running | `./mvnw -B -DskipTests package` — skips Java tests, not frontend Vitest. |
+| Database | `docker compose up -d --wait` — creates only the configured Compose project's PostgreSQL/volume; it does not migrate the schema. |
+| Run / schema | `java -jar target/matriz-0.1.0-SNAPSHOT.jar` — configured Flyway migrations run before Hibernate validates; no manual schema SQL. |
+| Demonstration data | Before the first startup of a fresh database, set `MATRIZ_DEMO_DATA=true` and all four demo passwords in ignored `.env`, then use the run command. [ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md#10-demonstration-data) fixes this setting per database. |
+| Focused contract guards | `./mvnw -B -Dtest=RequestSchemaTests,ContractTextTests,EveryOperationRequiresATokenTests test` — schema/property/text and unauthenticated-operation guards, not a substitute for the API suites in full verification. |
+| Layering and module boundaries | `./mvnw -B -Dtest=LayeringTests,ModuleBoundaryTests test` |
+| Frontend checks after a Maven build | `(cd frontend && export PATH="$PWD/node:$PATH" && npm run typecheck && npm test && npm run build)` |
+| Reset | Manual only: follow the reset in [README.md](README.md) after explicit approval naming the exact project, container and volume. Never stop a container or run `docker compose down -v` without that approval. |
+
 ## Current phase and next steps
 
-- **Current phase:** Requirements specification v0.2 — draft awaiting client validation. Implementation was provisionally authorized by the project team on 2026-10-29, at the team's risk, while the client's approval of the MVP scope stays open (OQ-016; [ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md), question 1).
+- **Current phase:** Implemented proposed-MVP delivery candidate; I12 is Awaiting review, not Accepted. Requirements v0.2 and the scope remain drafts awaiting client validation. Implementation was provisionally authorized by the project team on 2026-10-29, at the team's risk, while the client's approval of the MVP scope stays open (OQ-016; [ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md), question 1). *Changed on 2026-11-12 by the project team's delivery decision 12: previously “Requirements specification v0.2 — draft awaiting client validation”; no acceptance or client approval is implied.*
 - **Next:** The first increment whose Status is not Accepted in the [Increments table of the implementation plan](docs/implementation-plan.md#increments), then the following increments in dependency order. In parallel, client validation of the open questions, the assumptions, and the team's [interim answers](docs/constraints.md#interim-team-answers-2026-10-29). A client answer that differs from an interim answer prevails; record it in a new ADR or a register update, and re-plan the affected increments. *Changed on 2026-10-30 by team decision (the conversation “I1 review: remaining decisions”, decision 2): previously “Increment I1 (walking skeleton) of the implementation plan, then I2–I12 in dependency order”. The plan's Status column now names the increment, so this line does not go stale.*
 
 *Changed on 2026-10-30 with the project team's approval: previously, the current phase was requirements specification v0.1, and no implementation was to start before the MVP scope was approved (OQ-016).*
-
-

@@ -10,7 +10,8 @@ services:
       POSTGRES_USER: ${MATRIZ_DB_USER:?set MATRIZ_DB_USER in .env (see .env.example)}
       POSTGRES_PASSWORD: ${MATRIZ_DB_PASSWORD:?set MATRIZ_DB_PASSWORD in .env (see .env.example)}
     ports:
-      - "127.0.0.1:5432:5432"
+      # Changed 2026-11-12, team delivery decision 18: previously fixed at host port 5432.
+      - "127.0.0.1:${MATRIZ_DB_PORT:-5432}:5432"
     volumes:
       - matriz-db:/var/lib/postgresql
     healthcheck:

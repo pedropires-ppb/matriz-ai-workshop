@@ -18,6 +18,11 @@ info:
     conflicts with the specification in `docs/`, the specification prevails
     and the conflict must be flagged.
 
+    *Reconciled on 2026-11-12 by the project team's delivery decisions
+    (questions 3 and 6): previously request text schemas imposed raw lengths
+    despite post-trim rules, and technical text restrictions, page bounds
+    and generic server failures were not fully described.*
+
     Behaviour that no cited requirement, assumption, or ADR states is a
     proposal of this draft by the AI assistant, pending the team's review,
     even where it is not marked as such.
@@ -168,6 +173,21 @@ info:
     [OQ-013](docs/constraints.md#open-questions)); enumeration values are
     language-neutral codes, not labels.
 
+    Unexpected server failures receive generic `500` Problem Details without
+    internal exception information. In particular, failure to check token
+    revocation is a server failure, not evidence that the token is invalid
+    ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)).
+
+    **Text normalization.** Request text limits count Unicode code points
+    after the whitespace trimming of
+    [Assumption A-033](docs/constraints.md#assumptions), not raw request length.
+    Input schemas express that rule separately from bounded output strings.
+    U+0000 and unpaired surrogates are refused under
+    [Assumption A-037](docs/constraints.md#assumptions): `422` on text fields,
+    `400` for search queries, and generic `401` for a login name containing
+    them. Login names are lowercased, not trimmed. Other invisible characters
+    remain unchanged pending [OQ-031](docs/constraints.md#open-questions).
+
     **Unsupported methods.** A request to a path of this contract with a
     method that the path does not define receives `405` with problem
     details and an `Allow` header that lists the methods the path defines
@@ -181,7 +201,7 @@ info:
     *Changed on 2026-11-02 by team decision (Lab Worksheet 03, question 12):
     previously “Its place in the order of checks above is not decided.”*
 
-    **Lists.** Lists are returned whole, except `listProjects`, which is
+    **Lists.** Lists are returned whole, except `listProjects` and `listTasks`, which are
     paged ([Assumption A-032](docs/constraints.md#assumptions); decided by
     the project team on 2026-11-02, closing the pagination point of
     [ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md); *previously:
@@ -363,6 +383,8 @@ paths:
                   loginName: ana
                   password: example-password
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: |
             The person is signed in; the token and the signed-in person are
@@ -472,6 +494,8 @@ paths:
           prevails. *Changed on 2026-11-02: previously “The effect of
           signing out is part of the open session policy (OQ-027).”*
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '204':
           description: |
             The sign-in has ended; the presented token is no longer accepted
@@ -500,6 +524,8 @@ paths:
           [Assumption A-017](docs/constraints.md#assumptions);
           [OQ-011](docs/constraints.md#open-questions)).
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: The signed-in person.
           content:
@@ -596,6 +622,7 @@ paths:
           schema:
             type: integer
             minimum: 1
+            maximum: 2147483647
             default: 1
           example: 1
         - name: size
@@ -611,6 +638,8 @@ paths:
             default: 20
           example: 20
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: A page of the person's accessible projects, possibly empty.
           content:
@@ -738,6 +767,8 @@ paths:
                 value:
                   name: Project Beta
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '201':
           description: |
             The project was created, Active, with the signed-in person as its
@@ -856,6 +887,8 @@ paths:
         - Completed projects remain viewable
           ([Assumption A-011](docs/constraints.md#assumptions)).
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: The project, with its progress.
           content:
@@ -1011,6 +1044,8 @@ paths:
                 value:
                   description: null
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: |
             The project was edited; the updated project is returned
@@ -1132,6 +1167,8 @@ paths:
           ([US-016](docs/user-stories.md#us-016--delete-project),
           acceptance criterion 2).
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '204':
           description: |
             The project is deleted and hidden from everyone
@@ -1214,6 +1251,8 @@ paths:
                 value:
                   state: COMPLETED
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: |
             The project is Completed; the updated project is returned
@@ -1352,6 +1391,8 @@ paths:
           [Assumption A-009](docs/constraints.md#assumptions)). *Added on
           2026-11-09 by team decision (the I6 decisions, question 2).*
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: The members of the project and their roles.
           content:
@@ -1429,6 +1470,8 @@ paths:
                 value:
                   personId: '6c0f9b25'
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '201':
           description: |
             The person is now a Project Participant and can view the project
@@ -1572,6 +1615,8 @@ paths:
           author, because comments cannot be deleted (proposal of this draft,
           following [Assumption A-023](docs/constraints.md#assumptions)).
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '204':
           description: |
             The person is no longer a member and can no longer view the
@@ -1686,6 +1731,8 @@ paths:
             minLength: 1
           example: rocha
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: The people who are not members of the project, possibly none.
           content:
@@ -1778,6 +1825,7 @@ paths:
           schema:
             type: integer
             minimum: 1
+            maximum: 2147483647
             default: 1
           example: 1
         - name: size
@@ -1821,6 +1869,8 @@ paths:
               $ref: '#/components/schemas/TaskPriority'
           example: [HIGH]
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: A page of the tasks of the project that match the filters, possibly empty.
           content:
@@ -1959,6 +2009,8 @@ paths:
                   title: Prepare budget
                   priority: HIGH
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '201':
           description: |
             The task was created in To do with no assignee
@@ -2056,7 +2108,7 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: A task title is required.
+                    detail: The task is invalid.
                     errors:
                       - pointer: /title
                         detail: A title is required.
@@ -2065,7 +2117,7 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: The Task priority is not valid.
+                    detail: The task is invalid.
                     errors:
                       - pointer: /priority
                         detail: Use one of LOW, MEDIUM, or HIGH.
@@ -2099,6 +2151,8 @@ paths:
         - A deleted task, or a task of a deleted project, receives `404`
           ([Assumption A-022](docs/constraints.md#assumptions)).
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: The task.
           content:
@@ -2190,6 +2244,8 @@ paths:
                 value:
                   priority: LOW
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: |
             The task was changed; the updated task is returned
@@ -2253,7 +2309,7 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: A task title is required.
+                    detail: The task is invalid.
                     errors:
                       - pointer: /title
                         detail: A title is required.
@@ -2262,7 +2318,7 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: The Task priority cannot be removed.
+                    detail: The task is invalid.
                     errors:
                       - pointer: /priority
                         detail: Use one of LOW, MEDIUM, or HIGH.
@@ -2328,6 +2384,8 @@ paths:
           ([OQ-023](docs/constraints.md#open-questions)). Asking the person
           to confirm is a step of the client, not of this API.
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '204':
           description: |
             The task is deleted and hidden from everyone
@@ -2438,6 +2496,8 @@ paths:
                 value:
                   state: DONE
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: The state was set; the updated task is returned.
           content:
@@ -2649,6 +2709,8 @@ paths:
                 value:
                   personId: '3e7b5a90'
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: |
             The person is an assignee of the task; the updated task is
@@ -2822,6 +2884,8 @@ paths:
           ([EX-022](docs/user-stories.md#edge-cases-and-exceptions);
           [Assumption A-011](docs/constraints.md#assumptions)).
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: |
             The person is no longer an assignee of the task; the updated task
@@ -2940,6 +3004,8 @@ paths:
         - Comment texts may contain personal data
           ([OQ-011](docs/constraints.md#open-questions)).
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '200':
           description: The comments on the task, oldest first, possibly none.
           content:
@@ -3037,6 +3103,8 @@ paths:
                 value:
                   text: Final report approved by the team
       responses:
+        '500':
+          $ref: '#/components/responses/ServerError'
         '201':
           description: |
             The comment was added, with the signed-in person as author and
@@ -3103,10 +3171,10 @@ paths:
                   value:
                     title: Unprocessable Content
                     status: 422
-                    detail: Comment text is required.
+                    detail: The comment is invalid.
                     errors:
                       - pointer: /text
-                        detail: Text is required.
+                        detail: The text is required.
 components:
   securitySchemes:
     bearerAuth:
@@ -3169,6 +3237,16 @@ components:
           summary: The token is malformed, invalid, expired, or no longer accepted
           value: 'Bearer error="invalid_token"'
   responses:
+    ServerError:
+      description: Unexpected server failure; no internal details are disclosed.
+      content:
+        application/problem+json:
+          schema:
+            $ref: '#/components/schemas/Problem'
+          example:
+            title: Internal Server Error
+            status: 500
+            detail: An unexpected error occurred.
     UnsupportedMediaType:
       description: |
         The request content is not in the operation's media type, for example
@@ -3366,7 +3444,7 @@ components:
       description: |
         Required task title: after trimming, 1 to 150 characters, counted as
         Unicode characters ([Assumption A-004](docs/constraints.md#assumptions),
-        [Assumption A-031](docs/constraints.md#assumptions)). The service trims
+        [Assumption A-033](docs/constraints.md#assumptions)). The service trims
         the text before it checks the length, so a title of only whitespace,
         including no-break spaces, receives `422`. Whether titles must be
         unique is open ([OQ-003](docs/constraints.md#open-questions)); they
@@ -3394,6 +3472,37 @@ components:
         whitespace; [OQ-024](docs/constraints.md#open-questions)). The text
         may contain personal data
         ([OQ-011](docs/constraints.md#open-questions)).
+    StorableText:
+      type: string
+      pattern: '^[^\u0000\uD800-\uDFFF]*$'
+      description: |
+        No NUL or unpaired surrogate; supplementary code points remain valid
+        ([Assumption A-037](docs/constraints.md#assumptions)).
+    ProjectNameInput:
+      allOf:
+        - $ref: '#/components/schemas/StorableText'
+        - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,98}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
+      description: Required name, 1–100 Unicode code points after A-033 trimming (A-031).
+    ProjectDescriptionInput:
+      allOf:
+        - $ref: '#/components/schemas/StorableText'
+        - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*(?:[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,998}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?)?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
+      description: Optional description, 0–1000 code points after A-033 trimming (A-031).
+    TaskTitleInput:
+      allOf:
+        - $ref: '#/components/schemas/StorableText'
+        - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,148}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
+      description: Required title, 1–150 code points after A-033 trimming.
+    TaskDescriptionInput:
+      allOf:
+        - $ref: '#/components/schemas/StorableText'
+        - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*(?:[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,1998}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?)?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
+      description: Optional description, 0–2000 code points after A-033 trimming.
+    CommentTextInput:
+      allOf:
+        - $ref: '#/components/schemas/StorableText'
+        - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,1998}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
+      description: Required comment, 1–2000 code points after A-033 trimming (A-036).
     DisplayName:
       type: string
       minLength: 1
@@ -3807,10 +3916,10 @@ components:
       additionalProperties: false
       properties:
         name:
-          $ref: '#/components/schemas/ProjectName'
+          $ref: '#/components/schemas/ProjectNameInput'
         description:
           oneOf:
-            - $ref: '#/components/schemas/ProjectDescription'
+            - $ref: '#/components/schemas/ProjectDescriptionInput'
             - type: 'null'
           description: Optional; `null` or empty after trimming means no description.
       description: |
@@ -3826,10 +3935,10 @@ components:
       additionalProperties: false
       properties:
         name:
-          $ref: '#/components/schemas/ProjectName'
+          $ref: '#/components/schemas/ProjectNameInput'
         description:
           oneOf:
-            - $ref: '#/components/schemas/ProjectDescription'
+            - $ref: '#/components/schemas/ProjectDescriptionInput'
             - type: 'null'
           description: '`null` or empty after trimming removes the description.'
       description: |
@@ -3865,10 +3974,10 @@ components:
       additionalProperties: false
       properties:
         title:
-          $ref: '#/components/schemas/TaskTitle'
+          $ref: '#/components/schemas/TaskTitleInput'
         description:
           oneOf:
-            - $ref: '#/components/schemas/TaskDescription'
+            - $ref: '#/components/schemas/TaskDescriptionInput'
             - type: 'null'
           description: '`null` or empty after trimming means no description.'
         priority:
@@ -3889,10 +3998,10 @@ components:
       additionalProperties: false
       properties:
         title:
-          $ref: '#/components/schemas/TaskTitle'
+          $ref: '#/components/schemas/TaskTitleInput'
         description:
           oneOf:
-            - $ref: '#/components/schemas/TaskDescription'
+            - $ref: '#/components/schemas/TaskDescriptionInput'
             - type: 'null'
           description: '`null` or empty after trimming removes the description.'
         priority:
@@ -3928,7 +4037,7 @@ components:
       additionalProperties: false
       properties:
         text:
-          $ref: '#/components/schemas/CommentText'
+          $ref: '#/components/schemas/CommentTextInput'
       description: |
         Content for adding a comment. Only `text` is accepted: the author and
         the date and time are recorded by Matriz. Any other property receives

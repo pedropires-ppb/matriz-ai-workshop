@@ -356,7 +356,7 @@ The status of each increment is kept in one place only: the **Status** column of
 ### I12 — Release verification
 
 - **Goal:** Verify the whole proposed MVP before presenting it to the client.
-- **Depends on:** I1–I11.
+- **Depends on:** I1–I11 and I13. *Reconciled on 2026-11-12 by the project team's delivery decision 6 with the Increments table; previously “I1–I11”.*
 - **Acceptance:**
   - every acceptance criterion of US-001–US-026 and every exceptional case EX-001–EX-032;
   - [NFR-001, NFR-002, and NFR-008](requirements.md#non-functional-requirements-and-unresolved-quality-criteria), verified as described there;
@@ -394,6 +394,8 @@ The status of each increment is kept in one place only: the **Status** column of
   - the states, one request per repeated click, no duplicate records, totals from the API, a 401 leading to sign-in, no mocks, and no secrets.
 
 ## Decisions affecting the increments
+
+*Current-reading clarification added on 2026-11-12 by the project team's delivery decisions 5–6; the historical decision rows below remain intact. “Open for comments” in the naming row is superseded by [Assumption A-036](constraints.md#assumptions) and migration V6. A-030 no longer blocks I6: the 2026-11-09 decision and 2026-11-12 acceptance below supersede its earlier undecided wording. The I4 “until I7” state-change gap is closed by [Assumption A-035](constraints.md#assumptions), not an outstanding limitation. No increment status or client question is changed.*
 
 Interim answers are the team's ([interim team answers](constraints.md#interim-team-answers-2026-10-29)); the client's answers prevail.
 

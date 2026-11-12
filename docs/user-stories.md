@@ -152,7 +152,7 @@ The Project Owner's ability to change the state of any task in an Active project
 
 1. **Given** a task in a project of which Ana is a Member, **When** Ana adds the comment “Draft sent to the client”, **Then** the comment appears on the task with Ana's display name and the date and time it was added ([Assumption A-023](constraints.md#assumptions)).
 2. **Given** a task in a project of which Ana is a Member, **When** she adds a comment of 2000 characters, **Then** it is added; **When** she adds one of 2001 characters, or one with only spaces or no-break spaces, **Then** no comment is added and she is told what is wrong ([Assumption A-036](constraints.md#assumptions); [EX-023](#edge-cases-and-exceptions), [EX-031](#edge-cases-and-exceptions)).
-3. **Given** a task in a project of which Ana is a Member, **When** she adds a comment, **Then** it is shown at once, without reloading the page, with her display name as author and the date and time the server recorded, whatever she sent ([Assumption A-036](constraints.md#assumptions); [EX-032](#edge-cases-and-exceptions)).
+3. **Given** a task in a project of which Ana is a Member, **When** she submits a valid comment containing only its text, **Then** it is shown at once, without reloading the page, with her display name as author and the date and time the server recorded ([Assumption A-036](constraints.md#assumptions)); extra properties are refused as [EX-032](#edge-cases-and-exceptions) specifies. *Clarified on 2026-11-12 by the project team's delivery decision 7: previously “whatever she sent” could imply accepting client-supplied metadata; no behavior changes.*
 
 ### US-022 — Read comments
 
@@ -194,7 +194,7 @@ All are proposed; none grants permissions beyond its linked requirement. Each ou
 | EX-001 | US-001 | **Given** a person authorized to create projects, **When** they submit an empty project name, **Then** no project is created and they are told a name is required ([Assumption A-003](constraints.md#assumptions)). |
 | EX-002 | US-003 | **Given** an Active project and its Project Owner, **When** the owner submits an empty task title, **Then** no task is created and they are told a title is required ([Assumption A-004](constraints.md#assumptions)); the same happens when the title is made only of spaces or no-break spaces, and a title of more than 150 characters is refused with a message that states the limit ([Assumption A-033](constraints.md#assumptions)). *Changed on 2026-11-05.* |
 | EX-003 | US-007 | **Given** a person who is not a member of a project, **When** they attempt to view that project directly, **Then** neither the project nor its tasks are disclosed ([Assumption A-002](constraints.md#assumptions)). |
-| EX-004 | US-005 | **Given** an Active project and a task assigned to someone else, **When** a Project Participant who is not its Project Owner attempts to change the task's state, **Then** its state is unchanged ([Assumption A-001](constraints.md#assumptions)). |
+| EX-004 | US-005 | **Given** an Active project and a Project Participant who is not among a task's assignees, **When** that Project Participant attempts to change the task's state, **Then** its state is unchanged ([Assumption A-001](constraints.md#assumptions)). *Clarified on 2026-11-12 by the project team's delivery decision 7: previously “assigned to someone else” was ambiguous for a task with several assignees; the caller must be unassigned, not merely share an assignment.* |
 | EX-005 | US-006 | **Given** a project with zero tasks, **When** a Project Participant views its progress, **Then** the counts are 0 To do, 0 In progress, and 0 Done, and no percentage value (neither 0% nor 100%) is shown ([Assumption A-006](constraints.md#assumptions)). |
 | EX-006 | US-010 | **Given** an Active project with at least one To do or In progress task, **When** its Project Owner attempts to complete it, **Then** it remains Active ([Assumption A-007](constraints.md#assumptions)). |
 | EX-007 | US-009 | **Given** a non-owner Project Participant with at least one task assigned to them in an Active project, **When** its Project Owner attempts to remove that participant, **Then** the person retains access and the owner is told there are assigned tasks ([Assumption A-009](constraints.md#assumptions)). |
@@ -239,7 +239,6 @@ Client decisions that may change these tests, including naming rules (OQ-003), a
 | v0.2 | 2026-10-29 | US-001 | Assumptions add who may create projects. | [Assumption A-018](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-005 | Assumptions add several assignees; acceptance criterion 3 added. | [Assumption A-019](constraints.md#assumptions) |
 | v0.2 | 2026-10-29 | US-012 | Story extended to one or more members; criterion 1 no longer says “single assignee”; criteria 2 and 3 added. | [Assumption A-019](constraints.md#assumptions) |
-
 
 
 

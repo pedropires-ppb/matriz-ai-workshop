@@ -1,6 +1,6 @@
 # Matriz — Verification record for I12, release verification (2026-11-12)
 
-**Status:** In progress. It holds the part of [I12](../implementation-plan.md#i12--release-verification) that is not one of the nine scenarios of the [verification of nine cases](../verification.md): the user stories and exceptional cases, NFR-001, NFR-002, and NFR-008, the MVP release criteria, the secret scan, the review of failed sign-ins ([OQ-027](../constraints.md#open-questions)), the README on a clean checkout, and the list of open questions.
+**Status:** Awaiting review. It holds the part of [I12](../implementation-plan.md#i12--release-verification) that is not one of the nine scenarios of the [verification of nine cases](../verification.md): the user stories and exceptional cases, NFR-001, NFR-002, and NFR-008, the MVP release criteria, the secret scan, the review of failed sign-ins ([OQ-027](../constraints.md#open-questions)), the README on a clean checkout, and the list of open questions. *Reconciled on 2026-11-12 by the project team's delivery decision 6: previously “In progress”, conflicting with the Result below and the plan; this is not acceptance.*
 
 **Result: Awaiting review.** I12 is not Accepted: every item below is either Confirmed with evidence, Partly confirmed, or Not run, with the reason, and the project team decides. Nothing here changes a requirement. The nine scenarios, the three new automated tests, and the two bugs found and fixed are in the [verification of nine cases](../verification.md).
 
