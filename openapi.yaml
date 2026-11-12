@@ -3482,27 +3482,40 @@ components:
       allOf:
         - $ref: '#/components/schemas/StorableText'
         - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,98}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
-      description: Required name, 1–100 Unicode code points after A-033 trimming (A-031).
+      description: |
+        Required name, 1–100 Unicode code points after trimming
+        ([Assumption A-031](docs/constraints.md#assumptions),
+        [Assumption A-033](docs/constraints.md#assumptions)).
     ProjectDescriptionInput:
       allOf:
         - $ref: '#/components/schemas/StorableText'
         - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*(?:[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,998}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?)?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
-      description: Optional description, 0–1000 code points after A-033 trimming (A-031).
+      description: |
+        Optional description, 0–1000 code points after trimming
+        ([Assumption A-031](docs/constraints.md#assumptions),
+        [Assumption A-033](docs/constraints.md#assumptions)).
     TaskTitleInput:
       allOf:
         - $ref: '#/components/schemas/StorableText'
         - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,148}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
-      description: Required title, 1–150 code points after A-033 trimming.
+      description: |
+        Required title, 1–150 code points after trimming
+        ([Assumption A-033](docs/constraints.md#assumptions)).
     TaskDescriptionInput:
       allOf:
         - $ref: '#/components/schemas/StorableText'
         - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*(?:[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,1998}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?)?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
-      description: Optional description, 0–2000 code points after A-033 trimming.
+      description: |
+        Optional description, 0–2000 code points after trimming
+        ([Assumption A-033](docs/constraints.md#assumptions)).
     CommentTextInput:
       allOf:
         - $ref: '#/components/schemas/StorableText'
         - pattern: '^[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000](?:[\s\S]{0,1998}[^\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000])?[\u0009-\u000D\u001C-\u0020\u00A0\u1680\u2000-\u200A\u2028\u2029\u202F\u205F\u3000]*$'
-      description: Required comment, 1–2000 code points after A-033 trimming (A-036).
+      description: |
+        Required comment, 1–2000 code points after trimming
+        ([Assumption A-036](docs/constraints.md#assumptions),
+        [Assumption A-033](docs/constraints.md#assumptions)).
     DisplayName:
       type: string
       minLength: 1

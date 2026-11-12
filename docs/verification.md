@@ -467,3 +467,32 @@ Only the README was needed to configure/build/start the application. Its UI step
 Cleanup was **explicitly authorized immediately beforehand** for the exact resources. The backend was stopped; `docker compose down -v` removed only the named project's container, network and volume; filtered Docker queries confirmed all gone. Both exact clone directories (including their temporary `.env` files) were removed. The UI probe's first default Playwright initialization unexpectedly downloaded unused Firefox/WebKit caches; the probe then disabled auto-download, and only those two newly created cache directories were removed with approval. Existing Chromium/build caches, the original checkout/database and pre-existing containers were not removed. Port 18089 no longer served the application; the original working tree remained clean.
 
 This verifies the README on a clean copy on **macOS**, not every platform or every story in a complete manual walkthrough. No tag, push, merge, rebase, client approval or increment acceptance occurred.
+
+### Final delivery checks
+
+Run on the original `week3-ex9` checkout after the approved cleanup, 2026-11-12:
+
+| Check | Recorded result |
+|---|---|
+| `./mvnw -B clean verify` | **BUILD SUCCESS**, 3m33s, finished 23:31:21Z; **705 Java tests, 0 failures/errors/skips**, including 46 Playwright cases; frontend typecheck, 31 Vitest and production build passed. |
+| Standalone frontend typecheck / Vitest / Vite build | Passed; 6 Vitest files, **31 tests**; production build succeeded. |
+| Focused `RequestSchemaTests,ContractTextTests,EveryOperationRequiresATokenTests` command | **68 tests**, no failures/errors/skips; BUILD SUCCESS, 12.247s, finished 23:31:36Z. |
+| Tracked delivery manifest / wrapper / ignore policy | All 21 selected essentials tracked, including all six schema migrations, SQL demo migration, example configuration, wrapper and frontend manifests/lock; Unix wrapper executable. 316 tracked files; no tracked runtime `.env`, generated build/dependency tree or IDE metadata. |
+| Local reachable-history exposure scan | Before the final evidence commit: **116 commits, 726 unique text blobs, 10,995,434 bytes**, plus all commit messages; **0 high-confidence credential/private-key/JWT/credential-URL pattern hits**. |
+| Identifier and documentation checks | All **168** referenced numeric IDs found in the authoritative registers/ADR files; **3484** relative inline links/anchors valid across 30 Markdown files and OpenAPI prose; `git diff --check` passed. |
+
+The final contract prose also links the input limits explicitly to their existing assumptions; no constraint or behavior changed. The exposure scan is local and heuristic: ignored files, unreachable objects, unfetched remote references and GitHub's hosted scanner were not inspected. Application examples/data are recorded as fictitious; **Git contributor metadata remains intentionally present**, so this is not a claim that no personal metadata exists anywhere in Git or a GDPR-compliance finding.
+
+| Worksheet completion criterion | Status | Evidence |
+|---|---|---|
+| Application starts by following README | Met on macOS | Repeated fresh-clone configuration/build/start/health/schema/seed exercise above. |
+| Interface manages projects, tasks, assignees and comments | Met in checked scenarios | 46 passing `UserInterfaceTests` browser cases, including multi-role project/task/member/assignment/comment flows; live fresh-clone project/task display. |
+| Direct API authentication and authorization | Met in checked scenarios | Every guarded operation's token tests, distributed role/access API tests, approved access/method regressions and authenticated fresh-clone requests. |
+| Persistence after interface reload and backend restart | Met | Live UI reload/re-sign-in before and after restart; same token, project/task identifiers/content; `DataAfterRestartTests`. |
+| Loading, no data, success and error states | Met in checked scenarios | Browser/Vitest checks, including failed project deletion/assignment retaining state without success and literal markup rendering. |
+| Contract matches implementation and checks are recorded | Met for reviewed operations | All 23 operations mapped; corrected text/page/status/example rules, passing named-schema/API/header guards and recorded source review. The bounded harness is not an exhaustive operation-aware or format validator. |
+| Code reviewed and delivered version identified in Git | Met as a delivery candidate | Standards/Spec review plus one final read-only delivery review; approved fixes/regressions, separate refactoring and committed evidence on `week3-ex9`. |
+
+**No release acceptance is inferred.** I12 remains Awaiting review. A complete manual story-by-story walkthrough on every target platform was not run; target platforms/accessibility/quality measures and personal-data obligations remain open (OQ-010, OQ-011, OQ-021), and client scope approval OQ-016 is pending. The known session and self-assignment risks remain under OQ-027/OQ-025; other invisible-character policy remains OQ-031. The test records do not answer those questions.
+
+The project team's member will deliver the closing commit of `week3-ex9`, merge it onto `main`, then create the annotated tag **`v0.1.0-mvp-rc.1`**, with message **“Matriz proposed MVP delivery candidate; I12 Awaiting review; client validation pending.”** No integration command has been executed by the assistant.
