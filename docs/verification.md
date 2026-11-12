@@ -13,7 +13,7 @@
 | 03 | Task persistence | Automated and manual | Partly confirmed (no automated restart test yet; added in Step 4) |
 | 04 | Data validation | Automated and manual | Confirmed (control and zero-width text pending in Step 4) |
 | 05 | State and priority | Automated and manual | Confirmed |
-| 06 | Assignees | — | Not run |
+| 06 | Assignees | Automated and manual | Confirmed |
 | 07 | Comments | — | Not run |
 | 08 | Authorization in the API | — | Not run |
 | 09 | Deletion and errors | — | Not run |
@@ -145,3 +145,26 @@
 | 13 | All Done, Ana completes the project, then changes a task's state and priority | project `COMPLETED`; each change `409` “The project is Completed; it cannot be changed.”; the task keeps Done and LOW; progress stays 100% |
 
 - **Not verified here:** the rounding of the percentage at the edges (for example 199 of 200 showing 100%, [A-026](constraints.md#assumptions)) is covered by `ProgressDomainTests`, not run by hand. The first run of my script stopped on the error body of the invalid filter (my script's mistake) and a later step I wrote tested an Active project by accident (the project had not completed, step 12); both were repeated correctly and only the corrected results are recorded.
+
+## Case 06 — Assignees
+
+- **Expected:** assigning and removing work according to the permissions, and the same assignment is not duplicated ([US-012](user-stories.md#us-012--assign-task), [US-019](user-stories.md#us-019--unassign-a-member), [US-020](user-stories.md#us-020--assign-or-unassign-myself), [US-009](user-stories.md#us-009--remove-participant); [EX-007](user-stories.md#edge-cases-and-exceptions), [EX-020](user-stories.md#edge-cases-and-exceptions), [EX-021](user-stories.md#edge-cases-and-exceptions), [EX-022](user-stories.md#edge-cases-and-exceptions), [EX-028](user-stories.md#edge-cases-and-exceptions); [A-019](constraints.md#assumptions), [A-020](constraints.md#assumptions), [A-035](constraints.md#assumptions)).
+- **Type:** automated and manual. **Status: Confirmed.**
+- **Automated evidence** (baseline build, all passed): `AssignmentApiTests` (21), including `assigningAPersonWhoIsAlreadyAnAssigneeChangesNothing`, `twoRequestsToAssignTheSamePersonAtTheSameTimeLeaveOneAssignment`, `theDatabaseRefusesATaskAssignedTwiceToTheSamePersonAndAnAssigneeWhoIsNotAMember`, `aProjectParticipantAssignsOnlyThemselvesAndThenChangesTheState`, `aCompletedProjectRefusesToChangeItsAssignees`; `ParticipantsApiTests` (27); in `UserInterfaceTests` `theProjectOwnerAssignsSeveralMembersAndRemovesEachOneWithoutReloadingThePage`, `aProjectParticipantAssignsThemselvesChangesTheStateAndUnassignsThemselves`, and `aCompletedProjectOffersNoAssignmentControls`.
+- **Manual evidence** (fresh database; project “Case 06 Assignees”, tasks “Task one” and “Task two”; ana owner, rui participant, eva a non-member):
+
+| Step | Action | Observed |
+|---|---|---|
+| 1 | Ana assigns Rui before he is a member; an unknown person id; a malformed id; no `personId` | `422` “Only members of the project can be assigned to its tasks.” (three times; the same refusal for a person who does not exist, [A-035](constraints.md#assumptions)); `422` |
+| 2 | Ana adds Rui, assigns Rui, then herself | `200`; assignees Rui, then Ana and Rui |
+| 3 | Ana assigns Rui a second and a third time | `200` each; the assignees stay Ana and Rui, once each ([EX-028](user-stories.md#edge-cases-and-exceptions)) |
+| 4 | Rui assigns Ana; Rui unassigns Ana | `403` “A Project Participant can assign only themselves.”; `403` “…unassign only themselves.” ([EX-021](user-stories.md#edge-cases-and-exceptions)) |
+| 5 | Rui assigns himself to Task two, twice; unassigns himself; unassigns himself again | `200`, `200` (still one), `200` (no assignees), `404` “…does not exist or is not accessible.” |
+| 6 | Eva assigns herself; Eva unassigns Rui | `404`; `404` |
+| 7 | Ana unassigns Rui | `200`; only Ana remains |
+| 8 | Ana removes Rui from the project while he is assigned; then after unassigning him | `409` “The person is assigned to tasks of this project; remove those assignments first.” ([EX-007](user-stories.md#edge-cases-and-exceptions)); `204` |
+| 9 | 20 simultaneous assignments of Rui to one task | all `200`; one assignee; `psql` shows 1 row, and the table has a unique index on `(task_id, person_id)` |
+| 10 | After Ana completes the project: assign; unassign | `409` “The project is Completed; it cannot be changed.” (twice, [EX-022](user-stories.md#edge-cases-and-exceptions)) |
+
+- **Observation, not a defect:** an identifier that is not a valid one in the body (`"not-an-id"`) gets the same `422` “Only members of the project can be assigned to its tasks.” as an unknown person. That is consistent with [A-035](constraints.md#assumptions) (nothing is disclosed) and with `openapi.yaml`, which keeps the identifier format undecided and opaque, so such a value is just an unknown person.
+- **Not verified here:** the assignee controls in a browser by hand (only the Playwright tests above).
