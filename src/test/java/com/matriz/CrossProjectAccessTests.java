@@ -22,8 +22,8 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.request;
 
 /**
- * Changing the identifiers of a request does not give access (NFR-002; EX-003, EX-012, EX-016,
- * EX-019, EX-021; Assumption A-022): a task, a comment, an assignment, or a member of one project,
+ * Changing the identifiers of a request does not give access (NFR-002; EX-003; Assumption A-022): a
+ * task, a comment, an assignment, or a member of one project,
  * named through the path of another project, is answered like a resource that does not exist, whoever
  * asks and whatever the person's role in either project, and nothing changes. Ana owns project A and
  * Eva owns project B; Rui is a Project Participant of both, and Ana's task is assigned to him.
