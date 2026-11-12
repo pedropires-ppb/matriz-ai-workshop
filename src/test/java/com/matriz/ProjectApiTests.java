@@ -584,6 +584,14 @@ class ProjectApiTests extends DatabaseTestSupport {
 		Contract.assertSatisfies("ProjectPage", result.getResponse().getContentAsString());
 	}
 
+	@Test
+	void theLargestAcceptedProjectPageIsAnEmptyPageNotAServerError() throws Exception {
+		createdId(this.anaToken, "One", null);
+		JsonNode page = list(this.anaToken, "?page=2147483647&size=100");
+		assertThat(page.path("items")).isEmpty();
+		assertThat(page.path("totalItems").intValue()).isEqualTo(1);
+	}
+
 	// Helpers --------------------------------------------------------------------------------
 
 	private static MockHttpServletRequestBuilder withToken(MockHttpServletRequestBuilder request, String token) {

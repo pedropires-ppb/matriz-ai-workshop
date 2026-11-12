@@ -313,6 +313,14 @@ class TaskApiTests extends DatabaseTestSupport {
 	}
 
 	@Test
+	void theLargestAcceptedTaskPageIsAnEmptyPageNotAServerError() throws Exception {
+		createdId("One", null, null);
+		JsonNode page = list(this.anaToken, "?page=2147483647&size=100");
+		assertThat(page.path("items")).isEmpty();
+		assertThat(page.path("totalItems").intValue()).isEqualTo(1);
+	}
+
+	@Test
 	void tasksCanBeFilteredByStateByPriorityAndByBoth() throws Exception {
 		createdId("A", null, "HIGH");
 		String b = createdId("B", null, "HIGH");

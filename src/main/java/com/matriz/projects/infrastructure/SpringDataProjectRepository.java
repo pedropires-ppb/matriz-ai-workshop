@@ -1,5 +1,6 @@
 package com.matriz.projects.infrastructure;
 
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
@@ -8,8 +9,6 @@ import com.matriz.projects.domain.Project;
 
 import jakarta.persistence.LockModeType;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
@@ -35,17 +34,21 @@ interface SpringDataProjectRepository extends Repository<Project, ProjectId> {
 	 * {@code !}; both sides are lower-cased by the database.
 	 */
 	@Query(value = """
-			select new com.matriz.projects.infrastructure.ListingRow(p.id.value, p.name.value, p.description.value,
-					p.state, m.role)
-			from Project p join p.memberships m
-			where m.id.personId.value = :person and p.deletedAt is null
-				and lower(p.name.value) like lower(:pattern) escape '!'
-			order by lower(p.name.value), p.id.value
-			""", countQuery = """
+			select p.project_id, p.name, p.description, p.state, m.role
+			from project p join membership m on m.project_id = p.project_id
+			where m.person_id = :person and p.deleted_at is null
+				and lower(p.name) like lower(:pattern) escape '!'
+			order by lower(p.name), p.project_id
+			limit :size offset :offset
+			""", nativeQuery = true)
+	List<ListingRow> findListings(@Param("person") UUID person, @Param("pattern") String pattern,
+			@Param("offset") long offset, @Param("size") int size);
+
+	@Query("""
 			select count(p) from Project p join p.memberships m
 			where m.id.personId.value = :person and p.deletedAt is null
 				and lower(p.name.value) like lower(:pattern) escape '!'
 			""")
-	Page<ListingRow> findListings(@Param("person") UUID person, @Param("pattern") String pattern, Pageable pageable);
+	long countListings(@Param("person") UUID person, @Param("pattern") String pattern);
 
 }

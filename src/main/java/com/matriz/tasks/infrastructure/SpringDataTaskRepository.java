@@ -10,8 +10,6 @@ import com.matriz.tasks.TaskPriority;
 import com.matriz.tasks.TaskState;
 import com.matriz.tasks.domain.Task;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
@@ -51,16 +49,21 @@ interface SpringDataTaskRepository extends Repository<Task, TaskId> {
 	List<UUID> assigneesOf(@Param("project") UUID project);
 
 	@Query(value = """
-			select t from Task t
-			where t.projectId.value = :project and t.deletedAt is null
+			select t.* from task t
+			where t.project_id = :project and t.deleted_at is null
 				and t.state in :states and t.priority in :priorities
-			order by t.creationOrder
-			""", countQuery = """
+			order by t.creation_order
+			limit :size offset :offset
+			""", nativeQuery = true)
+	List<Task> findPage(@Param("project") UUID project, @Param("states") Collection<String> states,
+			@Param("priorities") Collection<String> priorities, @Param("offset") long offset, @Param("size") int size);
+
+	@Query("""
 			select count(t) from Task t
 			where t.projectId.value = :project and t.deletedAt is null
 				and t.state in :states and t.priority in :priorities
 			""")
-	Page<Task> findPage(@Param("project") UUID project, @Param("states") Collection<TaskState> states,
-			@Param("priorities") Collection<TaskPriority> priorities, Pageable pageable);
+	long countPage(@Param("project") UUID project, @Param("states") Collection<TaskState> states,
+			@Param("priorities") Collection<TaskPriority> priorities);
 
 }

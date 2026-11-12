@@ -1,5 +1,6 @@
 package com.matriz.projects.infrastructure;
 
+import java.util.List;
 import java.util.Optional;
 
 import com.matriz.identity.PersonId;
@@ -7,8 +8,6 @@ import com.matriz.projects.ProjectId;
 import com.matriz.projects.domain.Project;
 import com.matriz.projects.domain.ProjectRepository;
 
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Repository;
 
 /** {@link ProjectRepository} with Spring Data JPA (ADR-008 decision 4). */
@@ -40,10 +39,12 @@ class JpaProjectRepository implements ProjectRepository {
 
 	@Override
 	public ProjectListingPage findAccessible(PersonId person, String nameContains, int page, int size) {
-		Page<ListingRow> rows = this.projects.findListings(person.value(), pattern(nameContains),
-				PageRequest.of(page - 1, size));
-		return new ProjectListingPage(rows.getContent().stream().map(ListingRow::toListing).toList(),
-				rows.getTotalElements());
+		String pattern = pattern(nameContains);
+		long total = this.projects.countListings(person.value(), pattern);
+		long offset = (long) (page - 1) * size;
+		List<ListingRow> rows = offset >= total ? List.of()
+				: this.projects.findListings(person.value(), pattern, offset, size);
+		return new ProjectListingPage(rows.stream().map(ListingRow::toListing).toList(), total);
 	}
 
 	/** The text as a pattern that contains it, with none of its characters special; the query ignores case. */
