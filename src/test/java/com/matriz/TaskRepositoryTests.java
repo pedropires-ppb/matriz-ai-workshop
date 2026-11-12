@@ -117,6 +117,23 @@ class TaskRepositoryTests extends DatabaseTestSupport {
 	}
 
 	@Test
+	void unfinishedMeansAToDoOrInProgressTaskThatIsNotDeleted() {
+		assertThat(hasUnfinished()).as("no tasks").isFalse();
+		Task task = store("Only", null, TaskPriority.MEDIUM);
+		assertThat(hasUnfinished()).as("To do").isTrue();
+
+		change(task, TaskState.IN_PROGRESS);
+		assertThat(hasUnfinished()).as("In progress").isTrue();
+
+		change(task, TaskState.DONE);
+		assertThat(hasUnfinished()).as("Done").isFalse();
+
+		Task deleted = store("Deleted", null, TaskPriority.MEDIUM);
+		this.jdbc.sql("UPDATE task SET deleted_at = now() WHERE task_id = ?").param(deleted.id().value()).update();
+		assertThat(hasUnfinished()).as("a deleted To do task").isFalse();
+	}
+
+	@Test
 	void aTaskOfAnotherProjectIsNotFound() {
 		Task stored = store("Mine", null, TaskPriority.MEDIUM);
 
@@ -183,6 +200,10 @@ class TaskRepositoryTests extends DatabaseTestSupport {
 	private Task store(String title, String description, TaskPriority priority) {
 		return this.transactions.execute((transaction) -> this.tasks.save(Task.create(TaskId.generate(), this.project,
 				new TaskTitle(title), TaskDescription.ofNullable(description), priority)));
+	}
+
+	private boolean hasUnfinished() {
+		return Boolean.TRUE.equals(this.transactions.execute((transaction) -> this.tasks.hasUnfinished(this.project)));
 	}
 
 	private void change(Task task, TaskState state) {

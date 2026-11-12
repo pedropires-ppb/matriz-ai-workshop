@@ -27,6 +27,12 @@ final class ProjectContent {
 
 	static final String DESCRIPTION = "description";
 
+	static final String STATE = "state";
+
+	static final String COMPLETED = "COMPLETED";
+
+	static final String PERSON_ID = "personId";
+
 	private final JsonNode content;
 
 	ProjectContent(JsonNode content) {
@@ -51,6 +57,64 @@ final class ProjectContent {
 	 */
 	Parsed forUpdate() {
 		return parse(false);
+	}
+
+	/**
+	 * Checks the content of a request to complete the project ({@code CompleteProjectRequest}):
+	 * an object whose only member is {@code state}, with the value {@code COMPLETED}. Reopening is not
+	 * defined (OQ-006).
+	 * @throws InvalidProjectException (422) otherwise
+	 */
+	void forCompletion() {
+		List<InvalidField> invalid = new ArrayList<>();
+		if (!this.content.isObject()) {
+			invalid.add(new InvalidField("", "The content must be a JSON object."));
+		}
+		else {
+			JsonNode state = this.content.get(STATE);
+			if (state == null || !state.isString() || !COMPLETED.equals(state.stringValue())) {
+				invalid.add(new InvalidField(pointer(STATE), "The only accepted value is COMPLETED."));
+			}
+			for (String property : this.content.propertyNames()) {
+				if (!STATE.equals(property)) {
+					invalid.add(new InvalidField(pointer(property), "This property is not allowed."));
+				}
+			}
+		}
+		if (!invalid.isEmpty()) {
+			throw new InvalidProjectException("A project can only be changed to the state COMPLETED.", invalid);
+		}
+	}
+
+	/**
+	 * The person to add ({@code AddParticipantRequest}): an object whose only member is {@code personId},
+	 * a nonempty string. Whether it names a person is checked by the use case.
+	 * @throws InvalidProjectException (422) otherwise
+	 */
+	String forParticipant() {
+		List<InvalidField> invalid = new ArrayList<>();
+		String person = null;
+		if (!this.content.isObject()) {
+			invalid.add(new InvalidField("", "The content must be a JSON object."));
+		}
+		else {
+			JsonNode node = this.content.get(PERSON_ID);
+			if (node != null && node.isString() && !node.stringValue().isEmpty()) {
+				person = node.stringValue();
+			}
+			else {
+				invalid.add(new InvalidField(pointer(PERSON_ID), "A person identifier is required."));
+			}
+			for (String property : this.content.propertyNames()) {
+				if (!PERSON_ID.equals(property)) {
+					invalid.add(new InvalidField(pointer(property), "This property is not allowed."));
+				}
+			}
+		}
+		if (!invalid.isEmpty()) {
+			throw new InvalidProjectException("The person to add is required.", invalid);
+		}
+		return person;
 	}
 
 	private Parsed parse(boolean nameRequired) {

@@ -1,518 +1,167 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { type Session, SessionEndedError } from './api';
-import CommentsSection from './CommentsSection';
-import type { Member } from './membersApi';
+import { useEffect, useState } from 'react';
+import { Button, EmptyState, Link, LoadFailed, Loading, Notice, Pagination, StateBadge } from './components';
 import { messages } from './messages';
+import { go } from './navigation';
+import type { Project } from './projectsApi';
+import type { Route, TaskListQuery } from './router';
+import { useApi, useLoad } from './session';
 import TaskForm from './TaskForm';
-import { taskRefusal } from './taskValidation';
-import {
-  assignTask,
-  changeTaskState,
-  createTask,
-  deleteTask,
-  listTasks,
-  TASK_PRIORITIES,
-  TASK_STATES,
-  TASKS_PAGE_SIZE,
-  type Task,
-  type TaskPage,
-  type TaskPriority,
-  type TaskResult,
-  type TaskState,
-  unassignTask,
-  updateTask,
-} from './tasksApi';
+import { createTask, listTasks, TASK_PRIORITIES, TASK_STATES, TASKS_PAGE_SIZE } from './tasksApi';
+import { refusal } from './validation';
 
-interface Props {
-  session: Session;
-  projectId: string;
-  /** Whether the person may create, edit, and delete tasks: the Project Owner of an Active project. */
-  canChange: boolean;
-  isOwner: boolean;
-  /** Whether the project is Active; a Completed project allows no change to a task. */
-  projectActive: boolean;
-  /** The members of the project, from which the Project Owner picks who to assign; `null` until fetched. */
-  members: Member[] | null;
-  /** Why the person may not change them, shown instead of the controls. */
-  readOnlyText: string | null;
-  onSessionEnded: () => void;
-}
-
-type Load = { status: 'loading' } | { status: 'ready'; page: TaskPage } | { status: 'failed'; text: string };
+type ProjectRoute = Extract<Route, { screen: 'project' }>;
 
 function toggled<T>(values: readonly T[], value: T): T[] {
   return values.includes(value) ? values.filter((one) => one !== value) : [...values, value];
 }
 
+interface Props {
+  route: ProjectRoute;
+  project: Project;
+  /** Called after a task is created, so that the project's progress is fetched again. */
+  onTasksChanged: () => void;
+  /** A change of this number fetches the list again, for example after a refused completion (I8 decision 6). */
+  listVersion: number;
+}
+
 /**
- * The tasks of a project (US-009 to US-013, US-017): the list with its filters and pages, the
- * creation, the details with the state and priority controls, the editing, and the deletion after
- * a confirmation. After each operation the page is fetched again, so the list and the count are
- * those of the server and nobody reloads the page.
+ * The tasks of a project (US-004, US-009 to US-013, US-017): the list with its filters and pages, each task
+ * with its state, priority, and assignees, and the creation. The filters and the page are in the address,
+ * so the task detail returns to them (I13 decision 3). After a creation the page is fetched again, so the
+ * list and the count are the server's (I13 scope decision 10).
  */
-export default function TasksSection({
-  session,
-  projectId,
-  canChange,
-  isOwner,
-  projectActive,
-  members,
-  readOnlyText,
-  onSessionEnded,
-}: Props) {
-  const [states, setStates] = useState<TaskState[]>([]);
-  const [priorities, setPriorities] = useState<TaskPriority[]>([]);
-  const [page, setPage] = useState(1);
-  const [reload, setReload] = useState(0);
-  const [load, setLoad] = useState<Load>({ status: 'loading' });
+export default function TasksSection({ route, project, onTasksChanged, listVersion }: Props) {
+  const { run } = useApi();
+  const { projectId, list } = route;
   const [creating, setCreating] = useState(false);
-  const [selected, setSelected] = useState<Task | null>(null);
-  const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [failure, setFailure] = useState<string | null>(null);
-  const [personToAssign, setPersonToAssign] = useState('');
-  const cancelButton = useRef<HTMLButtonElement>(null);
-
-  /** Runs a request; a 401 sends the person to sign in. */
-  const guard = useCallback(
-    async <T,>(request: () => Promise<TaskResult<T>>): Promise<TaskResult<T>> => {
-      try {
-        return await request();
-      } catch (error: unknown) {
-        if (error instanceof SessionEndedError) {
-          onSessionEnded();
-        }
-        return { outcome: 'failed' };
-      }
-    },
-    [onSessionEnded],
+  const tasks = useLoad(
+    (session) => listTasks(session, projectId, { ...list, size: TASKS_PAGE_SIZE }),
+    [projectId, list.states.join(), list.priorities.join(), list.page, listVersion],
   );
+  const isOwner = project.myRole === 'PROJECT_OWNER';
+  const canChange = isOwner && project.state === 'ACTIVE';
+  const filtered = list.states.length > 0 || list.priorities.length > 0;
+  const readOnlyText =
+    project.state === 'COMPLETED' ? messages.tasksReadOnlyCompleted : isOwner ? null : messages.tasksReadOnlyParticipant;
 
-  useEffect(() => {
-    let current = true;
-    void guard(() => listTasks(session, projectId, { states, priorities, page, size: TASKS_PAGE_SIZE })).then(
-      (result) => {
-        if (!current) {
-          return;
-        }
-        if (result.outcome !== 'ok') {
-          setLoad({ status: 'failed', text: taskRefusal(result) ?? messages.somethingFailed });
-        } else if (result.value.items.length === 0 && page > 1 && result.value.totalPages > 0) {
-          setPage(result.value.totalPages);
-        } else if (result.value.items.length === 0 && page > 1) {
-          setPage(1);
-        } else {
-          setLoad({ status: 'ready', page: result.value });
-        }
-      },
-    );
-    return () => {
-      current = false;
-    };
-  }, [guard, session, projectId, states, priorities, page, reload]);
-
-  useEffect(() => {
-    if (confirming) {
-      cancelButton.current?.focus();
-    }
-  }, [confirming]);
-
-  const total = load.status === 'ready' ? load.page.totalItems : 0;
-
-  function refetch() {
-    setReload((value) => value + 1);
-  }
-
-  function select(task: Task | null) {
-    setSelected(task);
-    setEditing(false);
-    setConfirming(false);
-    setPersonToAssign('');
+  function show(next: TaskListQuery) {
     setNotice(null);
-    setFailure(null);
+    go({ ...route, list: next }, { replace: true });
   }
 
-  /** Shows a refusal; a task that is gone from the server is no longer shown as selected. */
-  function refused(result: TaskResult<unknown>, texts: Partial<Record<TaskResult<unknown>['outcome'], string>> = {}) {
-    setFailure(texts[result.outcome] ?? taskRefusal(result));
-    setConfirming(false);
-    if (result.outcome === 'notFound') {
-      setSelected(null);
+  // A page past the last one, for example after the last task of a page was deleted, shows the last page.
+  useEffect(() => {
+    if (tasks.state.status === 'ready' && tasks.state.value.items.length === 0 && list.page > 1) {
+      go({ ...route, list: { ...list, page: Math.max(1, tasks.state.value.totalPages) } }, { replace: true });
     }
-    refetch();
-  }
-
-  async function change<T>(
-    request: () => Promise<TaskResult<T>>,
-    saved: (value: T) => void,
-    texts?: Partial<Record<TaskResult<unknown>['outcome'], string>>,
-  ) {
-    setBusy(true);
-    setNotice(null);
-    setFailure(null);
-    const result = await guard(request);
-    setBusy(false);
-    if (result.outcome === 'ok') {
-      saved(result.value);
-      refetch();
-    } else {
-      refused(result, texts);
-    }
-  }
-
-  function changeStateTo(task: Task, state: TaskState) {
-    void change(
-      () => changeTaskState(session, projectId, task.taskId, state),
-      (changed) => setSelected(changed),
-      { forbidden: messages.stateForbidden },
-    );
-  }
-
-  function assign(task: Task, personId: string) {
-    void change(
-      () => assignTask(session, projectId, task.taskId, personId),
-      (changed) => {
-        setSelected(changed);
-        setPersonToAssign('');
-        setNotice(messages.assigneeAdded);
-      },
-      { forbidden: messages.assignmentForbidden, invalid: messages.notMemberOfProject },
-    );
-  }
-
-  function unassign(task: Task, personId: string) {
-    void change(
-      () => unassignTask(session, projectId, task.taskId, personId),
-      (changed) => {
-        setSelected(changed);
-        setNotice(messages.assigneeRemoved);
-      },
-      { forbidden: messages.assignmentForbidden },
-    );
-  }
-
-  function changePriorityTo(task: Task, priority: TaskPriority) {
-    void change(
-      () => updateTask(session, projectId, task.taskId, { priority }),
-      (changed) => setSelected(changed),
-    );
-  }
-
-  function confirmDelete(task: Task) {
-    void change(
-      () => deleteTask(session, projectId, task.taskId),
-      () => {
-        setSelected(null);
-        setConfirming(false);
-        setNotice(messages.taskDeleted);
-      },
-    );
-  }
-
-  function filterChanged() {
-    setPage(1);
-    select(null);
-  }
-
-  const filtered = states.length > 0 || priorities.length > 0;
-  const me = session.person.personId;
-  const assignedToMe = selected?.assignees.some((person) => person.personId === me) ?? false;
-  const canChangeState = projectActive && (isOwner || assignedToMe);
-  const candidates = (members ?? []).filter(
-    (member) => !(selected?.assignees ?? []).some((person) => person.personId === member.person.personId),
-  );
+  }, [tasks.state, list, route]);
 
   return (
-    <section aria-labelledby="tasks-heading">
+    <section aria-labelledby="tasks-heading" className="panel project-tasks">
       <h3 id="tasks-heading">{messages.tasks}</h3>
-      <div role="group" aria-label={messages.filterByState}>
-        <span>{messages.filterByState}:</span>{' '}
-        {TASK_STATES.map((state) => (
-          <label key={state}>
-            <input
-              type="checkbox"
-              checked={states.includes(state)}
-              onChange={() => {
-                setStates(toggled(states, state));
-                filterChanged();
-              }}
-            />{' '}
-            {messages.taskStates[state]}{' '}
-          </label>
-        ))}
+      <div className="filters">
+        <div role="group" aria-label={messages.filterByState}>
+          <span>{messages.filterByState}:</span>
+          {TASK_STATES.map((state) => (
+            <label key={state} className="check">
+              <input
+                type="checkbox"
+                checked={list.states.includes(state)}
+                onChange={() => show({ ...list, states: toggled(list.states, state), page: 1 })}
+              />
+              {messages.taskStates[state]}
+            </label>
+          ))}
+        </div>
+        <div role="group" aria-label={messages.filterByPriority}>
+          <span>{messages.filterByPriority}:</span>
+          {TASK_PRIORITIES.map((priority) => (
+            <label key={priority} className="check">
+              <input
+                type="checkbox"
+                checked={list.priorities.includes(priority)}
+                onChange={() => show({ ...list, priorities: toggled(list.priorities, priority), page: 1 })}
+              />
+              {messages.taskPriorities[priority]}
+            </label>
+          ))}
+        </div>
+        {filtered && <Button onClick={() => show({ states: [], priorities: [], page: 1 })}>{messages.clearFilters}</Button>}
       </div>
-      <div role="group" aria-label={messages.filterByPriority}>
-        <span>{messages.filterByPriority}:</span>{' '}
-        {TASK_PRIORITIES.map((priority) => (
-          <label key={priority}>
-            <input
-              type="checkbox"
-              checked={priorities.includes(priority)}
-              onChange={() => {
-                setPriorities(toggled(priorities, priority));
-                filterChanged();
-              }}
-            />{' '}
-            {messages.taskPriorities[priority]}{' '}
-          </label>
-        ))}
-      </div>
-      {filtered && (
-        <p>
-          <button
-            type="button"
-            onClick={() => {
-              setStates([]);
-              setPriorities([]);
-              filterChanged();
-            }}
-          >
-            {messages.clearFilters}
-          </button>
-        </p>
-      )}
-      {readOnlyText !== null && <p>{readOnlyText}</p>}
+      {readOnlyText !== null && <p className="secondary-text">{readOnlyText}</p>}
       {canChange && !creating && (
         <p>
-          <button
-            type="button"
+          <Button
+            variant="primary"
             onClick={() => {
-              select(null);
+              setNotice(null);
               setCreating(true);
             }}
           >
             {messages.newTask}
-          </button>
+          </Button>
         </p>
       )}
       {creating && (
         <TaskForm
           idPrefix="new-task"
-          initialTitle=""
-          initialDescription=""
-          initialPriority="MEDIUM"
+          initial={{ title: '', description: '', priority: 'MEDIUM' }}
+          withPriority
           submitLabel={messages.createTask}
-          onSubmit={(content) => guard(() => createTask(session, projectId, content))}
-          onSaved={(task) => {
+          onSubmit={(content) => run((session) => createTask(session, projectId, content))}
+          onSaved={() => {
             setCreating(false);
-            setSelected(task);
-            setFailure(null);
             setNotice(messages.taskCreated);
-            setPage(Math.max(1, Math.ceil((total + 1) / TASKS_PAGE_SIZE)));
-            refetch();
+            onTasksChanged();
+            const total = tasks.state.status === 'ready' ? tasks.state.value.totalItems : 0;
+            const last = Math.max(1, Math.ceil((total + 1) / TASKS_PAGE_SIZE));
+            if (last === list.page) {
+              tasks.reload();
+            } else {
+              go({ ...route, list: { ...list, page: last } }, { replace: true });
+            }
           }}
           onCancel={() => setCreating(false)}
         />
       )}
-      {notice !== null && <p role="status">{notice}</p>}
-      {failure !== null && <p role="alert">{failure}</p>}
-      {load.status === 'loading' && <p>{messages.loading}</p>}
-      {load.status === 'failed' && <p role="alert">{load.text}</p>}
-      {load.status === 'ready' && (
+      {notice !== null && <Notice kind="success">{notice}</Notice>}
+      {tasks.state.status === 'loading' && <Loading />}
+      {tasks.state.status === 'failed' && <LoadFailed text={refusal(tasks.state.result, 'task')} onRetry={tasks.retry} />}
+      {tasks.state.status === 'ready' && (
         <>
-          <p id="task-count" aria-live="polite">
-            {messages.taskCount(load.page.totalItems)}
+          <p id="task-count" className="count" aria-live="polite">
+            {messages.taskCount(tasks.state.value.totalItems)}
           </p>
-          {load.page.totalItems === 0 ? (
-            <p>{filtered ? messages.noTaskMatches : messages.noTasks}</p>
+          {tasks.state.value.totalItems === 0 ? (
+            <EmptyState text={filtered ? messages.noTaskMatches : messages.noTasks} />
           ) : (
-            <ul aria-label={messages.tasks}>
-              {load.page.items.map((task) => (
+            <ul aria-label={messages.tasks} className="rows">
+              {tasks.state.value.items.map((task) => (
                 <li key={task.taskId}>
-                  <button
-                    type="button"
-                    aria-current={selected?.taskId === task.taskId ? 'true' : undefined}
-                    onClick={() => select(task)}
-                  >
-                    {task.title}
-                  </button>{' '}
-                  <span>{messages.taskStates[task.state]}</span> · <span>{messages.taskPriorities[task.priority]}</span>
+                  <Link to={{ screen: 'task', projectId, taskId: task.taskId, list }}>{task.title}</Link>
+                  <span className="badges">
+                    <StateBadge kind="task" value={task.state} />
+                    <StateBadge kind="priority" value={task.priority} />
+                  </span>
+                  <p className="secondary-text assignees">
+                    {task.assignees.length === 0
+                      ? messages.noAssignees
+                      : `${messages.assigneesLabel}: ${task.assignees.map((person) => person.displayName).join(', ')}`}
+                  </p>
                 </li>
               ))}
             </ul>
           )}
-          {load.page.totalPages > 1 && (
-            <p>
-              <button type="button" disabled={page <= 1} onClick={() => setPage(page - 1)}>
-                {messages.previous}
-              </button>{' '}
-              <span>{messages.pageOf(load.page.page, load.page.totalPages)}</span>{' '}
-              <button type="button" disabled={page >= load.page.totalPages} onClick={() => setPage(page + 1)}>
-                {messages.next}
-              </button>
-            </p>
-          )}
+          <Pagination
+            page={tasks.state.value.page}
+            totalPages={tasks.state.value.totalPages}
+            onPage={(page) => {
+              setNotice(null);
+              go({ ...route, list: { ...list, page } });
+            }}
+          />
         </>
-      )}
-      {selected !== null && (
-        <section aria-labelledby="task-heading">
-          <h4 id="task-heading">{selected.title}</h4>
-          {editing ? (
-            <TaskForm
-              idPrefix="edit-task"
-              initialTitle={selected.title}
-              initialDescription={selected.description ?? ''}
-              submitLabel={messages.saveChanges}
-              onSubmit={(content) =>
-                guard(() =>
-                  updateTask(session, projectId, selected.taskId, {
-                    title: content.title,
-                    description: content.description,
-                  }),
-                )
-              }
-              onSaved={(task) => {
-                setSelected(task);
-                setEditing(false);
-                setFailure(null);
-                setNotice(messages.taskSaved);
-                refetch();
-              }}
-              onCancel={() => setEditing(false)}
-            />
-          ) : (
-            <>
-              <p>{selected.description ?? messages.noDescription}</p>
-              {canChangeState || canChange ? (
-                <p>
-                  <label htmlFor="task-state">{messages.stateLabel}</label>{' '}
-                  <select
-                    id="task-state"
-                    value={selected.state}
-                    disabled={busy || !canChangeState}
-                    onChange={(event) => changeStateTo(selected, event.target.value as TaskState)}
-                  >
-                    {TASK_STATES.map((state) => (
-                      <option key={state} value={state}>
-                        {messages.taskStates[state]}
-                      </option>
-                    ))}
-                  </select>{' '}
-                  <label htmlFor="task-priority">{messages.priorityLabel}</label>{' '}
-                  <select
-                    id="task-priority"
-                    value={selected.priority}
-                    disabled={busy || !canChange}
-                    onChange={(event) => changePriorityTo(selected, event.target.value as TaskPriority)}
-                  >
-                    {TASK_PRIORITIES.map((priority) => (
-                      <option key={priority} value={priority}>
-                        {messages.taskPriorities[priority]}
-                      </option>
-                    ))}
-                  </select>
-                </p>
-              ) : (
-                <dl>
-                  <dt>{messages.stateLabel}</dt>
-                  <dd>{messages.taskStates[selected.state]}</dd>
-                  <dt>{messages.priorityLabel}</dt>
-                  <dd>{messages.taskPriorities[selected.priority]}</dd>
-                </dl>
-              )}
-              <div role="group" aria-label={messages.assigneesLabel}>
-                <p>{messages.assigneesLabel}:</p>
-                {selected.assignees.length === 0 ? (
-                  <p>{messages.noAssignees}</p>
-                ) : (
-                  <ul aria-label={messages.assigneesLabel}>
-                    {selected.assignees.map((person) => (
-                      <li key={person.personId}>
-                        {person.displayName}
-                        {projectActive && (isOwner || person.personId === me) && (
-                          <>
-                            {' '}
-                            <button type="button" disabled={busy} onClick={() => unassign(selected, person.personId)}>
-                              {isOwner ? messages.unassign(person.displayName) : messages.unassignMe}
-                            </button>
-                          </>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                )}
-                {projectActive && isOwner && (
-                  <p>
-                    {candidates.length === 0 ? (
-                      messages.allMembersAssigned
-                    ) : (
-                      <>
-                        <label htmlFor="task-assignee">{messages.personToAssign}</label>{' '}
-                        <select
-                          id="task-assignee"
-                          value={personToAssign}
-                          disabled={busy}
-                          onChange={(event) => setPersonToAssign(event.target.value)}
-                        >
-                          <option value="">{messages.chooseMember}</option>
-                          {candidates.map((member) => (
-                            <option key={member.person.personId} value={member.person.personId}>
-                              {member.person.displayName}
-                            </option>
-                          ))}
-                        </select>{' '}
-                        <button
-                          type="button"
-                          disabled={busy || personToAssign === ''}
-                          onClick={() => assign(selected, personToAssign)}
-                        >
-                          {messages.assign}
-                        </button>
-                      </>
-                    )}
-                  </p>
-                )}
-                {projectActive && !isOwner && !assignedToMe && (
-                  <p>
-                    <button type="button" disabled={busy} onClick={() => assign(selected, me)}>
-                      {messages.assignMe}
-                    </button>
-                  </p>
-                )}
-              </div>
-              <CommentsSection
-                key={selected.taskId}
-                session={session}
-                projectId={projectId}
-                taskId={selected.taskId}
-                onSessionEnded={onSessionEnded}
-              />
-              {canChange && !confirming && (
-                <p>
-                  <button type="button" onClick={() => { setEditing(true); setNotice(null); setFailure(null); }}>
-                    {messages.editTask}
-                  </button>{' '}
-                  <button type="button" onClick={() => { setConfirming(true); setNotice(null); setFailure(null); }}>
-                    {messages.deleteTask}
-                  </button>{' '}
-                  <button type="button" onClick={() => select(null)}>
-                    {messages.closeTask}
-                  </button>
-                </p>
-              )}
-              {!canChange && (
-                <p>
-                  <button type="button" onClick={() => select(null)}>
-                    {messages.closeTask}
-                  </button>
-                </p>
-              )}
-            </>
-          )}
-          {confirming && (
-            <div role="alertdialog" aria-labelledby="confirm-delete-task-text" aria-modal="false">
-              <p id="confirm-delete-task-text">{messages.confirmDeleteTask(selected.title)}</p>
-              <button type="button" disabled={busy} onClick={() => confirmDelete(selected)}>
-                {messages.confirmDeleteButton}
-              </button>{' '}
-              <button type="button" ref={cancelButton} disabled={busy} onClick={() => setConfirming(false)}>
-                {messages.cancel}
-              </button>
-            </div>
-          )}
-        </section>
       )}
     </section>
   );

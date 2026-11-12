@@ -1,137 +1,118 @@
-import { type FormEvent, useCallback, useEffect, useState } from 'react';
-import { type Session, SessionEndedError } from './api';
+import { type FormEvent, useEffect, useState } from 'react';
+import { Button, EmptyState, Link, LoadFailed, Loading, Notice, Pagination, ProjectRow } from './components';
 import { messages } from './messages';
+import { type Flash, go, useFlash } from './navigation';
 import ProjectForm from './ProjectForm';
-import { createProject, listProjects, type ProjectPage } from './projectsApi';
+import { createProject, listProjects } from './projectsApi';
+import { ALL_PROJECTS, FIRST_PAGE, NEW_PROJECT, type ProjectsRoute } from './router';
+import { useApi, useLoad } from './session';
+import { refusal } from './validation';
 
 const PAGE_SIZE = 20;
 
-interface Props {
-  session: Session;
-  onOpen: (projectId: string) => void;
-  onSessionEnded: () => void;
-}
+/**
+ * Projects (US-007, US-023; I13 decision 1): the person's projects, a page at a time, searchable by name,
+ * and the form to create one. The search and the page are in the address, and the total is the API's. Each
+ * project shows its task counts by state (I5 decision 4).
+ */
+export default function ProjectsScreen({ route, notice }: { route: ProjectsRoute; notice: Flash | null }) {
+  const { run } = useApi();
+  const [shown, setShown] = useFlash(notice);
+  const [searchText, setSearchText] = useState(route.name);
+  const { name, page, creating } = route;
+  const projects = useLoad((session) => listProjects(session, { name, page, size: PAGE_SIZE }), [name, page]);
 
-/** My projects (US-007, US-023): the person's projects, a page at a time, searchable by name, and the form to create one. */
-export default function ProjectsScreen({ session, onOpen, onSessionEnded }: Props) {
-  const [searchText, setSearchText] = useState('');
-  const [name, setName] = useState('');
-  const [page, setPage] = useState(1);
-  const [data, setData] = useState<ProjectPage | null>(null);
-  const [failed, setFailed] = useState(false);
-  const [creating, setCreating] = useState(false);
+  useEffect(() => setSearchText(name), [name]);
 
-  const load = useCallback(async () => {
-    try {
-      const result = await listProjects(session, { name, page, size: PAGE_SIZE });
-      if (result.outcome === 'ok') {
-        setData(result.value);
-        setFailed(false);
-      } else {
-        setFailed(true);
-      }
-    } catch (error: unknown) {
-      if (error instanceof SessionEndedError) {
-        onSessionEnded();
-      } else {
-        setFailed(true);
-      }
-    }
-  }, [session, name, page, onSessionEnded]);
-
+  // A page past the last one, for example after the last project of a page was deleted, shows the last page.
   useEffect(() => {
-    void load();
-  }, [load]);
+    if (projects.state.status === 'ready' && projects.state.value.items.length === 0 && page > 1) {
+      go({ ...route, page: Math.max(1, projects.state.value.totalPages) }, { replace: true });
+    }
+  }, [projects.state, page, route]);
 
   function search(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setName(searchText.trim());
-    setPage(1);
-  }
-
-  function clear() {
-    setSearchText('');
-    setName('');
-    setPage(1);
-  }
-
-  async function create(content: { name: string; description: string }) {
-    try {
-      return await createProject(session, content);
-    } catch (error: unknown) {
-      if (error instanceof SessionEndedError) {
-        onSessionEnded();
-      }
-      return { outcome: 'failed' } as const;
-    }
+    go({ ...ALL_PROJECTS, name: searchText.trim() });
   }
 
   return (
-    <section aria-labelledby="my-projects-heading">
-      <h2 id="my-projects-heading">{messages.myProjects}</h2>
+    <section aria-labelledby="projects-heading" className="screen">
+      <h2 id="projects-heading">{messages.projects}</h2>
+      {shown !== null && <Notice kind="success">{shown}</Notice>}
       {creating ? (
-        <section aria-labelledby="new-project-heading">
+        <section aria-labelledby="new-project-heading" className="panel">
           <h3 id="new-project-heading">{messages.newProject}</h3>
           <ProjectForm
             idPrefix="new-project"
-            initialName=""
-            initialDescription=""
+            initial={{ name: '', description: '' }}
             submitLabel={messages.createProject}
-            onSubmit={create}
-            onSaved={(project) => onOpen(project.projectId)}
-            onCancel={() => setCreating(false)}
+            onSubmit={(content) => run((session) => createProject(session, content))}
+            onSaved={(project) =>
+              go(
+                { screen: 'project', projectId: project.projectId, list: FIRST_PAGE },
+                { replace: true, notice: messages.projectCreated },
+              )
+            }
+            onCancel={() => go(ALL_PROJECTS, { replace: true })}
           />
         </section>
       ) : (
         <p>
-          <button type="button" onClick={() => setCreating(true)}>
+          <Link to={NEW_PROJECT} className="button primary">
             {messages.newProject}
-          </button>
+          </Link>
         </p>
       )}
-      <form role="search" onSubmit={search}>
-        <label htmlFor="project-search">{messages.searchByName}</label>{' '}
-        <input id="project-search" type="search" value={searchText} onChange={(event) => setSearchText(event.target.value)} />{' '}
-        <button type="submit">{messages.search}</button>
+      <form role="search" onSubmit={search} className="search">
+        <label htmlFor="project-search">{messages.searchByName}</label>
+        <input id="project-search" type="search" value={searchText} onChange={(event) => setSearchText(event.target.value)} />
+        <Button type="submit">{messages.search}</Button>
         {name !== '' && (
-          <>
-            {' '}
-            <button type="button" onClick={clear}>
-              {messages.clearSearch}
-            </button>
-          </>
+          <Button
+            onClick={() => {
+              setShown(null);
+              go(ALL_PROJECTS);
+            }}
+          >
+            {messages.clearSearch}
+          </Button>
         )}
       </form>
-      {failed && <p role="alert">{messages.somethingFailed}</p>}
-      {data === null ? (
-        !failed && <p>{messages.loading}</p>
-      ) : data.items.length === 0 ? (
-        <p>{name === '' ? messages.noProjects : messages.noProjectMatches}</p>
-      ) : (
-        <ul aria-label={messages.myProjects}>
-          {data.items.map((project) => (
-            <li key={project.projectId}>
-              <button type="button" onClick={() => onOpen(project.projectId)}>
-                {project.name}
-              </button>{' '}
-              <span>
-                {messages.states[project.state]}, {messages.roles[project.myRole]}
-              </span>
-              {project.description !== undefined && <p>{project.description}</p>}
-            </li>
-          ))}
-        </ul>
+      {projects.state.status === 'loading' && <Loading />}
+      {projects.state.status === 'failed' && (
+        <LoadFailed text={refusal(projects.state.result, 'project')} onRetry={projects.retry} />
       )}
-      {data !== null && data.totalPages > 1 && (
-        <nav aria-label="Pages">
-          <button type="button" disabled={data.page <= 1} onClick={() => setPage(data.page - 1)}>
-            {messages.previous}
-          </button>{' '}
-          <span>{messages.pageOf(data.page, data.totalPages)}</span>{' '}
-          <button type="button" disabled={data.page >= data.totalPages} onClick={() => setPage(data.page + 1)}>
-            {messages.next}
-          </button>
-        </nav>
+      {projects.state.status === 'ready' && (
+        <>
+          <p className="count" aria-live="polite">
+            {messages.projectCount(projects.state.value.totalItems)}
+          </p>
+          {projects.state.value.totalItems === 0 ? (
+            name === '' ? (
+              <EmptyState text={messages.noProjects}>
+                {!creating && (
+                  <Link to={NEW_PROJECT} className="button primary">
+                    {messages.createAProject}
+                  </Link>
+                )}
+              </EmptyState>
+            ) : (
+              <EmptyState text={messages.noProjectMatches} />
+            )
+          ) : (
+            <ul aria-label={messages.projects} className="rows">
+              {projects.state.value.items.map((project) => (
+                <ProjectRow key={project.projectId} project={project} withDescription />
+              ))}
+            </ul>
+          )}
+          <Pagination
+            page={projects.state.value.page}
+            totalPages={projects.state.value.totalPages}
+            onPage={(next) => go({ ...route, page: next })}
+          />
+        </>
       )}
     </section>
   );

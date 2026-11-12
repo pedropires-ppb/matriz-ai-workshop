@@ -16,8 +16,9 @@ import org.springframework.stereotype.Component;
  * <ul>
  * <li>A person who is not a member is told the project does not exist.</li>
  * <li>Any member may view it, also when it is Completed.</li>
- * <li>Only the Project Owner may edit or delete it, and a Project Participant is refused.</li>
- * <li>Nobody may edit or delete a Completed project.</li>
+ * <li>Only the Project Owner may edit, delete, or complete it, and a Project Participant is refused.</li>
+ * <li>Nobody may edit, delete, or complete a Completed project, or add or remove its members.</li>
+ * <li>Only the Project Owner sees the people who can be added, also while it is Completed (A-030).</li>
  * </ul>
  * It decides from the facts it is given and reads no data of other modules.
  */
@@ -31,7 +32,9 @@ class ProjectAccessRules implements ProjectAccessPolicy {
 		}
 		return switch (action) {
 			case VIEW -> AccessDecision.ALLOWED;
-			case EDIT, DELETE -> {
+			case LIST_ELIGIBLE_PARTICIPANTS ->
+				role.get() == MemberRole.PROJECT_OWNER ? AccessDecision.ALLOWED : AccessDecision.FORBIDDEN;
+			case EDIT, DELETE, COMPLETE, MANAGE_MEMBERS -> {
 				if (role.get() != MemberRole.PROJECT_OWNER) {
 					yield AccessDecision.FORBIDDEN;
 				}

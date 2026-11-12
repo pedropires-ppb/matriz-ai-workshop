@@ -4,6 +4,6 @@
  * Hibernate, and of Jakarta Persistence only the mapping annotations and the enumerations they
  * take. Other modules are used only through their top-level packages (module rule 2).
  * <p>
- * Empty in I1. First classes in I5, if the Progress read model needs this layer (ADR-008).
+ * Since I5: the value Progress, with the rounding of Assumption A-026.
  */
 package com.matriz.progress.domain;

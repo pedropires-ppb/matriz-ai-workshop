@@ -104,6 +104,22 @@ All features below are proposed Must priorities, subject to client approval; the
 
 **Troubleshooting.** If Maven cannot download because of a certificate error, such as `PKIX path building failed`, on a network that uses a private certificate authority, point the JDK at a trust store that contains that authority: `export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/path/to/truststore"`. Never commit trust stores or registry settings.
 
+### Use the User interface
+
+*Added on 2026-11-09 with increment [I13](docs/implementation-plan.md#i13--user-interface-consolidation).* After signing in at <http://localhost:8080/>, the User interface has five screens, each with its own address:
+
+| Screen | Address | Content |
+|---|---|---|
+| Sign-in | any address, before signing in | Login name and password. After signing in, the address that was asked for opens. |
+| Home | `#/` | The signed-in person, the number of their projects, the first five with their task counts by state, and a link to all. *Changed on 2026-11-09 with increment [I5](docs/implementation-plan.md#i5--progress-and-my-projects): previously without the task counts.* |
+| Projects | `#/projects`, `#/projects/new` | Search by name, paging, each project's task counts by state, and the “New project” form. *Changed on 2026-11-09 with increment I5: previously without the task counts.* |
+| Project detail | `#/projects/{projectId}` | The details, with Edit, Complete (*added on 2026-11-09 with increment I8*), and Delete for the Project Owner; the progress, with the percentage Done, a bar, and the task counts by state, or “No tasks” (*added on 2026-11-09 with increment I5*); the members, where the Project Owner of an Active project adds and removes Project Participants (*added on 2026-11-09 with increment I6*); and the tasks, with filters, paging, the assignees of each task, and the “New task” form. |
+| Task detail | `#/projects/{projectId}/tasks/{taskId}` | The details, state, and priority; Edit and Delete; the assignees; and the comments. |
+
+The search, the filters, and the page are kept in the address, so Back and Forward work. An unknown address leads to Home. Reloading the page signs the person out ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)); the address is kept, so the same screen opens after signing in again. The screens fit widths from 390 pixels; from 720 pixels, the project and task screens use two columns.
+
+**Front-end development.** The front end is in `frontend/` (React, TypeScript, Vite). The build runs its type check and unit tests (Vitest); to run them alone, with the Node.js that the build installs: `cd frontend && PATH="$PWD/node:$PATH" npm test`. The address of the backend is configured in one place, `frontend/src/config.ts`, from `VITE_API_BASE_URL` at build time. It is empty by default, which means the same origin as the page. Only the same origin is supported for now: another origin would need CORS, which is not configured.
+
 ### Sign in, use the API, and sign out
 
 *Added on 2026-11-02 with increment I2 ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points), [ADR-009](docs/adr/ADR-009-identity-from-the-token.md)).* With the demonstration data, open <http://localhost:8080/> and sign in with a demonstration login name and the password you chose in `.env`. Letter case in the login name does not matter. The [API contract](openapi.yaml) specifies the access token's life cycle under “Token life cycle”; in short:
@@ -144,7 +160,7 @@ unset PASSWORD TOKEN
 
 ### Manage projects
 
-*Added on 2026-11-02 with increments I3, I10 (project deletion only), and I11 (search by name only) ([A-031 and A-032](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* After signing in, “My projects” lists the projects of the signed-in person, with a search by name, a pager, and a “New project” form; opening a project shows its page, where the Project Owner of an Active project edits or deletes it. Deleting asks for confirmation in the User interface. The [API contract](openapi.yaml) specifies each operation; in short:
+*Added on 2026-11-02 with increments I3, I10 (project deletion only), and I11 (search by name only) ([A-031 and A-032](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* The Projects screen lists the projects of the signed-in person, with a search by name, a pager, and a “New project” form; opening a project shows the Project detail, where the Project Owner of an Active project edits or deletes it. Deleting asks for confirmation in the User interface. *Changed on 2026-11-09 with increment I13: previously “After signing in, “My projects” lists the projects of the signed-in person, …; opening a project shows its page, …”.* The [API contract](openapi.yaml) specifies each operation; in short:
 
 | Operation | Request | Success | Notes |
 |---|---|---|---|
@@ -152,13 +168,14 @@ unset PASSWORD TOKEN
 | `createProject` | `POST /api/projects` with `name` and an optional `description` | 201 and a `Location` header | The signed-in person becomes the Project Owner; the request cannot choose the owner. |
 | `getProject` | `GET /api/projects/{projectId}` | 200 | Members only. |
 | `updateProject` | `PATCH /api/projects/{projectId}` as `application/merge-patch+json` | 200 | Only the Project Owner, only while the project is Active. `{"description":null}` removes the description. |
+| `completeProject` | `PUT /api/projects/{projectId}/state` with `{"state":"COMPLETED"}` | 200 | *Added on 2026-11-09 with increment I8.* Only the Project Owner, only while the project is Active, and only when none of its tasks is To do or In progress (deleted tasks do not count); a project with no tasks can be completed ([A-007](docs/constraints.md#assumptions), pending [OQ-006](docs/constraints.md#open-questions)). Unfinished tasks or an already Completed project get 409; any other content gets 422. Cannot be undone. Afterwards the project and its tasks are read-only; comments can still be added. In the User interface, “Complete project” asks for confirmation and is unavailable while tasks are To do or In progress. |
 | `deleteProject` | `DELETE /api/projects/{projectId}` | 204 | Only the Project Owner, only while the project is Active. A soft deletion: the project, its tasks, comments, and assignments disappear from every read; no restore. |
 
 The name has 1 to 100 characters and the optional description at most 1000, counted after trimming; a name that is empty after trimming, or a value over a limit, gets 422 with field errors. A person who is not a member of the project, and a deleted or unknown project, get 404; a Project Participant who tries to edit or delete gets 403; a Completed project gets 409. The limits and the other rules are team decisions awaiting client validation ([A-031](docs/constraints.md#assumptions), [A-032](docs/constraints.md#assumptions)).
 
 ### Manage tasks
 
-*Added on 2026-11-05 with increments I4, I10 (task deletion only), and I11 (task filters only) ([A-033](docs/constraints.md#assumptions), [A-004, A-024, A-031, and A-032 as amended](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* The project page has a “Tasks” section: filters by state and priority, the list with a count and a pager, a “New task” form, and a details panel where the Project Owner of an Active project edits the task, changes its state and priority, or deletes it after a confirmation. After each operation the page of tasks is fetched again, so the list and the count are current without reloading the page. A Project Participant sees the tasks but cannot change them until assignees arrive in I7.
+*Added on 2026-11-05 with increments I4, I10 (task deletion only), and I11 (task filters only) ([A-033](docs/constraints.md#assumptions), [A-004, A-024, A-031, and A-032 as amended](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* The Project detail has a “Tasks” section: filters by state and priority, the list with a count, the assignees of each task, and a pager, and a “New task” form. Each task opens the Task detail, where the Project Owner of an Active project edits the task, changes its state and priority, or deletes it after a confirmation. *Changed on 2026-11-09 with increment I13: previously “The project page has a “Tasks” section: filters by state and priority, the list with a count and a pager, a “New task” form, and a details panel where …”.* After each operation the page of tasks is fetched again, so the list and the count are current without reloading the page. A Project Participant sees the tasks but cannot change them until assignees arrive in I7.
 
 | Operation | Request | Success | Notes |
 |---|---|---|---|
@@ -170,6 +187,17 @@ The name has 1 to 100 characters and the optional description at most 1000, coun
 | `deleteTask` | `DELETE /api/projects/{projectId}/tasks/{taskId}` | 204 | A soft deletion: the task and its Assignments disappear from every read; no restore. |
 
 The title has 1 to 150 characters and the optional description at most 2000, counted after trimming; text that is empty after trimming gets 422 (for the description, it means none). Spaces, tabs, and the no-break spaces U+00A0, U+2007, and U+202F count as blank, for project and task texts. Until assignees exist (I7), only the Project Owner creates, edits, changes the state of, and deletes tasks, so a Project Participant gets 403; a person who is not a member, and an unknown, deleted, or foreign task, get 404; a Completed project gets 409 for every change. Two simultaneous changes are applied one after the other, and the last prevails. The limits, the values, and the rules are team decisions awaiting client validation ([A-033](docs/constraints.md#assumptions), [OQ-030](docs/constraints.md#open-questions)).
+
+### Manage members
+
+*Added on 2026-11-09 with increment I6 ([A-009](docs/constraints.md#assumptions), [A-030](docs/constraints.md#assumptions), [EX-007](docs/user-stories.md#edge-cases-and-exceptions)).* The Members panel of the Project detail lists every member. The Project Owner of an Active project opens “Add participant”, searches people by name, and adds them; each Project Participant has “Remove”, which asks for confirmation and is unavailable while the person is assigned to tasks. The [API contract](openapi.yaml) specifies each operation; in short:
+
+| Operation | Request | Success | Notes |
+|---|---|---|---|
+| `listProjectMembers` | `GET /api/projects/{projectId}/members` | 200 | Any member. The Project Owner first, then by display name. `hasAssignedTasks` says whether the member is an assignee of a task that is not deleted, in any state. |
+| `listEligibleParticipants` | `GET /api/projects/{projectId}/eligible-participants?name=` | 200 | Only the Project Owner, in any state. Every person who is not a member, without paging; `name` is a trimmed, case-insensitive substring search, and accents are significant. An empty `name` gets 400. A team decision pending the client, with a privacy risk ([A-030](docs/constraints.md#assumptions), [OQ-011](docs/constraints.md#open-questions)). |
+| `addParticipant` | `POST /api/projects/{projectId}/members` with `personId` | 201 and a `Location` header | Only the Project Owner, only while the project is Active. An unknown person gets 422; a member gets 409. The person sees the project immediately. |
+| `removeParticipant` | `DELETE /api/projects/{projectId}/members/{personId}` | 204 | Only the Project Owner, only while the project is Active. The Project Owner, or a person assigned to a task of the project, gets 409; a person who is not a member gets 404. The person loses access immediately; their comments are kept. |
 
 ## Review log (human-in-the-loop)
 

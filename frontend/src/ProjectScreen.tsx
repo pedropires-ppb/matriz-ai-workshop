@@ -1,188 +1,215 @@
-import { useCallback, useEffect, useRef, useState } from 'react';
-import { type Session, SessionEndedError } from './api';
-import { messages } from './messages';
-import ProjectForm from './ProjectForm';
-import { listProjectMembers, type Member } from './membersApi';
+import { useId, useState } from 'react';
+import { Button, ConfirmBox, Link, LoadFailed, Loading, NotAccessible, Notice, ProgressPanel, StateBadge } from './components';
+import { listProjectMembers } from './membersApi';
 import MembersSection from './MembersSection';
+import { messages } from './messages';
+import { type Flash, go, useFlash } from './navigation';
+import ProjectForm from './ProjectForm';
+import { completeProject, deleteProject, getProject, updateProject } from './projectsApi';
+import { ALL_PROJECTS, type Route } from './router';
+import { useApi, useLoad, useSubmit } from './session';
 import TasksSection from './TasksSection';
-import { refusal } from './projectValidation';
-import { deleteProject, getProject, type Project, type ProjectResult, updateProject } from './projectsApi';
+import { refusal } from './validation';
 
-interface Props {
-  session: Session;
-  projectId: string;
-  onBack: () => void;
-  onSessionEnded: () => void;
-}
+type ProjectRoute = Extract<Route, { screen: 'project' }>;
 
-type Load = { status: 'loading' } | { status: 'ready'; project: Project } | { status: 'refused'; text: string };
-
-/** One project (US-007, US-008, US-016): its details, its renaming, and its deletion after a confirmation. */
-export default function ProjectScreen({ session, projectId, onBack, onSessionEnded }: Props) {
-  const [load, setLoad] = useState<Load>({ status: 'loading' });
-  const [editing, setEditing] = useState(false);
-  const [confirming, setConfirming] = useState(false);
-  const [deleting, setDeleting] = useState(false);
-  const [notice, setNotice] = useState<string | null>(null);
+/**
+ * Project detail (US-002, US-006, US-007, US-008, US-009, US-010, US-016, US-026): the project's data, its
+ * progress, its renaming, its completion and its deletion after a confirmation, its members, and its tasks. Edit, Complete,
+ * and Delete are here only (I13 decision 2; I8 decision 5). After a task is created here, the project is
+ * fetched again, so the progress is the API's (I5 decision 3). When completing is refused, the project and
+ * its tasks are fetched again, and the message says whether it is still Active (I8 decision 6).
+ */
+export default function ProjectScreen({ route, notice }: { route: ProjectRoute; notice: Flash | null }) {
+  const { projectId } = route;
+  const { run } = useApi();
+  const [shown, setShown] = useFlash(notice);
   const [failure, setFailure] = useState<string | null>(null);
-  const [members, setMembers] = useState<Member[] | null>(null);
-  const [membersFailed, setMembersFailed] = useState(false);
-  const cancelButton = useRef<HTMLButtonElement>(null);
+  const [editing, setEditing] = useState(false);
+  const [confirming, setConfirming] = useState<'delete' | 'complete' | null>(null);
+  const [taskListVersion, setTaskListVersion] = useState(0);
+  const deletion = useSubmit();
+  const completion = useSubmit();
+  const unavailableId = useId();
+  const project = useLoad((session) => getProject(session, projectId), [projectId]);
+  const members = useLoad((session) => listProjectMembers(session, projectId), [projectId]);
 
-  /** Runs a request; a 401 sends the person to sign in. */
-  const guard = useCallback(
-    async <T,>(request: () => Promise<ProjectResult<T>>): Promise<ProjectResult<T>> => {
-      try {
-        return await request();
-      } catch (error: unknown) {
-        if (error instanceof SessionEndedError) {
-          onSessionEnded();
-        }
-        return { outcome: 'failed' };
-      }
-    },
-    [onSessionEnded],
-  );
-
-  useEffect(() => {
-    let current = true;
-    void guard(() => getProject(session, projectId)).then((result) => {
-      if (current) {
-        setLoad(
-          result.outcome === 'ok'
-            ? { status: 'ready', project: result.value }
-            : { status: 'refused', text: refusal(result) ?? messages.somethingFailed },
-        );
-      }
-    });
-    return () => {
-      current = false;
-    };
-  }, [guard, session, projectId]);
-
-  useEffect(() => {
-    let current = true;
-    void guard(() => listProjectMembers(session, projectId)).then((result) => {
-      if (current) {
-        setMembers(result.outcome === 'ok' ? result.value : null);
-        setMembersFailed(result.outcome !== 'ok');
-      }
-    });
-    return () => {
-      current = false;
-    };
-  }, [guard, session, projectId]);
-
-  useEffect(() => {
-    if (confirming) {
-      cancelButton.current?.focus();
-    }
-  }, [confirming]);
-
-  async function confirmDelete() {
-    setDeleting(true);
+  function clearNotices() {
+    setShown(null);
     setFailure(null);
-    const result = await guard(() => deleteProject(session, projectId));
-    setDeleting(false);
-    if (result.outcome === 'ok') {
-      onBack();
-      return;
-    }
-    setConfirming(false);
-    setFailure(refusal(result));
   }
 
-  if (load.status === 'loading') {
-    return <p>{messages.loading}</p>;
+  /** Fetches the project again and shows it, when a change was refused because it may have changed. */
+  async function refreshProject() {
+    const fresh = await run((session) => getProject(session, projectId));
+    if (fresh.outcome === 'ok') {
+      project.set(fresh.value);
+    }
+    return fresh;
   }
-  if (load.status === 'refused') {
-    return (
-      <section>
-        <p role="alert">{load.text}</p>
-        <button type="button" onClick={onBack}>
-          {messages.backToProjects}
-        </button>
-      </section>
+
+  function confirmDelete() {
+    void deletion.submit(async () => {
+      const result = await run((session) => deleteProject(session, projectId));
+      if (result.outcome === 'ok') {
+        go(ALL_PROJECTS, { replace: true, notice: messages.deleted });
+        return;
+      }
+      setConfirming(null);
+      setFailure(refusal(result, 'project'));
+    });
+  }
+
+  function confirmComplete() {
+    void completion.submit(async () => {
+      const result = await run((session) => completeProject(session, projectId));
+      setConfirming(null);
+      if (result.outcome === 'ok') {
+        project.set(result.value);
+        setShown(messages.projectCompletedNotice);
+        return;
+      }
+      if (result.outcome !== 'completed') {
+        setFailure(refusal(result, 'project'));
+        return;
+      }
+      const fresh = await refreshProject();
+      setTaskListVersion((version) => version + 1);
+      if (fresh.outcome !== 'ok') {
+        setFailure(refusal(fresh, 'project'));
+        return;
+      }
+      setFailure(fresh.value.state === 'ACTIVE' ? messages.projectHasUnfinishedTasks : messages.projectCompleted);
+    });
+  }
+
+  if (project.state.status === 'loading') {
+    return <Loading />;
+  }
+  if (project.state.status === 'failed') {
+    const result = project.state.result;
+    return result.outcome === 'notFound' ? (
+      <NotAccessible text={messages.projectNotFound} />
+    ) : (
+      <LoadFailed text={refusal(result, 'project')} onRetry={project.retry} />
     );
   }
-  const project = load.project;
-  const isOwner = project.myRole === 'PROJECT_OWNER';
-  const canChange = isOwner && project.state === 'ACTIVE';
+  const current = project.state.value;
+  const isOwner = current.myRole === 'PROJECT_OWNER';
+  const canChange = isOwner && current.state === 'ACTIVE';
+  const { toDo, inProgress } = current.progress.taskCounts;
+  const hasUnfinishedTasks = toDo + inProgress > 0;
 
   return (
-    <section aria-labelledby="project-heading">
-      <p>
-        <button type="button" onClick={onBack}>
-          {messages.backToProjects}
-        </button>
+    <section aria-labelledby="project-heading" className="screen">
+      <p className="back">
+        <Link to={ALL_PROJECTS}>{messages.backToProjects}</Link>
       </p>
-      <h2 id="project-heading">{project.name}</h2>
-      {notice !== null && <p role="status">{notice}</p>}
-      {failure !== null && <p role="alert">{failure}</p>}
-      {editing ? (
-        <ProjectForm
-          idPrefix="edit-project"
-          initialName={project.name}
-          initialDescription={project.description ?? ''}
-          submitLabel={messages.saveChanges}
-          onSubmit={(content) => guard(() => updateProject(session, projectId, content))}
-          onSaved={(saved) => {
-            setLoad({ status: 'ready', project: saved });
-            setEditing(false);
-            setFailure(null);
-            setNotice(messages.saved);
-          }}
-          onCancel={() => setEditing(false)}
-        />
-      ) : (
-        <>
-          <p>{project.description ?? messages.noDescription}</p>
-          <dl>
-            <dt>{messages.stateLabel}</dt>
-            <dd>{messages.states[project.state]}</dd>
-            <dt>{messages.roleLabel}</dt>
-            <dd>{messages.roles[project.myRole]}</dd>
-          </dl>
-          {canChange && !confirming && (
-            <p>
-              <button type="button" onClick={() => { setEditing(true); setNotice(null); setFailure(null); }}>
-                {messages.editProject}
-              </button>{' '}
-              <button type="button" onClick={() => { setConfirming(true); setNotice(null); setFailure(null); }}>
-                {messages.deleteProject}
-              </button>
-            </p>
+      <h2 id="project-heading">{current.name}</h2>
+      {shown !== null && <Notice kind="success">{shown}</Notice>}
+      {failure !== null && <Notice kind="error">{failure}</Notice>}
+      <div className="project-layout">
+        <section aria-labelledby="project-details-heading" className="panel project-details">
+          <h3 id="project-details-heading">{messages.details}</h3>
+          {editing ? (
+            <ProjectForm
+              idPrefix="edit-project"
+              initial={{ name: current.name, description: current.description ?? '' }}
+              submitLabel={messages.saveChanges}
+              onSubmit={(content) => run((session) => updateProject(session, projectId, content))}
+              onSaved={(saved) => {
+                project.set(saved);
+                setEditing(false);
+                setFailure(null);
+                setShown(messages.saved);
+              }}
+              onCancel={() => setEditing(false)}
+            />
+          ) : (
+            <>
+              <p className="description">{current.description ?? messages.noDescription}</p>
+              <dl>
+                <dt>{messages.stateLabel}</dt>
+                <dd>
+                  <StateBadge kind="project" value={current.state} />
+                </dd>
+                <dt>{messages.roleLabel}</dt>
+                <dd>
+                  <StateBadge kind="role" value={current.myRole} />
+                </dd>
+              </dl>
+              {canChange && confirming === null && (
+                <div className="actions">
+                  <Button
+                    onClick={() => {
+                      setEditing(true);
+                      clearNotices();
+                    }}
+                  >
+                    {messages.editProject}
+                  </Button>
+                  <Button
+                    disabled={hasUnfinishedTasks}
+                    describedBy={hasUnfinishedTasks ? unavailableId : undefined}
+                    onClick={() => {
+                      setConfirming('complete');
+                      clearNotices();
+                    }}
+                  >
+                    {messages.completeProject}
+                  </Button>
+                  <Button
+                    variant="danger"
+                    onClick={() => {
+                      setConfirming('delete');
+                      clearNotices();
+                    }}
+                  >
+                    {messages.deleteProject}
+                  </Button>
+                </div>
+              )}
+              {canChange && confirming === null && hasUnfinishedTasks && (
+                <p id={unavailableId} className="hint">
+                  {messages.completeUnavailable}
+                </p>
+              )}
+            </>
           )}
-        </>
-      )}
-      {confirming && (
-        <div role="alertdialog" aria-labelledby="confirm-delete-text" aria-modal="false">
-          <p id="confirm-delete-text">{messages.confirmDelete(project.name)}</p>
-          <button type="button" disabled={deleting} onClick={() => void confirmDelete()}>
-            {messages.confirmDeleteButton}
-          </button>{' '}
-          <button type="button" ref={cancelButton} disabled={deleting} onClick={() => setConfirming(false)}>
-            {messages.cancel}
-          </button>
-        </div>
-      )}
-      <MembersSection members={members} failed={membersFailed} />
-      <TasksSection
-        session={session}
-        projectId={projectId}
-        canChange={canChange}
-        isOwner={isOwner}
-        projectActive={project.state === 'ACTIVE'}
-        members={members}
-        readOnlyText={
-          project.state === 'COMPLETED'
-            ? messages.tasksReadOnlyCompleted
-            : isOwner
-              ? null
-              : messages.tasksReadOnlyParticipant
-        }
-        onSessionEnded={onSessionEnded}
-      />
+          {confirming === 'delete' && (
+            <ConfirmBox
+              text={messages.confirmDelete(current.name)}
+              confirmLabel={messages.confirmDeleteButton}
+              busy={deletion.busy}
+              onConfirm={confirmDelete}
+              onCancel={() => setConfirming(null)}
+            />
+          )}
+          {confirming === 'complete' && (
+            <ConfirmBox
+              text={messages.confirmComplete(current.name)}
+              confirmLabel={messages.confirmCompleteButton}
+              busy={completion.busy}
+              onConfirm={confirmComplete}
+              onCancel={() => setConfirming(null)}
+            />
+          )}
+        </section>
+        <ProgressPanel progress={current.progress} />
+        <MembersSection
+          project={current}
+          loaded={members.state}
+          onRetry={members.retry}
+          onMembersChanged={members.reload}
+          onProjectStale={refreshProject}
+        />
+        <TasksSection
+          route={route}
+          project={current}
+          onTasksChanged={project.reload}
+          listVersion={taskListVersion}
+        />
+      </div>
     </section>
   );
 }

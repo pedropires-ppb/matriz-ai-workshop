@@ -16,6 +16,9 @@ import static org.assertj.core.api.Assertions.assertThat;
  */
 class ProjectAccessRulesTests {
 
+	private static final ProjectAction[] CHANGES = { ProjectAction.EDIT, ProjectAction.DELETE, ProjectAction.COMPLETE,
+			ProjectAction.MANAGE_MEMBERS };
+
 	private final ProjectAccessRules rules = new ProjectAccessRules();
 
 	@Test
@@ -38,8 +41,8 @@ class ProjectAccessRulesTests {
 	}
 
 	@Test
-	void aProjectParticipantCannotEditOrDeleteEvenWhenCompleted() {
-		for (ProjectAction action : new ProjectAction[] { ProjectAction.EDIT, ProjectAction.DELETE }) {
+	void aProjectParticipantCannotEditDeleteCompleteOrManageMembersEvenWhenCompleted() {
+		for (ProjectAction action : CHANGES) {
 			for (ProjectState state : ProjectState.values()) {
 				assertThat(this.rules.decide(action, state, Optional.of(MemberRole.PROJECT_PARTICIPANT)))
 					.isEqualTo(AccessDecision.FORBIDDEN);
@@ -48,12 +51,24 @@ class ProjectAccessRulesTests {
 	}
 
 	@Test
-	void theProjectOwnerEditsAndDeletesOnlyWhileTheProjectIsActive() {
-		for (ProjectAction action : new ProjectAction[] { ProjectAction.EDIT, ProjectAction.DELETE }) {
+	void theProjectOwnerEditsDeletesCompletesAndManagesMembersOnlyWhileTheProjectIsActive() {
+		for (ProjectAction action : CHANGES) {
 			assertThat(this.rules.decide(action, ProjectState.ACTIVE, Optional.of(MemberRole.PROJECT_OWNER)))
 				.isEqualTo(AccessDecision.ALLOWED);
 			assertThat(this.rules.decide(action, ProjectState.COMPLETED, Optional.of(MemberRole.PROJECT_OWNER)))
 				.isEqualTo(AccessDecision.CONFLICT);
+		}
+	}
+
+	@Test
+	void onlyTheProjectOwnerSeesWhoCanBeAddedWhateverTheState() {
+		for (ProjectState state : ProjectState.values()) {
+			assertThat(this.rules.decide(ProjectAction.LIST_ELIGIBLE_PARTICIPANTS, state,
+					Optional.of(MemberRole.PROJECT_OWNER)))
+				.isEqualTo(AccessDecision.ALLOWED);
+			assertThat(this.rules.decide(ProjectAction.LIST_ELIGIBLE_PARTICIPANTS, state,
+					Optional.of(MemberRole.PROJECT_PARTICIPANT)))
+				.isEqualTo(AccessDecision.FORBIDDEN);
 		}
 	}
 

@@ -1,13 +1,12 @@
-// Calls to the project operations of the Matriz API (openapi.yaml). Each one throws
-// `SessionEndedError` if the token is refused (401), which the caller handles by sending the person
-// to sign in. The other refusals are returned, not thrown, so that a screen can show them.
-import { type Session, withToken } from './api';
+// The project operations of the Matriz API (openapi.yaml).
+import { call, MERGE_PATCH_TYPE, type Result, sending, type Session } from './http';
+import type { TaskState } from './tasksApi';
 
 export type ProjectState = 'ACTIVE' | 'COMPLETED';
 export type MemberRole = 'PROJECT_OWNER' | 'PROJECT_PARTICIPANT';
 
-/** A project as listed (ProjectSummary) or viewed (Project). `description` is absent if none. */
-export interface Project {
+/** What a project shows in a list and when viewed. `description` is absent if none. */
+interface ProjectData {
   projectId: string;
   name: string;
   description?: string;
@@ -15,109 +14,96 @@ export interface Project {
   myRole: MemberRole;
 }
 
-/** One page of My projects (ProjectPage). `page` starts at 1; `totalPages` is 0 if nothing matches. */
-export interface ProjectPage {
-  items: Project[];
+/** The number of a project's tasks in each state, not counting deleted ones (TaskCounts). */
+export interface TaskCounts {
+  toDo: number;
+  inProgress: number;
+  done: number;
+}
+
+/** A project's progress (Progress). `percentDone` is null when the project has no tasks (EX-005). */
+export interface Progress {
+  taskCounts: TaskCounts;
+  percentDone: number | null;
+}
+
+/** A project as listed (ProjectSummary): its own counts by state, and no percentage (FR-024). */
+export interface ProjectSummary extends ProjectData {
+  taskCounts: TaskCounts;
+}
+
+/** A project as viewed, created, or edited (Project), with its progress (FR-012). */
+export interface Project extends ProjectData {
+  progress: Progress;
+}
+
+/** The counts in the order of the task states, so that a screen lists them as the glossary does. */
+export function countsByState(counts: TaskCounts): [TaskState, number][] {
+  return [
+    ['TO_DO', counts.toDo],
+    ['IN_PROGRESS', counts.inProgress],
+    ['DONE', counts.done],
+  ];
+}
+
+/** A page of a list. `page` starts at 1; `totalPages` is 0 if nothing matches; `totalItems` counts every match. */
+export interface Page<T> {
+  items: T[];
   page: number;
   size: number;
   totalItems: number;
   totalPages: number;
 }
 
-/** A member of the content that the API refused, by its JSON Pointer (ValidationProblem). */
-export interface FieldProblem {
-  pointer: string;
-  detail: string;
+export type ProjectPage = Page<ProjectSummary>;
+
+export interface ProjectContent {
+  name: string;
+  description: string;
 }
 
-/** What the API did with a request that changes or reads one project. */
-export type ProjectResult<T> =
-  | { outcome: 'ok'; value: T }
-  | { outcome: 'invalid'; problems: FieldProblem[] }
-  | { outcome: 'notFound' }
-  | { outcome: 'forbidden' }
-  | { outcome: 'completed' }
-  | { outcome: 'failed' };
-
-const JSON_TYPE = 'application/json';
-const MERGE_PATCH_TYPE = 'application/merge-patch+json';
+function projectPath(projectId: string): string {
+  return `/projects/${encodeURIComponent(projectId)}`;
+}
 
 /** `GET /api/projects` (listProjects): a page of the person's projects, by name if given. */
-export async function listProjects(
+export function listProjects(
   session: Session,
   query: { name: string; page: number; size: number },
-): Promise<ProjectResult<ProjectPage>> {
+): Promise<Result<ProjectPage>> {
   const parameters = new URLSearchParams({ page: String(query.page), size: String(query.size) });
   if (query.name !== '') {
     parameters.set('name', query.name);
   }
-  return answer(await withToken(session, `/api/projects?${parameters.toString()}`));
+  return call(session, `/projects?${parameters.toString()}`);
 }
 
 /** `POST /api/projects` (createProject). The Project Owner is the signed-in person. */
-export async function createProject(
-  session: Session,
-  content: { name: string; description: string },
-): Promise<ProjectResult<Project>> {
-  return answer(
-    await withToken(session, '/api/projects', {
-      method: 'POST',
-      headers: { 'Content-Type': JSON_TYPE },
-      body: JSON.stringify(withoutEmptyDescription(content)),
-    }),
-  );
+export function createProject(session: Session, content: ProjectContent): Promise<Result<Project>> {
+  const body = content.description.trim() === '' ? { name: content.name } : content;
+  return call(session, '/projects', sending('POST', body));
 }
 
 /** `GET /api/projects/{projectId}` (getProject). */
-export async function getProject(session: Session, projectId: string): Promise<ProjectResult<Project>> {
-  return answer(await withToken(session, `/api/projects/${encodeURIComponent(projectId)}`));
+export function getProject(session: Session, projectId: string): Promise<Result<Project>> {
+  return call(session, projectPath(projectId));
 }
 
 /** `PATCH /api/projects/{projectId}` (updateProject): the name and the description. */
-export async function updateProject(
-  session: Session,
-  projectId: string,
-  content: { name: string; description: string },
-): Promise<ProjectResult<Project>> {
+export function updateProject(session: Session, projectId: string, content: ProjectContent): Promise<Result<Project>> {
   const body = { name: content.name, description: content.description.trim() === '' ? null : content.description };
-  return answer(
-    await withToken(session, `/api/projects/${encodeURIComponent(projectId)}`, {
-      method: 'PATCH',
-      headers: { 'Content-Type': MERGE_PATCH_TYPE },
-      body: JSON.stringify(body),
-    }),
-  );
+  return call(session, projectPath(projectId), sending('PATCH', body, MERGE_PATCH_TYPE));
+}
+
+/**
+ * `PUT /api/projects/{projectId}/state` (completeProject). The confirmation is asked before this. A `409`
+ * means the project has unfinished tasks or is already Completed (I8 decision 6).
+ */
+export function completeProject(session: Session, projectId: string): Promise<Result<Project>> {
+  return call(session, `${projectPath(projectId)}/state`, sending('PUT', { state: 'COMPLETED' }));
 }
 
 /** `DELETE /api/projects/{projectId}` (deleteProject). The confirmation is asked before this. */
-export async function deleteProject(session: Session, projectId: string): Promise<ProjectResult<null>> {
-  return answer(
-    await withToken(session, `/api/projects/${encodeURIComponent(projectId)}`, { method: 'DELETE' }),
-    null,
-  );
-}
-
-function withoutEmptyDescription(content: { name: string; description: string }) {
-  return content.description.trim() === '' ? { name: content.name } : content;
-}
-
-/** Reads the response: its content if it has one, or `empty` for an answer without content. */
-async function answer<T>(response: Response, empty?: null): Promise<ProjectResult<T>> {
-  if (response.ok) {
-    return { outcome: 'ok', value: (empty === undefined ? await response.json() : empty) as T };
-  }
-  switch (response.status) {
-    case 404:
-      return { outcome: 'notFound' };
-    case 403:
-      return { outcome: 'forbidden' };
-    case 409:
-      return { outcome: 'completed' };
-    case 422: {
-      const problem = (await response.json().catch(() => ({}))) as { errors?: FieldProblem[] };
-      return { outcome: 'invalid', problems: problem.errors ?? [] };
-    }
-    default:
-      return { outcome: 'failed' };
-  }
+export function deleteProject(session: Session, projectId: string): Promise<Result<null>> {
+  return call(session, projectPath(projectId), { method: 'DELETE' }, true);
 }

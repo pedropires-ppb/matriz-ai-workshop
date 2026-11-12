@@ -28,12 +28,12 @@
 
 - A timer, set from `expiresIn` when the person signs in, discards the token when it expires. The message is then shown without waiting for a request.
 - When the page becomes visible again, the User interface checks the token with `GET /api/me`.
-- After signing in again, the person sees My projects.
+- After signing in again, the person sees My projects. *Changed on 2026-11-09 by team decision (the conversation “Implement the Matriz front end”, I13 question 4): after signing in, the person returns to the address they were at, for example after a reload or an ended session; after signing out, and from an unknown address, they see Home, which shows My projects.*
 - The texts are in English ([Assumption A-028](../constraints.md#assumptions)). They are kept in [`frontend/src/messages.ts`](../../frontend/src/messages.ts).
 - *Added on 2026-11-02 by team decision (Lab Worksheet 03, question 17), recorded during implementation:*
   - Signing out discards the token and shows “You have signed out.” even if the request fails.
   - The sign-in form has `noValidate`: the browser shows none of its own validation messages, only the User interface's texts.
-  - The User interface has no router and adds no dependency.
+  - The User interface has no router and adds no dependency. *Changed on 2026-11-09 by team decision (the conversation “Implement the Matriz front end”, question 6; [I13](../implementation-plan.md#i13--user-interface-consolidation)): the User interface has a small hash router of its own, with addresses such as `#/projects`, `#/projects/{id}`, and `#/projects/{id}/tasks/{id}`, and still adds no runtime dependency. A reload still signs the person out ([ADR-005](ADR-005-authentication-with-jwt.md)).*
 - *Accepted on 2026-11-02 by team decision (the conversation “I2 review and acceptance”, question 7), previously proposals of the I2 verification record:*
   - a sign-in answered with a status other than 200, 401, or 422 shows “Matriz could not be reached. Please try again.”;
   - the password field is cleared after an incorrect attempt, and a message is hidden when the form is sent again;

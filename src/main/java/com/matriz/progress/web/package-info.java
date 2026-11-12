@@ -3,6 +3,7 @@
  * types of openapi.yaml (ADR-004). Uses the application layer; never the infrastructure layer. No
  * other layer depends on it.
  * <p>
- * Empty in I1. First classes in I5, if the Progress read model needs this layer (ADR-008).
+ * Empty: the progress is returned by Projects' operations (openapi.yaml, Project and
+ * ProjectSummary).
  */
 package com.matriz.progress.web;

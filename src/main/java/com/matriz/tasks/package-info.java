@@ -6,7 +6,8 @@
  * This top-level package is the module's API (ADR-008): the identifiers and the interfaces that
  * other modules use or implement. Its sub-packages domain, application, infrastructure, and web
  * are internal. In I4: the task's identifier, state, and priority, the actions of the access policy,
- * and the policy interface.
+ * and the policy interface. Since I5: TaskCounting, the counts by state that Progress uses. Since I8
+ * it also implements Projects' ProjectTasks, in its application layer.
  */
 @ApplicationModule(displayName = "Tasks", allowedDependencies = { "projects", "identity" })
 package com.matriz.tasks;

@@ -6,12 +6,17 @@ import java.util.UUID;
 
 import com.matriz.identity.SignedInPerson;
 import com.matriz.projects.ProjectId;
+import com.matriz.projects.application.AddParticipant;
+import com.matriz.projects.application.CompleteProject;
 import com.matriz.projects.application.CreateProject;
 import com.matriz.projects.application.DeleteProject;
 import com.matriz.projects.application.GetProject;
+import com.matriz.projects.application.ListEligibleParticipants;
 import com.matriz.projects.application.ListProjectMembers;
 import com.matriz.projects.application.ListProjects;
+import com.matriz.projects.application.MemberNotFoundException;
 import com.matriz.projects.application.ProjectNotFoundException;
+import com.matriz.projects.application.RemoveParticipant;
 import com.matriz.projects.application.UpdateProject;
 import com.matriz.projects.domain.Whitespace;
 
@@ -33,6 +38,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -74,17 +80,30 @@ class ProjectController {
 
 	private final ListProjectMembers listProjectMembers;
 
+	private final CompleteProject completeProject;
+
+	private final AddParticipant addParticipant;
+
+	private final RemoveParticipant removeParticipant;
+
+	private final ListEligibleParticipants listEligibleParticipants;
+
 	private final JsonMapper jsonMapper;
 
 	ProjectController(CreateProject createProject, ListProjects listProjects, GetProject getProject,
 			UpdateProject updateProject, DeleteProject deleteProject, ListProjectMembers listProjectMembers,
-			JsonMapper jsonMapper) {
+			CompleteProject completeProject, AddParticipant addParticipant, RemoveParticipant removeParticipant,
+			ListEligibleParticipants listEligibleParticipants, JsonMapper jsonMapper) {
 		this.createProject = createProject;
 		this.listProjects = listProjects;
 		this.getProject = getProject;
 		this.updateProject = updateProject;
 		this.deleteProject = deleteProject;
 		this.listProjectMembers = listProjectMembers;
+		this.completeProject = completeProject;
+		this.addParticipant = addParticipant;
+		this.removeParticipant = removeParticipant;
+		this.listEligibleParticipants = listEligibleParticipants;
 		this.jsonMapper = jsonMapper;
 	}
 
@@ -121,15 +140,67 @@ class ProjectController {
 			.toList();
 	}
 
+	/** Adds a Project Participant: 404 and 403 first, then 415, 400, and 422, then 409 (ADR-004 decision 5). */
+	@PostMapping("/{projectId}/members")
+	ResponseEntity<MemberResponse> addParticipant(SignedInPerson person, @PathVariable String projectId,
+			HttpServletRequest request) throws Exception {
+		ProjectId id = id(projectId);
+		this.addParticipant.checkCanAdd(person.personId(), id);
+		requireMediaType(request, MediaType.APPLICATION_JSON);
+		String added = new ProjectContent(readContent(request)).forParticipant();
+		MemberResponse member = MemberResponse.of(this.addParticipant.add(person.personId(), id, added));
+		return ResponseEntity
+			.created(URI.create("/api/projects/" + id.value() + "/members/" + member.person().personId()))
+			.body(member);
+	}
+
+	@DeleteMapping("/{projectId}/members/{personId}")
+	ResponseEntity<Void> removeParticipant(SignedInPerson person, @PathVariable String projectId,
+			@PathVariable String personId) {
+		ProjectId id;
+		try {
+			id = id(projectId);
+		}
+		catch (ProjectNotFoundException ex) {
+			throw new MemberNotFoundException();
+		}
+		this.removeParticipant.remove(person.personId(), id, personId);
+		return ResponseEntity.noContent().build();
+	}
+
+	@GetMapping("/{projectId}/eligible-participants")
+	List<MemberResponse.Person> eligibleParticipants(SignedInPerson person, @PathVariable String projectId,
+			@RequestParam(name = "name", required = false) String name) {
+		ProjectId id = id(projectId);
+		if (name != null && Whitespace.isBlank(name)) {
+			throw badRequest("The query parameter name must not be empty.");
+		}
+		return this.listEligibleParticipants.list(person.personId(), id, name)
+			.stream()
+			.map((named) -> new MemberResponse.Person(named.personId().toString(), named.displayName()))
+			.toList();
+	}
+
 	@PatchMapping("/{projectId}")
 	ProjectResponse update(SignedInPerson person, @PathVariable String projectId, HttpServletRequest request)
 			throws Exception {
 		ProjectId id = id(projectId);
 		this.updateProject.checkCanEdit(person.personId(), id);
-		requireMergePatch(request);
+		requireMediaType(request, MERGE_PATCH);
 		ProjectContent.Parsed parsed = new ProjectContent(readContent(request)).forUpdate();
 		return ProjectResponse.of(this.updateProject.update(person.personId(), id, parsed.name(),
 				parsed.hasDescription(), parsed.description()));
+	}
+
+	/** Completes the project: 404 and 403 first, then 415, 400, and 422, then 409 (ADR-004 decision 5). */
+	@PutMapping("/{projectId}/state")
+	ProjectResponse complete(SignedInPerson person, @PathVariable String projectId, HttpServletRequest request)
+			throws Exception {
+		ProjectId id = id(projectId);
+		this.completeProject.checkCanComplete(person.personId(), id);
+		requireMediaType(request, MediaType.APPLICATION_JSON);
+		new ProjectContent(readContent(request)).forCompletion();
+		return ProjectResponse.of(this.completeProject.complete(person.personId(), id));
 	}
 
 	@DeleteMapping("/{projectId}")
@@ -152,7 +223,8 @@ class ProjectController {
 		}
 	}
 
-	private static void requireMergePatch(HttpServletRequest request) throws HttpMediaTypeNotSupportedException {
+	private static void requireMediaType(HttpServletRequest request, MediaType expected)
+			throws HttpMediaTypeNotSupportedException {
 		String header = request.getContentType();
 		MediaType type = null;
 		if (header != null) {
@@ -163,8 +235,8 @@ class ProjectController {
 				type = null;
 			}
 		}
-		if (type == null || !MERGE_PATCH.isCompatibleWith(type)) {
-			throw new HttpMediaTypeNotSupportedException(type, List.of(MERGE_PATCH));
+		if (type == null || !expected.isCompatibleWith(type)) {
+			throw new HttpMediaTypeNotSupportedException(type, List.of(expected));
 		}
 	}
 

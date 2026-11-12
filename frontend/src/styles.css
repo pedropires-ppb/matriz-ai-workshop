@@ -1,0 +1,419 @@
+/*
+ * The one style sheet of the User interface (I13 scope decision 8). Two layouts with one breakpoint
+ * (scope decision 7): one column below 720px, and two columns from 720px. Colour only repeats what a
+ * text already says.
+ */
+:root {
+  --font: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+  --text: #1f2328;
+  --muted: #57606a;
+  --background: #f6f8fa;
+  --surface: #ffffff;
+  --border: #d0d7de;
+  --primary: #0b5cad;
+  --primary-text: #ffffff;
+  --danger: #b42318;
+  --success-background: #e6f4ea;
+  --success-text: #1a5e2a;
+  --error-background: #fdecea;
+  --error-text: #8a1c12;
+  --focus: #f0b400;
+  --radius: 6px;
+  --space: 0.75rem;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: var(--font);
+  font-size: 1rem;
+  line-height: 1.5;
+  color: var(--text);
+  background: var(--background);
+}
+
+a {
+  color: var(--primary);
+}
+
+:focus-visible {
+  outline: 3px solid var(--focus);
+  outline-offset: 2px;
+}
+
+h1,
+h2,
+h3 {
+  line-height: 1.25;
+  margin: 0 0 var(--space);
+}
+
+h1 {
+  font-size: 1.4rem;
+}
+
+h2 {
+  font-size: 1.5rem;
+}
+
+h3 {
+  font-size: 1.15rem;
+}
+
+.app-header {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--space);
+  padding: var(--space) calc(var(--space) * 1.5);
+  background: var(--surface);
+  border-bottom: 1px solid var(--border);
+}
+
+.app-header h1 {
+  margin: 0;
+}
+
+.main-nav {
+  display: flex;
+  gap: var(--space);
+}
+
+.main-nav a.current {
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.signed-in {
+  margin: 0 0 0 auto;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+main {
+  padding: calc(var(--space) * 1.5);
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.screen.narrow {
+  max-width: 28rem;
+  margin: 0 auto;
+}
+
+.panel {
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  padding: calc(var(--space) * 1.25);
+  margin-bottom: var(--space);
+  min-width: 0;
+}
+
+.back {
+  margin: 0 0 0.5rem;
+}
+
+.form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space);
+}
+
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.field label {
+  font-weight: 600;
+}
+
+.field input,
+.field textarea,
+.field select,
+.search input {
+  font: inherit;
+  padding: 0.45rem 0.6rem;
+  border: 1px solid var(--border);
+  border-radius: var(--radius);
+  background: var(--surface);
+  color: inherit;
+  width: 100%;
+}
+
+.field [aria-invalid='true'] {
+  border-color: var(--danger);
+}
+
+.hint,
+.secondary-text,
+.count {
+  color: var(--muted);
+}
+
+.field-error {
+  margin: 0;
+  color: var(--error-text);
+}
+
+.actions,
+.controls,
+.pagination,
+.search,
+.filters {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: flex-end;
+  gap: 0.5rem;
+}
+
+.search {
+  align-items: center;
+  margin-bottom: var(--space);
+}
+
+.search input {
+  flex: 1 1 12rem;
+  width: auto;
+}
+
+.filters {
+  flex-direction: column;
+  align-items: flex-start;
+  margin-bottom: var(--space);
+}
+
+.filters [role='group'] {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+}
+
+.check {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+}
+
+.button {
+  font: inherit;
+  display: inline-block;
+  padding: 0.45rem 0.9rem;
+  border-radius: var(--radius);
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  cursor: pointer;
+  text-decoration: none;
+  line-height: 1.25;
+}
+
+.button.primary {
+  background: var(--primary);
+  border-color: var(--primary);
+  color: var(--primary-text);
+}
+
+.button.danger {
+  color: var(--danger);
+  border-color: var(--danger);
+}
+
+.button:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.button[aria-busy='true'] {
+  cursor: progress;
+}
+
+.notice {
+  padding: 0.5rem 0.75rem;
+  border-radius: var(--radius);
+  margin: 0 0 var(--space);
+}
+
+.notice p {
+  margin: 0 0 0.5rem;
+}
+
+.notice.success {
+  background: var(--success-background);
+  color: var(--success-text);
+}
+
+.notice.error {
+  background: var(--error-background);
+  color: var(--error-text);
+}
+
+.loading {
+  color: var(--muted);
+}
+
+.empty {
+  padding: var(--space);
+  border: 1px dashed var(--border);
+  border-radius: var(--radius);
+  color: var(--muted);
+}
+
+.empty p {
+  margin-top: 0;
+}
+
+.rows {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 var(--space);
+}
+
+.rows > li {
+  padding: 0.6rem 0;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.25rem 0.75rem;
+  overflow-wrap: anywhere;
+}
+
+.rows > li:last-child {
+  border-bottom: none;
+}
+
+.rows > li > p {
+  flex-basis: 100%;
+  margin: 0;
+}
+
+.rows.comments > li {
+  display: block;
+}
+
+.comment-text,
+.description {
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
+.badges {
+  display: inline-flex;
+  flex-wrap: wrap;
+  gap: 0.25rem;
+}
+
+.badge {
+  display: inline-block;
+  padding: 0 0.5rem;
+  border-radius: 999px;
+  font-size: 0.85rem;
+  background: var(--background);
+  border: 1px solid var(--border);
+}
+
+.badge.done,
+.badge.completed {
+  background: var(--success-background);
+}
+
+.badge.high {
+  background: var(--error-background);
+}
+
+.confirm {
+  border: 1px solid var(--danger);
+  border-radius: var(--radius);
+  padding: var(--space);
+  margin-top: var(--space);
+  background: var(--error-background);
+}
+
+.confirm p {
+  margin-top: 0;
+}
+
+dl {
+  display: grid;
+  grid-template-columns: max-content 1fr;
+  gap: 0.25rem 0.75rem;
+}
+
+dd {
+  margin: 0;
+}
+
+/* A project's progress (wireframe marker 4; I5 decision 3). The bar only repeats the percentage. */
+.progress-summary {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.5rem 1rem;
+}
+
+.progress-figure {
+  margin: 0;
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.project-progress progress {
+  flex: 1 1 10rem;
+  height: 0.75rem;
+  accent-color: var(--success-text);
+}
+
+.task-counts {
+  margin: 0.25rem 0 0;
+}
+
+/* One column below the breakpoint; two from it. */
+@media (min-width: 720px) {
+  .project-layout,
+  .task-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+    gap: var(--space);
+    align-items: start;
+  }
+
+  .project-layout .project-details {
+    grid-column: 1;
+    grid-row: 1;
+  }
+
+  .project-layout .project-members {
+    grid-column: 1;
+    grid-row: 2 / span 2;
+  }
+
+  .project-layout .project-progress {
+    grid-column: 2;
+    grid-row: 1;
+  }
+
+  .project-layout .project-tasks {
+    grid-column: 2;
+    grid-row: 2 / span 2;
+  }
+
+  .task-layout > :nth-child(3) {
+    grid-column: 2;
+    grid-row: 1 / span 2;
+  }
+
+  .filters {
+    flex-direction: row;
+    align-items: center;
+    gap: 0.5rem 1.5rem;
+  }
+}

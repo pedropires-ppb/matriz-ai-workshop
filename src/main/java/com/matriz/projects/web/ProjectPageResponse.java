@@ -5,6 +5,7 @@ import java.util.List;
 import com.fasterxml.jackson.annotation.JsonInclude;
 import com.matriz.projects.application.ProjectSummary;
 import com.matriz.projects.application.ProjectsPage;
+import com.matriz.projects.web.ProgressResponse.TaskCountsResponse;
 
 /** One page of My projects (openapi.yaml, ProjectPage). */
 record ProjectPageResponse(List<Item> items, int page, int size, long totalItems, long totalPages) {
@@ -15,15 +16,17 @@ record ProjectPageResponse(List<Item> items, int page, int size, long totalItems
 	}
 
 	/**
-	 * A project in the list (openapi.yaml, ProjectSummary). {@code description} is left out when the
-	 * project has none; {@code taskCounts} is left out until I5.
+	 * A project in the list (openapi.yaml, ProjectSummary), with its task counts by state and no
+	 * percentage (FR-024). {@code description} is left out when the project has none. <i>Until I5,
+	 * {@code taskCounts} was left out.</i>
 	 */
 	@JsonInclude(JsonInclude.Include.NON_NULL)
-	record Item(String projectId, String name, String description, String state, String myRole) {
+	record Item(String projectId, String name, String description, String state, String myRole,
+			TaskCountsResponse taskCounts) {
 
 		static Item of(ProjectSummary project) {
 			return new Item(project.projectId().toString(), project.name(), project.description(),
-					project.state().name(), project.myRole().name());
+					project.state().name(), project.myRole().name(), TaskCountsResponse.of(project.progress()));
 		}
 
 	}
