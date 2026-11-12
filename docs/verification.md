@@ -374,3 +374,36 @@ For the client, via the project team; the [register](constraints.md#open-questio
 6. [OQ-016](constraints.md#open-questions): does the client approve the MVP?
 
 For the project team: review [A-037](constraints.md#assumptions) (the refusal rule of Bug 2), add the missing identifiers to the tests of EX-013, EX-015, EX-016, EX-017, EX-019, EX-021, and EX-025, and correct the README counts.
+
+## Delivery review — 2026-11-12
+
+*Added by the assistant following the project team's confirmed decisions in “Lab Worksheet 03 — Review and prepare the delivery”, questions 1–20 and the subsequent findings approvals. This is a new delivery record, not a replacement of the earlier I12 observations. I12 remains Awaiting review; client validation remains pending.*
+
+### Review scope and findings
+
+The fixed comparison was `git diff c888aa9...f716bc4`: ten commits and 309 changed files, including the first implementation. Two independent review axes inspected documented standards and specification conformance. The order was configuration/migrations, Identity/HTTP, Projects/membership, Tasks/assignments/comments/progress, frontend, then contract/documents. Test sources were sampled by behavior and assertion, not read exhaustively. Passing tests do not certify every acceptance criterion.
+
+| Finding | Team decision and disposition | Regression evidence |
+|---|---|---|
+| Eligible-participant query validation preceded visibility/role checks (ADR-004) | Approved correction; access is checked before query validation and rechecked when listing (`b86dbba`). | New combined blank/NUL/lone-surrogate queries initially returned 400 instead of 404/403; now pass in `ParticipantsApiTests`. |
+| Actuator discovery exceeded the health-only decision (ADR-007) | Approved correction; disable discovery (`0112a5a`). | The replacement assertion first failed with 200 instead of 404; `HealthCheckTests` now passes, including health. |
+| Frontend trimming differed from [Assumption A-033](constraints.md#assumptions) | Approved correction across validation, description payloads and searches (`3a017be`). | Five new Vitest checks failed first; FEFF/zero-width text is preserved, Java whitespace is trimmed and boundary lengths agree. |
+| Invalid-character errors were described as excessive length | Approved [Assumption A-037](constraints.md#assumptions) client validation and accurate field explanations (`03d932b`). | Two new Vitest checks failed first; all 31 frontend tests, typecheck and production build then passed. |
+| Accepted extreme pages produced 500 rather than empty pages | Reproduced by the approved gap checks; team separately approved correction (`acbacfc`). | Project/task API regressions failed at `page=2147483647&size=100`, then passed. Filtered counts precede fetches; PostgreSQL receives long offsets, avoiding JPA's integer-offset limit without a smaller business page limit. |
+| Implicit HEAD/OPTIONS extended the API beyond ADR-004 | Reproduced by the approved gap checks; team separately approved an API-only correction (`2cbff75`). | Two method cases failed with 200 instead of 405. Declared Allow values and missing/ended-token precedence now pass. Health/static resources are outside the guard. |
+| Contract length/status prose differs from implementation | Reconcile under the approved Step C, preserving existing rules. | Existing contract checks are component/property/token assertions, not a complete operation-aware checker. |
+
+No excluded product-feature or dependency scope creep was identified within the inspected surfaces. Local patterns over 102 reachable commits and 675 unique text blobs found no high-confidence real secret/token/application-personal-data exposure. This cannot prove absence; unreachable objects, uncached remote history and hosted scanning were outside scope. Contributor metadata exists. Ignored dotenv contents were not inspected.
+
+### Checks performed
+
+All commands ran with installed JDK 25.0.5 selected for the command (`export JAVA_HOME="$(/usr/libexec/java_home -v 25)"; export PATH="$JAVA_HOME/bin:$PATH"` on this macOS host). The first baseline attempt used the default JDK 21 and stopped at Enforcer before compilation; no global Java configuration or dependency manifest was changed.
+
+- Initial targeted baseline: 414 Java tests, including 43 browser tests, plus 23 Vitest tests; typecheck/build passed.
+- `./mvnw -B -Dtest=ParticipantsApiTests,HealthCheckTests,EveryOperationRequiresATokenTests,LayeringTests,ModuleBoundaryTests test`: 85 tests passed after the first two fixes.
+- `./mvnw -B -Dtest=ProjectRepositoryTests,TaskRepositoryTests,ProjectApiTests,TaskApiTests,LayeringTests,ModuleBoundaryTests test`: 185 tests passed after the pagination correction.
+- `./mvnw -B -Dtest=AccessTokenTests,EveryOperationRequiresATokenTests,HealthCheckTests,LayeringTests,ModuleBoundaryTests test`: 107 tests passed after the method correction.
+- From `frontend`, with `PATH="$PWD/node:$PATH"` exported: `npm run typecheck`, `npm test`, `npm run build`: passed; 31 tests.
+- Three added browser checks passed: failed project deletion keeps the project with no success notice; failed assignment keeps the selected person with no success notice or assignment; comment markup is literal text, not elements.
+
+The full clean verification and clean-copy exercise are recorded separately when executed. The earlier “not tested” entries remain historical observations; later results supersede only the specifically covered gaps.

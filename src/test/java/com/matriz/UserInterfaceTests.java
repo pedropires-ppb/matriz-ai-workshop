@@ -917,6 +917,69 @@ class UserInterfaceTests extends DatabaseTestSupport {
 	}
 
 	@Test
+	void aFailedProjectDeletionKeepsTheProjectWithoutASuccessNotice() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Keep me", null, ana, "PROJECT_OWNER");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.openProject("Keep me");
+			tab.page().route("**/api/projects/" + project,
+					(route) -> route.fulfill(new Route.FulfillOptions().setStatus(500)));
+			tab.button("Delete project").click();
+			tab.button("Delete").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("Something went wrong. Please try again.");
+			assertThat(tab.heading("Keep me")).isVisible();
+			assertThat(tab.notice()).hasCount(0);
+		}, "the server responded with a status of 500");
+		assertThat(this.jdbc.sql("SELECT count(*) FROM project WHERE project_id = ? AND deleted_at IS NULL")
+			.param(project).query(Integer.class).single()).isEqualTo(1);
+	}
+
+	@Test
+	void aFailedAssignmentKeepsTheChoiceWithoutASuccessNotice() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		TestAccess.TestPerson rui = TestAccess.addPerson(this.jdbc, "Rui Martins");
+		UUID project = addProject("Assignments", null, ana, "PROJECT_OWNER", rui);
+		UUID task = addTask(project, "Assign later", "TO_DO", "MEDIUM");
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.openProject("Assignments");
+			tab.openTask("Assign later");
+			tab.page().getByLabel("Person to assign", exact()).selectOption(rui.id().toString());
+			tab.page().route("**/assignees",
+					(route) -> route.fulfill(new Route.FulfillOptions().setStatus(500)));
+			tab.button("Assign").click();
+			assertThat(tab.page().getByRole(AriaRole.ALERT)).hasText("Something went wrong. Please try again.");
+			assertThat(tab.page().getByLabel("Person to assign", exact())).hasValue(rui.id().toString());
+			assertThat(tab.notice()).hasCount(0);
+		}, "the server responded with a status of 500");
+		assertThat(this.jdbc.sql("SELECT count(*) FROM assignment WHERE task_id = ?")
+			.param(task).query(Integer.class).single()).isZero();
+	}
+
+	@Test
+	void commentMarkupIsDisplayedAsLiteralText() {
+		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
+		UUID project = addProject("Literal text", null, ana, "PROJECT_OWNER");
+		UUID task = addTask(project, "Review markup", "TO_DO", "MEDIUM");
+		String text = "<b>Not bold</b><img src=x onerror=alert(1)>";
+		inATab((tab) -> {
+			tab.open();
+			tab.signIn(ana);
+			tab.openProject("Literal text");
+			tab.openTask("Review markup");
+			tab.page().getByLabel("Add a comment", exact()).fill(text);
+			tab.button("Add comment").click();
+			assertThat(tab.page().locator(".comment-text")).hasText(text);
+			assertThat(tab.page().locator(".comment-text b, .comment-text img")).hasCount(0);
+		});
+		assertThat(this.jdbc.sql("SELECT text FROM comment WHERE task_id = ?")
+			.param(task).query(String.class).single()).isEqualTo(text);
+	}
+
+	@Test
 	void aProjectsTasksArePagedAndTheLastPageIsLeftWhenItsOnlyTaskIsDeleted() {
 		TestAccess.TestPerson ana = TestAccess.addPerson(this.jdbc, "Ana Silva");
 		UUID project = addProject("Busy", null, ana, "PROJECT_OWNER");
