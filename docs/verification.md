@@ -11,7 +11,7 @@
 | 01 | Access to the application | Automated and manual | Confirmed |
 | 02 | Project management | Automated and manual | Confirmed |
 | 03 | Task persistence | Automated and manual | Partly confirmed (no automated restart test yet; added in Step 4) |
-| 04 | Data validation | — | Not run |
+| 04 | Data validation | Automated and manual | Confirmed (control and zero-width text pending in Step 4) |
 | 05 | State and priority | — | Not run |
 | 06 | Assignees | — | Not run |
 | 07 | Comments | — | Not run |
@@ -97,3 +97,26 @@
 | 8 | The access token from before the restart | still `200`, because the signing key was unchanged in this run (see [Case 01](#case-01--access-to-the-application)) |
 
 - **Not verified here:** “appears without a reload” was not checked by hand in a browser; it relies on the Playwright tests above. An abrupt stop (crash) of the backend or of PostgreSQL was not run; the restart was a graceful stop. One call of mine returned `405` because I used the wrong method for assigning (`PUT` on a person path instead of `POST` on `/assignees`); that was my mistake, not an application defect, and the repeat with the right call is the one recorded.
+
+## Case 04 — Data validation
+
+- **Expected:** empty required fields, fields with only spaces, and invalid values are rejected, nothing is stored, and the person is told what is wrong ([US-001](user-stories.md#us-001--create-project), [US-003](user-stories.md#us-003--create-task), [US-008](user-stories.md#us-008--rename-project), [US-011](user-stories.md#us-011--rename-task), [US-021](user-stories.md#us-021--add-comment); [EX-010](user-stories.md#edge-cases-and-exceptions), [EX-011](user-stories.md#edge-cases-and-exceptions); [A-003](constraints.md#assumptions), [A-033](constraints.md#assumptions)).
+- **Type:** automated and manual. **Status: Confirmed** for the three kinds of input the case names; text with control or zero-width characters is a separate probe in Step 4 and is not part of this status.
+- **Automated evidence** (baseline build, all passed): `ProjectDomainTests` (22), `TaskDomainTests` (19), `CommentTextTests` (11), `RequestSchemaTests` (13), `ProjectApiTests` (67), `TaskApiTests` (93), `CommentApiTests` (36), and in `UserInterfaceTests` `invalidNamesAndDescriptionsAreExplainedWithoutARequest` and `invalidTitlesAndDescriptionsAreExplainedWithoutARequest`.
+- **Manual evidence** (fresh database; one Python script sending each request to the running backend as Ana; every rejected request got a Problem Details body with a `pointer` and a `detail`):
+
+| Request | Observed |
+|---|---|
+| Create project: empty name; spaces only; tab and newline only; non-breaking spaces only | `422`, `/name`, “A name is required.” (four times) |
+| Create project: 101-character name; 1001-character description | `422`, “The name must have at most 100 characters.”; “The description must have at most 1000 characters.” |
+| Create project: exactly 100 characters | `201` (the limit is inclusive) |
+| Create project: name as a number; `null`; missing; an unknown property `state` | `422`, “The name must be a string.”; “A name is required.” (twice); “This property is not allowed.” |
+| Create project: malformed JSON; a media type other than JSON | `400`; `415` |
+| Create task: empty title; spaces only; 151 characters | `422`, “A title is required.” (twice); “The title must have at most 150 characters.” |
+| Create task: 2001-character description; priority `URGENT`; priority `high`; an initial `state` | `422`, “…at most 2000 characters.”; “Use one of LOW, MEDIUM, or HIGH.” (twice); “This property is not allowed.” |
+| Edit task: title as spaces; title `null` | `422`, “A title is required.”; “The title cannot be removed.” |
+| Change state: `FINISHED`; no state | `422`, “Must be TO_DO, IN_PROGRESS, or DONE.” (twice) |
+| Add comment: empty; spaces only; 2001 characters; an `author` property | `422`, “The text is required.” (twice); “The text must have at most 2000 characters.”; “This property is not allowed.” |
+| Afterwards, the existing data | the task is still “Write the report”, IN_PROGRESS, HIGH; the project still has 1 task and the task 1 comment |
+
+- **Not verified here:** how the browser form shows each message was checked only by the two `UserInterfaceTests` above. Text made of control characters, zero-width characters, or lone surrogates is covered by no rule or decision ([A-033](constraints.md#assumptions) names only whitespace); it is probed by the new validation test in Step 4. Limits are in characters as the API counts them; a count by user-perceived character (emoji, combining marks) was not tested.
