@@ -14,7 +14,7 @@
 | 04 | Data validation | Automated and manual | Confirmed (control and zero-width text pending in Step 4) |
 | 05 | State and priority | Automated and manual | Confirmed |
 | 06 | Assignees | Automated and manual | Confirmed |
-| 07 | Comments | — | Not run |
+| 07 | Comments | Automated and manual | Confirmed (browser rendering of markup not checked) |
 | 08 | Authorization in the API | — | Not run |
 | 09 | Deletion and errors | — | Not run |
 
@@ -168,3 +168,23 @@
 
 - **Observation, not a defect:** an identifier that is not a valid one in the body (`"not-an-id"`) gets the same `422` “Only members of the project can be assigned to its tasks.” as an unknown person. That is consistent with [A-035](constraints.md#assumptions) (nothing is disclosed) and with `openapi.yaml`, which keeps the identifier format undecided and opaque, so such a value is just an unknown person.
 - **Not verified here:** the assignee controls in a browser by hand (only the Playwright tests above).
+
+## Case 07 — Comments
+
+- **Expected:** the content, the authenticated author, and the date are saved and visible; the author and date come from Matriz, not from the request ([US-021](user-stories.md#us-021--add-comment), [US-022](user-stories.md#us-022--read-comments); [EX-023](user-stories.md#edge-cases-and-exceptions), [EX-024](user-stories.md#edge-cases-and-exceptions), [EX-031](user-stories.md#edge-cases-and-exceptions), [EX-032](user-stories.md#edge-cases-and-exceptions); [A-023](constraints.md#assumptions), [A-036](constraints.md#assumptions)).
+- **Type:** automated and manual. **Status: Confirmed.**
+- **Automated evidence** (baseline build, all passed): `CommentApiTests` (36), `CommentTextTests` (11), and in `UserInterfaceTests` `aMemberAddsCommentsSeesTheirAuthorAndDateAndKeepsThemWhenTheTaskIsOpenedAgain` and `aCompletedProjectStillAllowsComments`. Persistence over a backend restart is shown by hand in [Case 03](#case-03--task-persistence) and by the new test of Step 4.
+- **Manual evidence** (fresh database; project “Case 07 Comments”, ana owner, rui participant, eva a non-member):
+
+| Step | Action | Observed |
+|---|---|---|
+| 1 | Rui lists the comments of a task with none | `200`, `[]` |
+| 2 | Ana adds `"  First  "`; Rui adds a text with `<b>`, `&`, quotes, an accent, and an emoji | `201` each; the text is trimmed and otherwise stored exactly; the author is the signed-in person (Ana Silva, Rui Martins); `createdAt` is a UTC time (for example 2026-11-12T19:37:38.852Z), within 5 s of my clock |
+| 3 | Ana and Rui list the comments | the same list for both, in the order added (“First”, then “Second”), with the dates in ascending order |
+| 4 | Add a comment that also sends `author`, `createdAt`, or `authorId` | `422` each, “This property is not allowed.” (nothing added) |
+| 5 | A comment of 2000 characters; of 2001; of non-breaking spaces and a space only | `201`; `422`; `422` |
+| 6 | Eva lists and adds; no token lists | `404`, `404`; `401` |
+| 7 | After Ana completes the project, Rui adds a comment | `201` (comments are allowed in a Completed project, [EX-024](user-stories.md#edge-cases-and-exceptions)) |
+| 8 | `PUT`, `PATCH`, and `DELETE` on a comment | `404` each (no operation exists to change or delete a comment, [A-023](constraints.md#assumptions); [outside the initial scope](requirements.md#outside-the-initial-scope)) |
+
+- **Not verified here:** the HTML text was returned as plain data in JSON; how the browser shows it (escaped, not interpreted) was not checked by hand; the Playwright test for comments does not use markup. I did not run a test that renders `<script>` text. [Proposal] check that in the browser as part of I12's remaining items. The date's time zone as shown in the browser was not checked by hand.
