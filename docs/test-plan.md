@@ -1,8 +1,9 @@
 # Matriz - Week 4 Task Test Plan
 
-**Status:** Exercises 1–4 have been completed under their separate approvals.
-Exercise 1 scenarios remain **Not run**; Exercises 2–4 targeted checks were run
-on 2026-11-13. These exercises do not imply client acceptance.
+**Status:** Exercises 1–5 have been completed under their separate approvals.
+Exercise 1 scenarios remain **Not run**; targeted checks, the bounded Exercise 5
+review, and full validation were performed on 2026-11-13. These exercises do not
+imply client acceptance.
 
 **Branch:** `week-4`, created from freshly fetched `origin/main`.
 **Week 4 review base:** `08e531fde03a87fd7a6c4f38a56f5b1bd2e105a8`.
@@ -97,23 +98,29 @@ No new naming, uniqueness, reopening, performance or accessibility rule is propo
 | Exercise 2 approval | User approved the focused domain-test plan: assert NUL and unpaired-surrogate rejection, strengthen the 150-code-point boundary assertion, run `TaskDomainTests` twice, and update this plan and README. Production code remains out of scope. |
 | Exercise 3 approval | User approved extending the existing TaskApiTests create/retrieve flow and invalid-title no-change assertion, running the targeted integration tests twice, and updating this plan and README. No production, API-contract, or dependency changes were authorized. |
 | Exercise 4 approval | User approved extending the existing `theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage` browser test—not duplicating the flow—to verify the real create/list requests, immediate no-reload behavior, visible task values and PostgreSQL persistence, then run that method twice and update this plan and README. No production code, hooks, or successful-response mocks were authorized. |
+| Exercise 5 review approval | User approved review of the Week 4 diff and I7 task-assignment diff, the named authorization paths, and isolated local verification using existing tests. No public deployment test, broad repository audit, new tools, or edits before review were authorized. |
+| Exercise 5 documentation disposition | User chose to retain the focused commands in both README and this test plan as specifically required by the exercise, recording the repetition as an exception to the general no-duplicate-content rule. |
 | Corrections | No further user correction to expected behavior was supplied. The corrections above are source-derived AI suggestion corrections, not new human or client decisions. |
 
-## Exercise 2-4 results
+## Exercise 2-5 results and review
 
 Exercises 2–4 were executed under their separate approvals. Exercise 4 reuses
 the existing browser journey because it already creates tasks and verifies the
 task list without reloading; the extension adds evidence for the subsequent
 real list request and the persisted row rather than duplicating that journey.
+Exercise 5 reuses existing authorization tests and makes no code changes.
 
 | Exercise | Test changes / planned reuse | Targeted command | Current result |
 |---|---|---|---|
 | 2 | TP-001: added direct `TaskTitle` rejection of NUL and unpaired high/low surrogates in `aTitleThatCannotBeStoredIsRefused`; strengthened `aTitleIsTrimmedAndHasOneToOneHundredAndFiftyCharacters` to assert the 150-code-point supplementary-character boundary. Existing valid, whitespace and 1/150/151 cases were reused. | `./mvnw -B -Dtest=TaskDomainTests test` (select JDK 25+) | **Passed twice:** 22 tests each run; 0 failures, errors or skips. |
 | 3 | TP-001: extended `aTitleThatIsEmptyAfterTrimmingIsRefusedWithoutChangingExistingTasks` in [TaskApiTests](../src/test/java/com/matriz/TaskApiTests.java) to preserve an existing row and its retrieved representation after invalid create. TP-002: extended `creatingATaskStartsItToDoWithPriorityMediumAndNoAssignee` with a separate `GET Location`, schema/body equality, and persisted project/title assertions. | `./mvnw -B -Dtest=TaskApiTests test` (select JDK 25+; Docker required) | **Passed three times:** 94 tests each run; 0 failures, errors or skips. |
 | 4 | TP-002: extended `theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage` in [UserInterfaceTests](../src/test/java/com/matriz/UserInterfaceTests.java). The existing fictitious Project Owner opens an Active project, creates `  Write the report ` with the existing accessible controls, and verifies the visible normalized title, `To do`, `High`, no assignee and task count. Added assertions for POST 201 followed by collection GET 200, the no-reload marker immediately after creation, and the PostgreSQL task/project/title/state/priority/deletion/assignment values. | `./mvnw -B -Dtest=UserInterfaceTests#theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage test` (select JDK 25+; Docker required) | **Passed twice:** 1 test each run; 0 failures, errors or skips. |
+| 5 | TP-003: reused `aPersonWhoIsNotAMemberGets404ForEveryOperationAndNothingChanges`, `aTaskOfAnotherProjectIsNotFoundThroughThisOne`, and `aTaskOfOneProjectNamedThroughAnotherIsNotFoundForEveryOperationAndEveryPerson`, plus project/task permission-rule tests. Account A's authorized GET is a control; account B's non-member reads/changes and mismatched project/task identifiers receive 404, with unchanged task/database state. | `./mvnw -B -Dtest=CrossProjectAccessTests,TaskApiTests,ProjectApiTests,AssignmentApiTests,TaskAccessRulesTests,ProjectAccessRulesTests test` (select JDK 25+; Docker required) | **Passed:** 197 tests; 0 failures, errors or skips. |
 
 The browser test uses the existing `TestAccess`, `addProject`, `inATab`, and
 accessible-label/role helpers. It uses no test-specific selectors or fixed sleeps.
+See the [bounded quality and security review](quality-security-review.md) for
+review ranges, authorization evidence, findings, and limitations.
 
 ### Isolation, repeatability and safe evidence
 
@@ -193,8 +200,24 @@ selecting Temurin JDK 25.0.5 through `JAVA_HOME`. Each run reported 1 test,
 the random-port application and an isolated Testcontainers PostgreSQL 18.6
 database. The real task POST returned 201, the subsequent task-list GET returned
 200, the task appeared with the expected visible values without a page reload,
-and PostgreSQL contained the expected active task row with no assignment.
-Broader verification and the rest of `UserInterfaceTests` were not run.
+and PostgreSQL contained the expected active task row with no assignment. The
+Exercise 4 targeted method ran twice; the later full validation also ran all 46
+`UserInterfaceTests` with no failures.
+
+**Exercise 5:** On 2026-11-13, with Temurin JDK 25.0.5 selected through
+`JAVA_HOME`, `./mvnw -B -Dtest=CrossProjectAccessTests,TaskApiTests,ProjectApiTests,AssignmentApiTests,TaskAccessRulesTests,ProjectAccessRulesTests test`
+passed 197 tests (0 failures, errors or skips) using isolated Testcontainers
+PostgreSQL. The existing owner GET is the successful control; the unauthorized
+and mismatched-ID cases returned the contract's 404 and preserved the task/data.
+`./mvnw -B -Dtest=LayeringTests,ModuleBoundaryTests test` passed 9 tests
+(0 failures, errors or skips). Each Maven run also completed frontend
+typecheck, 31 Vitest tests and Vite production build. The bounded Security review
+reported no confirmed vulnerability; the Spec review reported no findings.
+The Standards review's duplicate-command note was retained as the
+instruction-required exception recorded above and in the
+[quality/security review](quality-security-review.md). No static security
+analyzer is configured; no tool was installed. No public deployment was tested.
+The full suite is recorded below.
 
 Git preparation executed successfully: `git status --short`, branch/current-base
 inspection, history inspection, `git fetch origin`,
@@ -219,10 +242,11 @@ unnecessary for these exercises. JDK 25, Docker, Testcontainers PostgreSQL and
 Chromium were available for the executed checks. There is no demonstrated
 runtime failure to classify.
 
-**Broader final validation, deferred:** `./mvnw -B clean verify` - **Not run**.
-It must not be reported as passing or used to accept I12 without actual evidence
-and the required human review. Later failures must be classified as application
-defect, test defect or environment limitation with evidence; stop for approval
-before changing production code.
+**Full validation:** On 2026-11-13, `./mvnw -B clean verify` completed with
+`BUILD SUCCESS` using Temurin JDK 25.0.5. Maven reported 708 Java tests with
+0 failures, 0 errors and 0 skipped; the frontend typecheck completed, all 31
+Vitest tests passed, and the Vite production build completed. The build used the
+repository's Testcontainers PostgreSQL and browser-test setup. It does not
+accept I12 or answer client questions.
 
-Keep `week-4` for subsequent exercises; create no PR until Exercise 5.
+Create the single Week 4 PR only after final validation and staged-file review.
