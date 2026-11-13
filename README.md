@@ -253,12 +253,15 @@ Focused checks, after the first build:
 
 ```sh
 ./mvnw -B -Dtest=TaskDomainTests test
+./mvnw -B -Dtest=TaskApiTests test
 ./mvnw -B -Dtest=RequestSchemaTests,ContractTextTests,EveryOperationRequiresATokenTests test
 ./mvnw -B -Dtest=LayeringTests,ModuleBoundaryTests test
 (cd frontend && export PATH="$PWD/node:$PATH" && npm run typecheck && npm test && npm run build)
 ```
 
 Select JDK 25 or later before running Maven, including a focused selector.
+`TaskApiTests` also requires Docker for its isolated PostgreSQL Testcontainers
+database.
 The focused contract command is not a full HTTP/OpenAPI validator: API tests also assert schemas, statuses and headers. See [the recorded checks and limitations](docs/verification.md#contract-and-documentation-reconciliation), [I12](docs/evidence/I12-verification.md) and [the implementation plan](docs/implementation-plan.md#increments). No passing command accepts I12 or answers the client's open questions.
 
 ### Isolated clean-copy verification
