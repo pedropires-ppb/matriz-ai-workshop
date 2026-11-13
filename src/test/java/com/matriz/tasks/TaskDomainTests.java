@@ -30,12 +30,21 @@ class TaskDomainTests {
 		assertThat(new TaskTitle("  Write tests  ").value()).isEqualTo("Write tests");
 		assertThat(new TaskTitle("a").value()).isEqualTo("a");
 		assertThat(new TaskTitle("a".repeat(150)).value()).hasSize(150);
-		assertThat(new TaskTitle("\uD83D\uDE00".repeat(150)).value()).hasSize(300);
+		assertThat(new TaskTitle("\uD83D\uDE00".repeat(150)).value())
+			.hasSize(300)
+			.satisfies((value) -> assertThat(value.codePointCount(0, value.length())).isEqualTo(150));
 		assertThatIllegalArgumentException().isThrownBy(() -> new TaskTitle("a".repeat(151)))
 			.withMessage("The title must have at most 150 characters.");
 		assertThatIllegalArgumentException().isThrownBy(() -> new TaskTitle("\uD83D\uDE00".repeat(151)))
 			.withMessage("The title must have at most 150 characters.");
 		assertThat(new TaskTitle(" " + "a".repeat(150) + " ").value()).hasSize(150);
+	}
+
+	@ParameterizedTest
+	@ValueSource(strings = { "\u0000", "\uD800", "\uDC00" })
+	void aTitleThatCannotBeStoredIsRefused(String text) {
+		assertThatIllegalArgumentException().isThrownBy(() -> new TaskTitle(text))
+			.withMessage(TaskTitle.CANNOT_BE_STORED);
 	}
 
 	@ParameterizedTest

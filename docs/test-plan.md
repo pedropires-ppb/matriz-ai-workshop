@@ -1,8 +1,9 @@
 # Matriz - Week 4 Task Test Plan
 
-**Status:** Exercise 1 planning approved on 2026-11-13; tests **Not run**.
-Approval covers this document and its Exercise 1 commit only, not implementation
-in Exercises 2-4, production changes, or client acceptance.
+**Status:** Exercise 1 planning approved and Exercise 2 unit tests run on
+2026-11-13. Exercise 1 tests remain **Not run**. Exercise 2 approval covers its
+focused test and related documentation only, not later exercises, production
+changes, or client acceptance.
 
 **Branch:** `week-4`, created from freshly fetched `origin/main`.
 **Week 4 review base:** `08e531fde03a87fd7a6c4f38a56f5b1bd2e105a8`.
@@ -94,17 +95,19 @@ No new naming, uniqueness, reopening, performance or accessibility rule is propo
 |---|---|
 | Scenario selection | User chose **only TP-001-TP-003**, rather than the recommended TP-001-TP-005 or all seven rows. TP-004 (authentication), TP-005 (member operation permissions), TP-006 (Completed project), and TP-007 (filters/paging) are not selected scenarios. Existing coverage is not removed. |
 | Exercise 1 approval | User approved creating only this document, recording selected scenarios/coverage, proposed later work and Not run statuses, then reviewing and committing it. No tests or production changes are authorized by this approval. |
+| Exercise 2 approval | User approved the focused domain-test plan: assert NUL and unpaired-surrogate rejection, strengthen the 150-code-point boundary assertion, run `TaskDomainTests` twice, and update this plan and README. Production code remains out of scope. |
 | Corrections | No further user correction to expected behavior was supplied. The corrections above are source-derived AI suggestion corrections, not new human or client decisions. |
 
 ## Planned work for Exercises 2-4
 
-This allocation was approved for recording, not execution. Each later exercise
-needs its own prompt, concise plan and approval; re-inspect coverage then.
-Use the existing infrastructure and helpers, with no new dependencies.
+Exercise 2 has been executed under its separate approval. The Exercise 3-4
+allocation remains planned only; each later exercise needs its own prompt,
+concise plan and approval, and coverage must be re-inspected then. Use the
+existing infrastructure and helpers, with no new dependencies.
 
 | Exercise | Proposed test changes / reuse | Planned command using the existing Maven runner | Current result |
 |---|---|---|---|
-| 2 | TP-001: extend [TaskDomainTests](../src/test/java/com/matriz/tasks/TaskDomainTests.java) with direct `TaskTitle` rejection of NUL and unpaired high/low surrogates, preserving valid supplementary pairs. Reuse ordinary null/whitespace and 1/150/151 boundaries. | `./mvnw -B -Dtest=TaskDomainTests test` | **Not run** |
+| 2 | TP-001: added direct `TaskTitle` rejection of NUL and unpaired high/low surrogates in `aTitleThatCannotBeStoredIsRefused`; strengthened `aTitleIsTrimmedAndHasOneToOneHundredAndFiftyCharacters` to assert the 150-code-point supplementary-character boundary. Existing valid, whitespace and 1/150/151 cases were reused. | `./mvnw -B -Dtest=TaskDomainTests test` (select JDK 25+) | **Passed twice:** 22 tests each run; 0 failures, errors or skips. |
 | 3 | TP-001: extend `theLimitsAreInclusiveWhenEditingToo` in [TaskApiTests](../src/test/java/com/matriz/TaskApiTests.java) for padded supplementary Unicode at 150/151 code points, verifying retrieval and unchanged data on refusal. TP-002: extend the existing default-creation test with `GET Location` assertions. TP-003: run/reuse [CrossProjectAccessTests](../src/test/java/com/matriz/CrossProjectAccessTests.java). | `./mvnw -B -Dtest=TaskApiTests,CrossProjectAccessTests test` | **Not run** |
 | 4 | TP-001: extend [UserInterfaceTests](../src/test/java/com/matriz/UserInterfaceTests.java) task-edit coverage for whitespace-only and overlong input, no mutation request, retained input and unchanged saved task, then valid correction. Reuse TP-002 create/open and TP-003 direct-address refusal. Use existing `inATab`, `Tab`, labels and fixture helpers. | `./mvnw -B -Dtest=UserInterfaceTests test` | **Not run** |
 
@@ -136,8 +139,21 @@ files and generated dependencies unstaged.
 ## Execution record and limitations
 
 **Exercise 1 tests: Not run.** Source inspection and historical coverage are not
-fresh execution. No application was started, test suite executed, Docker resource
-created, local database accessed or environment configuration changed.
+fresh execution.
+
+**Exercise 2:** `TaskDomainTests` ran twice with
+`./mvnw -B -Dtest=TaskDomainTests test` under the installed Temurin JDK 25.0.5,
+selected temporarily through `JAVA_HOME`. Each run reported 22 tests, 0 failures,
+0 errors and 0 skipped. The existing valid trimmed title and one-character
+minimum assertions, the updated 150-code-point supplementary-character
+assertion, existing 151-code-point rejection, and the three values in
+`aTitleThatCannotBeStoredIsRefused` were exercised. Maven also completed
+frontend typecheck, 31 Vitest tests and the Vite production build on each run.
+The first invocation without a JDK override stopped at Maven Enforcer because
+the shell selected JDK 21; this was an environment configuration limitation,
+not a test failure. Selecting the already-installed JDK 25 resolved it. No
+application was started or database-backed test selected. Broader verification
+was not run.
 
 Git preparation executed successfully: `git status --short`, branch/current-base
 inspection, history inspection, `git fetch origin`,
@@ -167,5 +183,5 @@ and the required human review. Later failures must be classified as application
 defect, test defect or environment limitation with evidence; stop for approval
 before changing production code.
 
-After this document's reviewed Exercise 1 commit, stop. Keep `week-4` for subsequent
-exercises; create no PR until Exercise 5.
+After this document's reviewed Exercise 2 commit, stop. Keep `week-4` for
+subsequent exercises; create no PR until Exercise 5.
