@@ -1,9 +1,8 @@
 # Matriz - Week 4 Task Test Plan
 
-**Status:** Exercise 1 planning approved and Exercise 2 unit tests run on
-2026-11-13. Exercise 1 tests remain **Not run**. Exercise 2 approval covers its
-focused test and related documentation only, not later exercises, production
-changes, or client acceptance.
+**Status:** Exercises 1–4 have been completed under their separate approvals.
+Exercise 1 scenarios remain **Not run**; Exercises 2–4 targeted checks were run
+on 2026-11-13. These exercises do not imply client acceptance.
 
 **Branch:** `week-4`, created from freshly fetched `origin/main`.
 **Week 4 review base:** `08e531fde03a87fd7a6c4f38a56f5b1bd2e105a8`.
@@ -97,24 +96,24 @@ No new naming, uniqueness, reopening, performance or accessibility rule is propo
 | Exercise 1 approval | User approved creating only this document, recording selected scenarios/coverage, proposed later work and Not run statuses, then reviewing and committing it. No tests or production changes are authorized by this approval. |
 | Exercise 2 approval | User approved the focused domain-test plan: assert NUL and unpaired-surrogate rejection, strengthen the 150-code-point boundary assertion, run `TaskDomainTests` twice, and update this plan and README. Production code remains out of scope. |
 | Exercise 3 approval | User approved extending the existing TaskApiTests create/retrieve flow and invalid-title no-change assertion, running the targeted integration tests twice, and updating this plan and README. No production, API-contract, or dependency changes were authorized. |
+| Exercise 4 approval | User approved extending the existing `theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage` browser test—not duplicating the flow—to verify the real create/list requests, immediate no-reload behavior, visible task values and PostgreSQL persistence, then run that method twice and update this plan and README. No production code, hooks, or successful-response mocks were authorized. |
 | Corrections | No further user correction to expected behavior was supplied. The corrections above are source-derived AI suggestion corrections, not new human or client decisions. |
 
-## Exercise 2-3 results and planned work for Exercise 4
+## Exercise 2-4 results
 
-Exercises 2 and 3 have been executed under their separate approvals. Exercise 4
-remains planned only and needs its own prompt, concise plan and approval;
-re-inspect coverage then. Use the existing infrastructure and helpers, with no
-new dependencies.
+Exercises 2–4 were executed under their separate approvals. Exercise 4 reuses
+the existing browser journey because it already creates tasks and verifies the
+task list without reloading; the extension adds evidence for the subsequent
+real list request and the persisted row rather than duplicating that journey.
 
 | Exercise | Test changes / planned reuse | Targeted command | Current result |
 |---|---|---|---|
 | 2 | TP-001: added direct `TaskTitle` rejection of NUL and unpaired high/low surrogates in `aTitleThatCannotBeStoredIsRefused`; strengthened `aTitleIsTrimmedAndHasOneToOneHundredAndFiftyCharacters` to assert the 150-code-point supplementary-character boundary. Existing valid, whitespace and 1/150/151 cases were reused. | `./mvnw -B -Dtest=TaskDomainTests test` (select JDK 25+) | **Passed twice:** 22 tests each run; 0 failures, errors or skips. |
 | 3 | TP-001: extended `aTitleThatIsEmptyAfterTrimmingIsRefusedWithoutChangingExistingTasks` in [TaskApiTests](../src/test/java/com/matriz/TaskApiTests.java) to preserve an existing row and its retrieved representation after invalid create. TP-002: extended `creatingATaskStartsItToDoWithPriorityMediumAndNoAssignee` with a separate `GET Location`, schema/body equality, and persisted project/title assertions. | `./mvnw -B -Dtest=TaskApiTests test` (select JDK 25+; Docker required) | **Passed three times:** 94 tests each run; 0 failures, errors or skips. |
-| 4 | TP-001: extend [UserInterfaceTests](../src/test/java/com/matriz/UserInterfaceTests.java) task-edit coverage for whitespace-only and overlong input, no mutation request, retained input and unchanged saved task, then valid correction. Reuse TP-002 create/open and TP-003 direct-address refusal. Use existing `inATab`, `Tab`, labels and fixture helpers. | `./mvnw -B -Dtest=UserInterfaceTests test` | **Not run** |
+| 4 | TP-002: extended `theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage` in [UserInterfaceTests](../src/test/java/com/matriz/UserInterfaceTests.java). The existing fictitious Project Owner opens an Active project, creates `  Write the report ` with the existing accessible controls, and verifies the visible normalized title, `To do`, `High`, no assignee and task count. Added assertions for POST 201 followed by collection GET 200, the no-reload marker immediately after creation, and the PostgreSQL task/project/title/state/priority/deletion/assignment values. | `./mvnw -B -Dtest=UserInterfaceTests#theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage test` (select JDK 25+; Docker required) | **Passed twice:** 1 test each run; 0 failures, errors or skips. |
 
-API tests reuse `TestAccess`, `Contract.assertSatisfies`, `assertInvalid`, and
-the existing task create/view helpers. Later plans can narrow Surefire method
-selectors after the exact approved test changes are known.
+The browser test uses the existing `TestAccess`, `addProject`, `inATab`, and
+accessible-label/role helpers. It uses no test-specific selectors or fixed sleeps.
 
 ### Isolation, repeatability and safe evidence
 
@@ -141,10 +140,20 @@ are checked. The invalid-title case first creates a valid task, then verifies
 test-specific cleanup is needed: the Testcontainers PostgreSQL container and
 its per-context database are owned by the test run and removed by Testcontainers.
 
+For Exercise 4, `UserInterfaceTests` starts the real application on a random
+port and uses the same Testcontainers PostgreSQL infrastructure with demo data
+disabled. The browser signs in as a generated fictitious person and opens a
+uniquely created Active project fixture. The POST and subsequent task-list GET
+use the real application; the test checks the created row directly in PostgreSQL
+before later edits and deletion. `inATab` closes its fresh browser context, the class
+teardown closes Playwright/Chromium, and Testcontainers owns its database and
+container cleanup. Both runs created their own PostgreSQL 18.6 test container;
+no local Compose database, `.env`, or existing Docker volume was used.
+
 Never use/reset the local Compose database, edit `.env`, delete existing volumes,
 or print/record credentials, tokens, hashes, signing keys or real personal data.
 Do not enable browser traces, HAR, videos or screenshots containing authentication
-material; no artifacts are needed for this planning exercise. Leave unrelated
+material; no artifacts were needed. Leave unrelated
 files and generated dependencies unstaged.
 
 ## Execution record and limitations
@@ -176,6 +185,17 @@ database or `.env`. The invalid-title parameter cases and the explicit
 create-then-GET persistence flow ran as part of this test class. Broader
 verification was not run.
 
+**Exercise 4:** The targeted browser method ran twice with
+`./mvnw -B -Dtest=UserInterfaceTests#theProjectOwnerCreatesChangesFiltersAndDeletesTasksWithoutReloadingThePage test`,
+selecting Temurin JDK 25.0.5 through `JAVA_HOME`. Each run reported 1 test,
+0 failures, 0 errors and 0 skipped. Each run also completed frontend typecheck,
+31 Vitest tests and the Vite production build. Playwright used Chromium against
+the random-port application and an isolated Testcontainers PostgreSQL 18.6
+database. The real task POST returned 201, the subsequent task-list GET returned
+200, the task appeared with the expected visible values without a page reload,
+and PostgreSQL contained the expected active task row with no assignment.
+Broader verification and the rest of `UserInterfaceTests` were not run.
+
 Git preparation executed successfully: `git status --short`, branch/current-base
 inspection, history inspection, `git fetch origin`,
 `git rev-list --left-right --count main...origin/main` (0/0),
@@ -194,9 +214,10 @@ therefore do not eliminate those lifecycle prerequisites.
 Application commands are documented in
 [Configuration and first start](../README.md#configuration-and-first-start):
 `./mvnw -B -DskipTests package` and
-`java -jar target/matriz-0.1.0-SNAPSHOT.jar`. Neither was run; startup is unnecessary
-for Exercise 1. JDK/Docker/network/browser availability has not been tested here.
-There is no demonstrated runtime failure to classify.
+`java -jar target/matriz-0.1.0-SNAPSHOT.jar`. Neither was run; startup was
+unnecessary for these exercises. JDK 25, Docker, Testcontainers PostgreSQL and
+Chromium were available for the executed checks. There is no demonstrated
+runtime failure to classify.
 
 **Broader final validation, deferred:** `./mvnw -B clean verify` - **Not run**.
 It must not be reported as passing or used to accept I12 without actual evidence
@@ -204,5 +225,4 @@ and the required human review. Later failures must be classified as application
 defect, test defect or environment limitation with evidence; stop for approval
 before changing production code.
 
-After this document's reviewed Exercise 2 commit, stop. Keep `week-4` for
-subsequent exercises; create no PR until Exercise 5.
+Keep `week-4` for subsequent exercises; create no PR until Exercise 5.
