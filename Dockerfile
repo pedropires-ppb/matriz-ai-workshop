@@ -14,5 +14,6 @@ WORKDIR /app
 COPY --from=build /workspace/target/matriz-0.1.0-SNAPSHOT.jar /app/matriz.jar
 
 USER 10001:10001
+ENV HOME=/tmp
 EXPOSE 8080
-ENTRYPOINT ["java", "-jar", "/app/matriz.jar"]
+ENTRYPOINT ["java", "-Djava.io.tmpdir=/tmp", "-jar", "/app/matriz.jar"]
