@@ -542,10 +542,18 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			tab.page().getByLabel("Title", exact()).fill("  Write the report ");
 			tab.page().getByLabel("Description (optional)", exact()).fill("Quarterly numbers");
 			tab.page().getByLabel("Priority", exact()).selectOption("HIGH");
-			Response created = tab.page()
-				.waitForResponse((response) -> response.url().endsWith("/tasks")
-						&& "POST".equals(response.request().method()), () -> tab.button("Create task").click());
-			assertThat(created.status()).isEqualTo(201);
+			Response refreshed = tab.page().waitForResponse(
+					(response) -> response.url().contains("/api/projects/" + project + "/tasks")
+							&& !response.url().contains("/api/projects/" + project + "/tasks/")
+							&& "GET".equals(response.request().method()),
+					() -> {
+						Response created = tab.page()
+							.waitForResponse((response) -> response.url().endsWith("/tasks")
+									&& "POST".equals(response.request().method()),
+									() -> tab.button("Create task").click());
+						assertThat(created.status()).isEqualTo(201);
+					});
+			assertThat(refreshed.status()).isEqualTo(200);
 			assertThat(tab.page().getByText("The task has been created.")).isVisible();
 			assertThat(tab.tasks()).hasCount(1);
 			assertThat(tab.tasks().first()).containsText("Write the report");
@@ -553,6 +561,21 @@ class UserInterfaceTests extends DatabaseTestSupport {
 			assertThat(tab.tasks().first()).containsText("High");
 			assertThat(tab.taskCount()).hasText("1 task");
 			assertThat(tab.tasks().first()).containsText("No one is assigned.");
+			assertThat(tab.page().evaluate("() => window.sameDocument")).isEqualTo(true);
+
+			UUID createdTask = this.jdbc.sql("SELECT task_id FROM task WHERE project_id = ? AND title = ?")
+				.params(project, "Write the report")
+				.query(UUID.class)
+				.single();
+			assertThat(this.jdbc.sql("SELECT count(*) FROM task WHERE task_id = ? AND project_id = ? AND title = ? "
+					+ "AND state = 'TO_DO' AND priority = 'HIGH' AND deleted_at IS NULL")
+				.params(createdTask, project, "Write the report")
+				.query(Integer.class)
+				.single()).isEqualTo(1);
+			assertThat(this.jdbc.sql("SELECT count(*) FROM assignment WHERE task_id = ?")
+				.param(createdTask)
+				.query(Integer.class)
+				.single()).isZero();
 
 			tab.button("New task").click();
 			tab.page().getByLabel("Title", exact()).fill("Review the report");

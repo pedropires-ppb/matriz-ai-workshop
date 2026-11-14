@@ -128,13 +128,22 @@ class TaskApiTests extends DatabaseTestSupport {
 		assertThat(task.path("priority").stringValue()).isEqualTo("MEDIUM");
 		assertThat(task.has("description")).isFalse();
 		assertThat(task.path("assignees")).isEmpty();
-		assertThat(this.jdbc.sql("SELECT state, priority, description, deleted_at FROM task WHERE task_id = ?")
+		assertThat(this.jdbc.sql("SELECT project_id, title, state, priority, description, deleted_at FROM task WHERE task_id = ?")
 			.param(UUID.fromString(id))
 			.query()
 			.singleRow()).containsEntry("state", "TO_DO")
+			.containsEntry("project_id", UUID.fromString(this.project))
+			.containsEntry("title", "Prepare proposal")
 			.containsEntry("priority", "MEDIUM")
 			.containsEntry("description", null)
 			.containsEntry("deleted_at", null);
+
+		MvcResult retrieved = getAs(this.anaToken, result.getResponse().getHeader(HttpHeaders.LOCATION))
+			.andExpect(status().isOk())
+			.andReturn();
+		String retrievedBody = retrieved.getResponse().getContentAsString();
+		Contract.assertSatisfies("Task", retrievedBody);
+		assertThat(JsonMapper.shared().readTree(retrievedBody)).isEqualTo(task);
 	}
 
 	@Test
@@ -189,10 +198,16 @@ class TaskApiTests extends DatabaseTestSupport {
 	@ParameterizedTest
 	@ValueSource(strings = { "", " ", "     ", "\t\n", "\u00A0", "\u2007\u202F", " \u00A0\u202F\u2007 ",
 			"\u3000", "\u2003" })
-	void aTitleThatIsEmptyAfterTrimmingIsRefused(String title) throws Exception {
+	void aTitleThatIsEmptyAfterTrimmingIsRefusedWithoutChangingExistingTasks(String title) throws Exception {
+		String existingId = createdId("Keep", "Unchanged description", "HIGH");
+		JsonNode before = view(this.anaToken, existingId);
+		int tasksBefore = count("SELECT count(*) FROM task WHERE project_id = ?", UUID.fromString(this.project));
+
 		assertInvalid(create(this.anaToken, json(title, null)), "/title", "A title is required.");
 
-		assertThat(count("SELECT count(*) FROM task WHERE project_id = ?", UUID.fromString(this.project))).isZero();
+		assertThat(view(this.anaToken, existingId)).isEqualTo(before);
+		assertThat(count("SELECT count(*) FROM task WHERE project_id = ?", UUID.fromString(this.project)))
+			.isEqualTo(tasksBefore);
 	}
 
 	@ParameterizedTest
