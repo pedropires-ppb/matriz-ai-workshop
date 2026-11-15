@@ -2,9 +2,32 @@
 
 **Status:** **Decision accepted, provisional.** The project team chose a **modular monolith** on 2026-10-25 (see [Decision and rationale](#decision-and-rationale) and [ADR-001](adr/ADR-001-modular-monolith.md)). The client has not yet approved the MVP scope ([OQ-016](constraints.md#open-questions)), and the [questions below](#questions-that-could-change-the-choice) may change the decision. On 2026-10-29 the team provisionally extended the scope ([ADR-002](adr/ADR-002-phase-scope-and-implementation-authorization.md)) and chose technologies ([ADR-003](adr/ADR-003-technology-stack.md) to [ADR-006](adr/ADR-006-simultaneous-changes.md)); the choice of style is unchanged ([Effect of the 2026-10-29 decisions](#effect-of-the-2026-10-29-decisions)). This document names no technologies itself, assumes no scale targets, and implements nothing. Terminology follows the [glossary](requirements.md#glossary).
 
+## Implemented deployment view
+
+*Added on 2026-11-15 for delivery preparation.* The historical style analysis below remains provisional; this view documents the existing [Dockerfile](../Dockerfile) and [Compose configuration](../compose.yaml), not a new hosting decision. The introduction's original technology-neutral qualification applies to the style analysis, not to this implemented view or the subsequently added technology decision.
+
+```mermaid
+flowchart LR
+    Browser["Browser: React UI"]
+    subgraph Compose["Compose project: default network"]
+        App["app: Spring Boot / JRE 25<br/>React static assets, REST API, health<br/>container port 8080"]
+        DB["postgres: PostgreSQL 18.6<br/>service port 5432"]
+    end
+    Volume[("Project-scoped named volume<br/>matriz-db at /var/lib/postgresql")]
+    Browser -->|"HTTP: one origin for UI and /api"| App
+    App -->|"JDBC: postgres:5432/matriz"| DB
+    DB -->|"Persistent data"| Volume
+```
+
+There is one application deployable: Maven builds React assets into the Spring Boot JAR. React executes in the browser, but its files are served by `app`; Identity, Projects, Tasks, Progress and Access control are internal modules, not separate services. PostgreSQL is the only external runtime service. The `app` profile is optional so that the database-only path still supports host-run Java.
+
+The app and database use Compose's default network and service DNS. Loopback-only host port mappings, configuration, migration/demo ordering and operating commands are authoritative in the [README run guide](../README.md#configuration-and-first-start). PostgreSQL's health check gates initial app startup; host-side HTTP readiness is required because the app image has no container health check. This dependency is not runtime orchestration or failover.
+
+The PostgreSQL 18 volume mount is `/var/lib/postgresql`, not the pre-18 data-directory convention. Recreating containers without deleting the project volume preserves data; backup, hosting, TLS termination and production operations remain unresolved under [OQ-020](constraints.md#open-questions). Builder downloads and CI tools are build-time dependencies, not runtime deployment units.
+
 ## Context
 
-**Purpose.** Compare a monolith, a modular monolith, and microservices for the proposed MVP in terms of simplicity, maintenance, operational cost, and future evolution; record the architectural style chosen, its main trade-offs, and its logical components.
+**Purpose.** The original analysis compares a monolith, a modular monolith, and microservices for the proposed MVP in terms of simplicity, maintenance, operational cost, and future evolution; it records the architectural style chosen, its main trade-offs, and its logical components. The deployment view added above documents the implemented delivery configuration and its existing technology decisions; it does not select a production host.
 
 **Scope analyzed.** The proposed [MVP scope](requirements.md#mvp-scope) ([FR-001–FR-012](requirements.md#functional-requirements), derived from the confirmed needs F01–F03) and the proposed or pending quality criteria [NFR-001–NFR-008](requirements.md#non-functional-requirements-and-unresolved-quality-criteria). The MVP content is itself a proposal ([Assumption A-012](constraints.md#assumptions)). Candidates [outside the initial scope](requirements.md#outside-the-initial-scope) are not requirements; they serve only as an indication of possible growth when judging future evolution. FR-013–FR-025, added on 2026-10-29, were reviewed afterwards ([Effect of the 2026-10-29 decisions](#effect-of-the-2026-10-29-decisions)).
 

@@ -48,6 +48,8 @@ All features below are proposed Must priorities, subject to client approval; the
 | Shell utilities | Bash, Git, curl and OpenSSL for the commands below; network access to dependency/image registries and the Chromium download. |
 | Browser tests | Playwright 1.64.0's Chromium distribution is downloaded automatically. On Linux, its system libraries must also be installed; see the pinned `install-deps chromium` command in [CI](.github/workflows/ci.yml). macOS is the locally verified platform. |
 
+The application uses Spring Boot 4.1.2 and Spring Modulith 2.1.2; the frontend uses React 19.3.1, TypeScript 6.0.3, Vite 8.3.5 and Vitest 5.1.0. Exact direct pins are in [pom.xml](pom.xml) and [frontend/package.json](frontend/package.json); transitive versions are managed by Spring Boot/Modulith and the [npm lockfile](frontend/package-lock.json), not independently selected in this guide.
+
 On macOS with several JDKs, select the installed JDK for the current terminal:
 
 ```sh
@@ -66,7 +68,7 @@ git clone https://github.com/pedropires-ppb/matriz-ai-workshop.git
 cd matriz-ai-workshop
 ```
 
-Until the candidate branch is published, use the local fresh-clone recipe in [Isolated clean-copy verification](#isolated-clean-copy-verification). All following commands run from the clone's root. Do not copy another checkout's `.env`, build outputs or `node_modules`.
+For the delivery-preparation candidate, select `git switch delivery-preparation` after cloning. The proposed candidate identifier and its mapping to build versions are recorded in the [candidate notes](docs/releases/0.1.0-mvp-rc.2.md); no candidate tag or release is created by those notes. All following commands run from the clone's root. Do not copy another checkout's `.env`, build outputs or `node_modules`. For a separate local copy, see [Isolated clean-copy verification](#isolated-clean-copy-verification).
 
 ## Configuration and first start
 
@@ -81,9 +83,10 @@ Edit this ignored file locally; every published example value is fictitious. Use
 
 | Setting | Meaning |
 |---|---|
-| `MATRIZ_DB_URL` | Required JDBC URL, normally `jdbc:postgresql://localhost:5432/matriz`. |
+| `MATRIZ_DB_URL` | Required JDBC URL for host-run Java, normally `jdbc:postgresql://localhost:5432/matriz`. The Compose application overrides it with `jdbc:postgresql://postgres:5432/matriz`; `localhost` inside that container would be the application itself. |
 | `MATRIZ_DB_USER`, `MATRIZ_DB_PASSWORD` | Required; Compose creates these credentials only on a fresh volume. Changing the file does not rotate existing database credentials. |
 | `MATRIZ_DB_PORT` | Compose host port, default 5432, bound to loopback; match it in the JDBC URL. The container port stays 5432. |
+| `MATRIZ_APP_PORT` | Compose application host port, default 18089, bound to loopback. It maps to container port 8080 and does not change host-run Java's port. |
 | `MATRIZ_JWT_SIGNING_KEY` | Required Base64 key with at least 32 decoded random bytes. The example placeholder is rejected. Generate privately with `openssl rand -base64 32`; changing it invalidates existing tokens at the next startup. |
 | `MATRIZ_DEMO_DATA` | Choose **before the first startup**: `true` loads the demonstration migration once; false/absent does not. This choice is fixed for that database. |
 | `MATRIZ_DEMO_PASSWORD_ANA`, `MATRIZ_DEMO_PASSWORD_RUI`, `MATRIZ_DEMO_PASSWORD_EVA`, `MATRIZ_DEMO_PASSWORD_DANIEL` | Required at **every** startup with demo mode true: each 15+ characters and at most 72 UTF-8 bytes. Used only when the seed runs; later edits do not rotate stored passwords. |
@@ -91,6 +94,8 @@ Edit this ignored file locally; every published example value is fictitious. Use
 | `VITE_API_BASE_URL` | Optional frontend build-time setting in `frontend/src/config.ts`; default empty, same origin. Another origin is not supported without a separately approved CORS change. |
 
 An empty database without demonstration data has no provisioned sign-in account; account administration is outside the MVP. For a usable local demonstration, set demo mode and all four passwords now. A database already migrated past the seed's version (1.1) cannot enable it later. Mismatched mode or conflicting rows stops startup without partially loading seed data. Use a fresh, separate database rather than resetting somebody else's.
+
+### Host-run application with PostgreSQL in Compose
 
 Start PostgreSQL, build, then start the application in the foreground:
 
@@ -111,6 +116,40 @@ curl --fail-with-body http://localhost:8080/actuator/health
 Expect overall `UP` and database `UP`, without component details. Only this Actuator endpoint is public; `/actuator` and other Actuator endpoints are 404. Open <http://localhost:8080/>. For an alternate application port, change the URL accordingly. Stop **your own backend** with Ctrl+C; stopping a database container requires separate approval when an agent operates it.
 
 **Troubleshooting:** a port conflict needs a separate project and free host port, not stopping an unknown container. For a private-CA Maven download error (`PKIX path building failed`), use `export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/path/to/truststore"` with an approved local trust store; never commit trust stores or registry settings.
+
+### Complete application with Docker Compose
+
+Use the same [configuration](#configuration-and-first-start) and choose demonstration mode **before the first application startup**. The default Compose command above remains database-only; the `app` profile adds the one Spring Boot container serving both React and the API. No separate frontend runtime is needed.
+
+For an isolated demonstration, use a unique project, a separate ignored env file with fictitious values and permissions `600`, and free loopback ports. Do not reuse another project's database. The example below assumes you prepared `.env.delivery` from `.env.example`, privately replaced the signing key/passwords, selected demo mode, and set `MATRIZ_DB_PORT=15432` and `MATRIZ_APP_PORT=18089`. Use the same project and env-file arguments for every command.
+
+```sh
+docker compose --env-file .env.delivery -p matriz-delivery --profile app config -q
+docker compose --env-file .env.delivery -p matriz-delivery --profile app build app
+docker compose --env-file .env.delivery -p matriz-delivery --profile app up -d --wait
+docker compose --env-file .env.delivery -p matriz-delivery --profile app ps
+curl --silent --show-error --fail-with-body --retry 30 --retry-connrefused \
+  --retry-delay 2 --max-time 5 http://127.0.0.1:18089/actuator/health
+curl --silent --show-error --fail-with-body --output /dev/null http://127.0.0.1:18089/
+```
+
+Open <http://127.0.0.1:18089/> and sign in using a [demonstration account](#demonstration-accounts) and its privately configured password. Both the UI and `/api` use this origin. Docker builds the integrated JAR using the existing Maven/frontend toolchain; a host JDK/Node installation is not needed for this path. Build-time downloads still require access to Maven/npm registries, Node.js, Ubuntu packages and the pinned base images.
+
+Compose's default network resolves the `postgres` service. Its `pg_isready` health check gates initial application startup. `up --wait` confirms that PostgreSQL is healthy and the app container is running, **not HTTP readiness**: the runtime image has no HTTP probe. The host `curl` check must also pass. Flyway schema/demo ordering and validation are the same as for host-run Java above.
+
+The database retains its existing loopback host-port mapping for host-run tools; the app uses the internal service port, not that mapping. PostgreSQL 18 stores its data in the project-scoped named volume mounted at `/var/lib/postgresql`. For this example the volume is `matriz-delivery_matriz-db`. Container recreation with that volume retained preserves rows; it is not a backup.
+
+The dependency condition only gates startup. It does not stop/restart the app or guarantee availability if PostgreSQL later becomes unavailable; there is no configured automatic restart policy. Restore the dependency and check HTTP health again. Missing/blank app settings, including the signing key, are rejected by application startup; Compose itself checks the database credentials.
+
+**Stopping without deleting data:** after confirming the exact project belongs to you, stop its services with the following command. An agent must first obtain approval naming the exact containers.
+
+```sh
+docker compose --env-file .env.delivery -p matriz-delivery --profile app stop
+```
+
+Resume with the same `up -d --wait` command and repeat HTTP readiness. Do not add `-v` or remove the volume. Deleting data is a separate [destructive reset](#manual-reset), never a startup/troubleshooting step.
+
+**Container troubleshooting:** do not print resolved Compose configuration or environment diagnostics; use `config -q`. Check `ps` and privately inspect bounded logs before sharing, redacting sensitive data. If a database exists, changing the env-file password does not rotate it. If demo mode conflicts with prior migrations, use a separate fresh project instead of resetting an existing database. Host `MAVEN_OPTS` does not automatically configure the Docker builder: a private-certificate download failure requires an approved build-environment trust solution, never a TLS bypass. The [delivery evidence](docs/evidence/delivery-preparation.md) distinguishes local attempts from user-confirmed checks.
 
 ## Demonstration accounts
 
@@ -144,6 +183,8 @@ The search, the filters, and the page are kept in the address, so Back and Forwa
 **Front-end development.** The front end is in `frontend/` (React, TypeScript, Vite). The build runs its type check and unit tests (Vitest); to run them alone, with the Node.js that the build installs: `cd frontend && PATH="$PWD/node:$PATH" npm test`. The address of the backend is configured in one place, `frontend/src/config.ts`, from `VITE_API_BASE_URL` at build time. It is empty by default, which means the same origin as the page. Only the same origin is supported for now: another origin would need CORS, which is not configured.
 
 ### Sign in, use the API, and sign out
+
+The authoritative [OpenAPI document](openapi.yaml) is a repository file (OpenAPI 3.1, contract version `0.2.0-draft`); its relative server `/api` resolves against the running application's origin. Read or download it from the checkout/repository. The application does not provide Swagger UI, `/v3/api-docs`, or a separate documentation service. The URLs below use the host-run port; for Compose, use the origin from the [container instructions](#complete-application-with-docker-compose). API examples are usage summaries, not a second contract.
 
 *Added on 2026-11-02 with increment I2 ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md#open-points), [ADR-009](docs/adr/ADR-009-identity-from-the-token.md)).* With the demonstration data, open <http://localhost:8080/> and sign in with a demonstration login name and the password you chose in `.env`. Letter case in the login name does not matter. The [API contract](openapi.yaml) specifies the access token's life cycle under “Token life cycle”; in short:
 
@@ -247,7 +288,11 @@ Docker must be running. Testcontainers creates its own databases; the tests do n
 ./mvnw -B clean verify
 ```
 
-This installs frontend dependencies from the lock file, checks TypeScript, runs Vitest, builds Vite, installs Chromium, runs Java unit/API/contract/Playwright tests and the layering/module-boundary checks, then packages the application. `-DskipTests` skips Java tests/Chromium setup, **not** frontend Vitest. CI uses `./mvnw -B verify`; `clean` additionally removes generated Maven outputs.
+This installs frontend dependencies from the lock file, checks TypeScript, runs Vitest, builds Vite, installs Chromium, runs Java unit/API/contract/Playwright tests and the layering/module-boundary checks, then packages the application. `-DskipTests` skips Java tests/Chromium setup, **not** frontend Vitest. `clean` additionally removes generated Maven outputs.
+
+The [CI workflow](.github/workflows/ci.yml) exposes separate checks for compilation, backend unit tests, backend integration/contract/architecture tests, frontend unit tests, end-to-end tests, and the Docker build. Compilation shares only compiled classes/assets with the test jobs. The Docker job requires every test job to succeed and confirms that every Java suite produced exactly one report before building; it does not publish an image or deploy. Test artifacts contain sanitized names/statuses only, with one-day retention, and each test job has its own results summary.
+
+Frontend Vitest tests cover pure TypeScript modules in Node, not React component rendering. End-to-end tests use Playwright Chromium against the integrated UI/API and isolated PostgreSQL. There is no separate frontend component-test suite. CI executes the existing Maven/npm steps separately, using `-Dfrontend.skip=true` only after frontend preparation; this is not a replacement for frontend verification when running Maven manually.
 
 Focused checks, after the first build:
 
@@ -268,7 +313,7 @@ The focused contract command is not a full HTTP/OpenAPI validator: API tests als
 
 ### Isolated clean-copy verification
 
-*Approved by the project team on 2026-11-12, delivery decisions 18–19.* This Bash recipe tests the **committed** local `week3-ex9` candidate without copying a developer `.env`, using the normal startup sequence. Run it from the candidate's original checkout. JDK 25 and Docker must already be selected/running as above. The example uses free host ports **15439** (database) and **18089** (application); if occupied, choose two unused ports and change the JDBC/run/base URLs consistently. Never stop an unknown listener.
+*Originally approved by the project team on 2026-11-12, delivery decisions 18–19; updated for delivery preparation on 2026-11-15.* This Bash recipe tests the **committed** local `delivery-preparation` candidate without copying a developer `.env`, using the host-run startup sequence. Run it from the candidate's original checkout. JDK 25 and Docker must already be selected/running as above. The example uses free host ports **15439** (database) and **18089** (application); if occupied, choose two unused ports and change the JDBC/run/base URLs consistently. Never stop an unknown listener.
 
 ```sh
 set -euo pipefail
@@ -278,7 +323,7 @@ if env | cut -d= -f1 | grep -Eq '^(MATRIZ_|SPRING_)'; then
 fi
 SOURCE="$PWD"
 CLEAN_COPY="$(mktemp -d "${TMPDIR:-/tmp}/matriz-ex9.XXXXXX")"
-git clone --no-hardlinks --branch week3-ex9 "$SOURCE" "$CLEAN_COPY"
+git clone --no-hardlinks --branch delivery-preparation "$SOURCE" "$CLEAN_COPY"
 cd "$CLEAN_COPY"
 git status --short
 git log -1 --format='%h %s'
@@ -373,6 +418,8 @@ docker compose down -v
 
 This removes that project's containers/network and named volume, including all rows. For a reset you intend to use again, run `docker compose up -d --wait` and restart the backend to recreate schema/seed. For the disposable clean-copy exercise, instead remove **only the printed clone directory** after cleanup; it contains the temporary `.env`. Never use a broad/wildcard recursive delete. Do not stop or remove any pre-existing project. With no override the normal Compose project is `matriz`, volume `matriz_matriz-db`; that is **not** the disposable project above.
 
+For the full-app Compose example, substitute its exact `--env-file .env.delivery -p matriz-delivery --profile app` arguments on every inspection/reset command. After explicit approval naming that project's containers and `matriz-delivery_matriz-db` volume, its destructive command is `docker compose --env-file .env.delivery -p matriz-delivery --profile app down -v`. Recreate it using the [full-app startup procedure](#complete-application-with-docker-compose), not the host-run Java command. These are instructions only, not permission for an agent to perform a reset.
+
 ## Documentation map
 
 - [Instructions for AI agents](AGENTS.md): source-of-truth order, conventions, and rules for agents.
@@ -383,6 +430,7 @@ This removes that project's containers/network and named volume, including all r
 - [Architecture decision records](docs/adr/README.md): the project team's decisions (ADR-001–ADR-009): modular monolith, phase scope and provisional implementation authorization, technology stack, REST API, authentication, simultaneous changes, build, persistence, and demonstration data, domain-driven design, and identity from the token; all provisional until OQ-016. *Changed on 2026-10-30: ADR-007 added; then ADR-008, after the team's review of I1. Changed on 2026-11-02: ADR-009 added.*
 - [Implementation plan](docs/implementation-plan.md): increments I0–I13, each with its status, goal, components, dependencies, acceptance criteria (US/EX), and verification, and the rule for updating the status.
 - [Delivery preparation plan](docs/delivery-plan.md): the approved Docker, Compose, and GitHub Actions delivery plan; [execution evidence](docs/evidence/delivery-preparation.md) records observed results for each delivery-preparation exercise.
+- [Changelog](CHANGELOG.md) and [candidate notes](docs/releases/0.1.0-mvp-rc.2.md): sourced changes, compatibility, known limitations, version mapping and proposed future release commands; no release publication is implied.
 - [Verification record of increment I1](docs/evidence/I1-verification.md): the checks run on 2026-10-30 and their trimmed outputs, the evidence to which I1's status links. *Added on 2026-10-30; the re-verification after the team's review of I1 was added the same day.*
 - [Verification record of increment I2](docs/evidence/I2-verification.md): the checks run on 2026-11-02 and their trimmed outputs, the evidence to which I2's status links. *Added on 2026-11-02.*
 - [MVP verification and delivery review](docs/verification.md): the nine scenarios, corrected defects, diff review, behavior-preserving refactoring and delivery evidence; [I12's remaining release checks](docs/evidence/I12-verification.md) keep their Awaiting review status.

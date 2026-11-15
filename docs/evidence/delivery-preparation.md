@@ -156,6 +156,18 @@ This acceptance does not imply client approval of the MVP or production readines
 - **Local verification:** Parsed the old and new YAML and compared them after removing the old pull-request trigger; the remaining workflow is identical. Verified that the sole event is an unrestricted `push`, and `git diff --check` passed. No application tests were rerun for this trigger-only change.
 - **Limitations:** No hosted result is claimed for this revision. No branch protection was changed, and no deliberate failure is present.
 
-## Exercises 5–6
+## Exercise 5 — Technical documentation and release preparation
 
-No execution evidence yet. Add a dated section for each exercise only after it is requested and run; include exact non-secret commands, outcomes, limitations, and checks not executed.
+- **Date:** 2026-11-15
+- **Approval and scope:** The user approved README and deployment-architecture updates, a commit-derived changelog, candidate notes at `docs/releases/0.1.0-mvp-rc.2.md`, and this evidence update. The candidate identifier is `0.1.0-mvp-rc.2`; build manifests, contract, application code, workflow, Docker configuration and `AGENTS.md` remain unchanged.
+- **Findings addressed:** README lacked the full-app Compose path, application host-port documentation, readiness/dependency distinction and non-destructive stop instructions. Its CI description and `week3-ex9` clone reference were outdated. Architecture lacked the implemented deployment diagram. No changelog or current candidate notes existed. Existing demo identities, seed rules and the database-only/host-run path were retained rather than replaced.
+- **Implementation findings:** No implementation correction was authorized or made. The missing app container health probe is the approved host-side readiness design, not an omitted service; no Swagger UI or documentation server was added. Client scope approval, hosting and I12 acceptance remain unresolved.
+- **Version history:** Inspected local tags with `git tag --list` and `git show --no-patch --format=fuller v0.1.0-mvp-rc.1`. The existing tag resolves to `08e531fde03a87fd7a6c4f38a56f5b1bd2e105a8`. Reviewed `git log bf8eb12..HEAD`, `git log v0.1.0-mvp-rc.1..bf8eb12` and the candidate diff to source the changelog. No remote tag inventory or GitHub release inventory was asserted.
+- **Version decision:** No bump: Maven remains `0.1.0-SNAPSHOT`, private frontend `0.1.0`, and OpenAPI `0.2.0-draft`. The candidate notes are authoritative for the mapping to the proposed Git candidate and eventual tag; the exact candidate SHA is left for final verification. No build metadata validation was required because no metadata changed.
+- **Documentation checks:** A local Python standard-library check validated all relative Markdown link targets and Markdown heading/explicit-anchor fragments in README, architecture, changelog and candidate notes: 397 links passed. A basic Mermaid structure check confirmed declared edge endpoints, matching subgraph closure and the actual PostgreSQL service/mount labels. `command -v mmdc` found no renderer, so rendered Mermaid validation was not performed and no tool was installed. `git diff --check` passed.
+- **Evidence boundary:** No Maven tests, Docker build/startup, Compose runtime checks, hosted CI inspection or deliberate failure/recovery demonstration was executed for this documentation change. Earlier results and the user's acceptance remain dated and attributed, not reused as a new passing run.
+- **Release safety:** Proposed tag and draft pre-release commands are documented for later explicit human approval only. No tag was created or pushed, no release was created/published, no merge or deployment occurred, and no credentials were read or recorded.
+
+## Exercise 6
+
+No execution evidence yet. Add a dated section only after it is requested and run; include exact non-secret commands, outcomes, limitations, and checks not executed.
