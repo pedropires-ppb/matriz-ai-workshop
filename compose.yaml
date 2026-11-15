@@ -30,7 +30,7 @@ services:
       MATRIZ_DB_URL: jdbc:postgresql://postgres:5432/matriz
       MATRIZ_DB_USER: ${MATRIZ_DB_USER:?set MATRIZ_DB_USER in .env (see .env.example)}
       MATRIZ_DB_PASSWORD: ${MATRIZ_DB_PASSWORD:?set MATRIZ_DB_PASSWORD in .env (see .env.example)}
-      MATRIZ_JWT_SIGNING_KEY: ${MATRIZ_JWT_SIGNING_KEY:?set MATRIZ_JWT_SIGNING_KEY in .env (see .env.example)}
+      MATRIZ_JWT_SIGNING_KEY: ${MATRIZ_JWT_SIGNING_KEY:-}
       MATRIZ_DEMO_DATA: ${MATRIZ_DEMO_DATA:-false}
       MATRIZ_DEMO_PASSWORD_ANA: ${MATRIZ_DEMO_PASSWORD_ANA:-}
       MATRIZ_DEMO_PASSWORD_RUI: ${MATRIZ_DEMO_PASSWORD_RUI:-}

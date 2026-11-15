@@ -23,3 +23,29 @@ jobs:
         run: npx --yes playwright@1.64.0 install-deps chromium
       - name: Build and test
         run: ./mvnw -B verify
+
+  image:
+    needs: verify
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - name: Validate Compose profiles
+        run: |
+          env -i PATH="$PATH" HOME="$HOME" \
+            MATRIZ_DB_USER=fictitious MATRIZ_DB_PASSWORD=fictitious \
+            docker compose --env-file /dev/null -p matriz-ci config -q
+          env -i PATH="$PATH" HOME="$HOME" \
+            MATRIZ_DB_USER=fictitious MATRIZ_DB_PASSWORD=fictitious \
+            MATRIZ_JWT_SIGNING_KEY=fictitious \
+            docker compose --env-file /dev/null -p matriz-ci --profile app config -q
+          if env -i PATH="$PATH" HOME="$HOME" \
+            docker compose --env-file /dev/null -p matriz-ci config -q >/dev/null 2>&1; then
+            echo "Compose must reject missing database credentials"
+            exit 1
+          fi
+      - name: Build multi-platform image without publishing
+        run: |
+          docker buildx create --name matriz-ci --driver docker-container --use
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            --output "type=oci,dest=$RUNNER_TEMP/matriz-candidate.oci.tar" \
+            --tag "matriz:0.1.0-SNAPSHOT-$GITHUB_SHA" .

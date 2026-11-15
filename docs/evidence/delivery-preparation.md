@@ -72,6 +72,19 @@ This record contains observed results for the six delivery-preparation exercises
 - **Secrets and diagnostics:** Resolved Compose configuration was never printed. Build output was captured to a session-local log and contains the Node.js download failure; no runtime credentials were emitted.
 - **Status:** Compose configuration and default/profile service selection are verified. The integrated runtime exercise remains incomplete until the image can be built in an environment that trusts the required download certificate.
 
-## Exercises 4–6
+## Exercise 4 — Continuous integration
+
+- **Date:** 2026-11-15
+- **Status:** Local workflow and Compose changes prepared; GitHub authentication is unavailable. No push, pull request, hosted run, or controlled-failure demonstration has occurred. The deliberate test failure is not present.
+- **Workflow:** The existing `verify` job, push and pull-request triggers, and `contents: read` permission remain unchanged. A new `image` job depends on `verify`; it validates Compose with fictitious configuration, then builds both target platforms to a runner-local OCI file without publishing or uploading it.
+- **Compose compatibility:** Database-only configuration no longer requires the application's signing key during Compose interpolation. Application startup remains responsible for rejecting a missing or invalid key.
+- **Local checks:**
+  - Before the correction, the new database-only `docker compose --env-file /dev/null -p matriz-ci config -q` check failed with the signing key missing. Afterward, that check and the `--profile app` check passed with isolated fictitious environment variables, and missing database credentials were rejected.
+  - Ruby's YAML parser and structural assertions confirmed the workflow parses and retains both triggers, read-only contents permission, the Maven verify step, and `image`'s `needs: verify`. This is not a hosted GitHub Actions validation.
+  - With the locally installed JDK 25, `./mvnw -B -Dtest=EnvironmentVariablesTests,CommentTextTests test` passed: 19 tests, no failures or errors. The environment tests exercise rejection of a blank signing key. Maven also ran the configured frontend build steps; this focused command is not full verification.
+  - `git diff --check` passed. Docker Buildx is available locally, but the multi-platform build was not rerun; the Exercise 3 certificate failure remains unresolved.
+- **GitHub blocker:** `gh auth status` reported no authenticated GitHub host. No CI run or PR URL is available, and no passing CI status is claimed. The approved demonstration must not begin until a genuine baseline run passes; after authentication, record the baseline, deliberate-failure and recovery commit SHAs and run URLs, including the failed test and skipped image job.
+
+## Exercises 5–6
 
 No execution evidence yet. Add a dated section for each exercise only after it is requested and run; include exact non-secret commands, outcomes, limitations, and checks not executed.
