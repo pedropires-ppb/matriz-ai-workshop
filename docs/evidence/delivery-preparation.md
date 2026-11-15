@@ -1,6 +1,19 @@
 # Delivery Preparation Evidence
 
-This record contains observed results for the six delivery-preparation exercises. Record commands and outcomes as run; never include secret values, tokens, or real personal data. A plan or expected result is not execution evidence.
+This record distinguishes agent-observed results from user-reported validation for the six delivery-preparation exercises. Record commands and outcomes as run; never include secret values, tokens, or real personal data. A plan or expected result is not execution evidence.
+
+## Current validation status — 2026-11-15
+
+The user confirmed that Exercises 2, 3 and 4 passed and approved their completion. Their confirmation is recorded as user-reported validation; no repeat verification by the agent was requested.
+
+| Exercise | Current status | Basis |
+|---|---|---|
+| 1 — Technical analysis and plan | Completed and approved | Approved plan and committed documentation. |
+| 2 — Docker containerization | Accepted by the user; checks reported passing | The user confirmed the application runs and checks pass. |
+| 3 — Integrated Docker Compose execution | Accepted by the user; checks reported passing | The user confirmed the exercise passed, including its runtime and persistence scope. |
+| 4 — Continuous integration | Accepted by the user; CI reported passing | The user confirmed all checks passed. Earlier supplied CI evidence is linked below. |
+
+This acceptance does not imply client approval of the MVP or production readiness. Detailed commands, image identifiers, resource names and persistence observations for the user's checks were not supplied. The agent did not introduce the controlled test failure; no failure/recovery commit SHAs or run evidence were supplied, so that demonstration is not represented as executed. The dated execution history below is retained as historical evidence, not as the current user acceptance status.
 
 ## Exercise 1 — Technical analysis and plan
 
@@ -70,7 +83,7 @@ This record contains observed results for the six delivery-preparation exercises
 - **Build limitation:** The Maven packaging step could not download its pinned Node.js 24.22.2 `linux-arm64` archive from `nodejs.org`; Java reported `certificate_unknown` / `PKIX path building failed`. This is an environment/build-time certificate trust limitation observed during the build, not evidence of an application runtime defect. No TLS bypass, trust-store change, or alternate build path was attempted. No successful application image is claimed.
 - **Runtime and persistence checks not performed:** `up`, `ps`, logs, host HTTP/health/frontend/API checks, database communication, migrations, demonstration-data behavior, sign-in, project/task creation, assignment, comments, container recreation, and persistence verification. Because the image build failed, no Compose containers or project volume were started or created. No existing containers, volumes, or images were stopped or removed.
 - **Secrets and diagnostics:** Resolved Compose configuration was never printed. Build output was captured to a session-local log and contains the Node.js download failure; no runtime credentials were emitted.
-- **Status:** Compose configuration and default/profile service selection are verified. The integrated runtime exercise remains incomplete until the image can be built in an environment that trusts the required download certificate.
+- **Status at the agent's initial attempt:** Compose configuration and default/profile service selection were verified, but integrated runtime verification was blocked. The user's subsequent validation and acceptance are recorded in the current status above.
 
 ## Exercise 4 — Continuous integration
 
