@@ -12,6 +12,37 @@ SPEC.loader.exec_module(SUMMARY)
 
 
 class TestSummaryTests(unittest.TestCase):
+    def test_export_contains_only_suite_names_and_test_statuses(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            reports = root / "target/test-results/backend/unit"
+            reports.mkdir(parents=True)
+            (reports / "raw.xml").write_text(
+                '<testsuite name="ExampleTests"><properties><property name="secret" value="private"/>'
+                '</properties><testcase name="rejects input"><failure message="private">private</failure>'
+                '<system-out>private</system-out></testcase>'
+                '<testcase name="supported"/><testcase name="unsupported"><skipped/></testcase>'
+                '<system-err>private</system-err></testsuite>',
+                encoding="utf-8",
+            )
+            destination = root / "sanitized"
+            SUMMARY.export_reports(root, destination)
+            files = list(destination.rglob("*.xml"))
+            self.assertEqual(len(files), 1)
+            text = files[0].read_text(encoding="utf-8")
+            self.assertNotIn("private", text)
+            self.assertNotIn("properties", text)
+            self.assertIn("rejects input", text)
+            self.assertIn("failure", text)
+            self.assertIn("skipped", text)
+            self.assertEqual(
+                ["FAIL", "PASS", "SKIP"],
+                [SUMMARY.status(case) for _, cases in SUMMARY.suites(root, "backend/unit") for case in cases],
+            )
+            clean_root = root / "clean"
+            SUMMARY.export_reports(root, clean_root / "target/test-results")
+            self.assertEqual(SUMMARY.render(root), SUMMARY.render(clean_root))
+
     def test_lists_real_cases_and_counts_without_copying_failure_messages(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

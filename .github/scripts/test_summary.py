@@ -36,9 +36,9 @@ def escape(value):
     return html.escape(value).replace("|", "&#124;").replace("\n", " ").replace("\r", " ")
 
 
-def render(root):
+def render(root, groups=GROUPS):
     lines = ["# Application test results", ""]
-    for title, group in GROUPS:
+    for title, group in groups:
         lines.extend([f"## {title}", ""])
         results = list(suites(root, group))
         if not results:
@@ -70,6 +70,20 @@ def render(root):
     return "\n".join(lines)
 
 
+def export_reports(root, destination):
+    for _, group in GROUPS:
+        for index, (name, cases) in enumerate(suites(root, group)):
+            suite = ET.Element("testsuite", name=name)
+            for case in cases:
+                clean = ET.SubElement(suite, "testcase", name=case.get("name", "(unnamed)"))
+                result = status(case)
+                if result != "PASS":
+                    ET.SubElement(clean, "failure" if result == "FAIL" else "skipped")
+            output = destination / group / f"suite-{index:04d}.xml"
+            output.parent.mkdir(parents=True, exist_ok=True)
+            ET.ElementTree(suite).write(output, encoding="utf-8", xml_declaration=True)
+
+
 def check_complete(root):
     actual = Counter(
         name for _, group in GROUPS if group.startswith("backend/")
@@ -96,11 +110,16 @@ def check_complete(root):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--require-complete", action="store_true")
+    parser.add_argument("--group", action="append", choices=[group for _, group in GROUPS])
+    parser.add_argument("--export", type=Path)
     args = parser.parse_args()
     root = Path(__file__).resolve().parents[2]
     if args.require_complete:
         check_complete(root)
-    print(render(root))
+    if args.export:
+        export_reports(root, args.export)
+    groups = [entry for entry in GROUPS if args.group is None or entry[1] in args.group]
+    print(render(root, groups))
 
 
 if __name__ == "__main__":

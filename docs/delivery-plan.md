@@ -162,3 +162,11 @@ CI installs the frontend toolchain through the existing Maven execution, then ru
 The summary lists frontend and backend suites separately, with actual test-case names and passed, failed/error, and skipped counts. It reads only JUnit result metadata, never captured application output or exception messages. It also runs after a failed step, and labels missing reports as unavailable rather than passing. Images and reports are not uploaded or published.
 
 The user reported a successful [baseline run](https://github.com/pedropires-ppb/matriz-ai-workshop/actions/runs/43718405348). This is user-provided evidence, not an independently inspected hosted result. The controlled-failure demonstration remains pending and is paused during this refinement; no deliberate failure has been introduced.
+
+### Separate checks approved on 2026-11-15
+
+The user subsequently requested separate jobs instead of steps inside the `verify` job, with a Docker check named simply `Build Docker image`. This supersedes retaining the `verify` job ID: compilation, frontend unit tests, backend unit tests, backend integration/contract/architecture tests, and end-to-end tests now appear as distinct checks. No branch protection or required-check setting is changed automatically.
+
+Compilation runs first. Test jobs use the same compiled classes and frontend assets, then Docker depends on compilation and every test job. Backend matrix fail-fast is disabled so one failing group does not cancel the others. Docker's first steps aggregate test metadata and reject missing/duplicated Java suites before building the image.
+
+The user explicitly authorized temporary GitHub Actions artifacts for compiled output and sanitized reports, with one-day retention, replacing the earlier no-artifact-upload restriction for these files only. Artifacts contain `target/classes`, `target/test-classes`, or XML reconstructed from suite names, test-case names, and status; never raw reports, credentials, exception messages, logs, or images. Individual jobs retain distinct frontend/backend summaries. The image remains unpublished and still targets both approved processor architectures without highlighting them in the job name.
