@@ -1,6 +1,24 @@
 # Matriz
 
+### Projects organized. Tasks connected. Progress visible.
+
+A shared workspace for teams to organize projects, manage tasks, and track work progress.
+
+[![CI](https://github.com/pedropires-ppb/matriz-ai-workshop/actions/workflows/ci.yml/badge.svg?branch=delivery-preparation)](https://github.com/pedropires-ppb/matriz-ai-workshop/actions/workflows/ci.yml)
+
+**[Run with Docker Compose](#complete-application-with-docker-compose)** · **[Explore the features](#proposed-mvp-at-a-glance)** · **[Run checks](#verification)** · **[API contract](openapi.yaml)** · **[Documentation](#documentation-map)**
+
+> [!IMPORTANT]
+> **Delivery candidate, not client-approved.** I12 remains **Awaiting review**. Requirements and scope still await client validation; this repository does not claim production readiness.
+
+<details>
+<summary>Scope, authorization and status history</summary>
+
 **Status: Implemented proposed-MVP delivery candidate; I12 Awaiting review, not Accepted.** Requirements v0.2, scope and acceptance criteria remain **unapproved by the client** ([OQ-016](docs/constraints.md#open-questions)). Only organizing projects, managing tasks and tracking progress (F01–F03) are confirmed client needs. Implementation is at the team's risk under [ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md). *Updated on 2026-11-12 by the project team's delivery decision 13: previously “Requirements specification — v0.2 (draft for client validation)”; no client approval is implied.*
+
+</details>
+
+---
 
 ## Problem and goals
 
@@ -8,7 +26,15 @@ Work teams need one application in which to organize projects, manage tasks, and
 
 ## Proposed MVP at a glance
 
+| Organize projects | Manage tasks | Follow progress |
+|---|---|---|
+| Project membership, search and project details | Task states, priorities, assignees and comments | Per-project task counts and progress |
+| [Project guide](#manage-projects) | [Task guide](#manage-tasks) | [Application screens](#use-the-application) |
+
 All features below are proposed Must priorities, subject to client approval; their rules rely on the [assumption register](docs/constraints.md#assumptions). Every feature maps to at least one [MVP user story](docs/user-stories.md#stories). Features whose origin is “Team decision” were added by the project team on 2026-10-29, not requested by the client.
+
+<details>
+<summary>Feature-by-feature requirements and story traceability</summary>
 
 | Feature | Detailed requirements | Stories | Origin |
 |---|---|---|---|
@@ -23,7 +49,32 @@ All features below are proposed Must priorities, subject to client approval; the
 | Search projects and filter tasks | [FR-022–FR-023](docs/requirements.md#functional-requirements) | [US-023–US-024](docs/user-stories.md#stories) | Team decision |
 | My projects | [FR-024](docs/requirements.md#functional-requirements) | [US-025](docs/user-stories.md#stories) | Team decision |
 
+</details>
+
+## How it fits together
+
+```mermaid
+flowchart LR
+    Browser["Browser"]
+    App["Spring Boot application<br/>React assets + REST API"]
+    DB[("PostgreSQL<br/>Persistent project volume")]
+    Browser -->|"HTTP: same origin"| App
+    App -->|"JDBC"| DB
+```
+
+**One application container. One database service.** React is bundled in the Spring Boot JAR, not deployed as a separate frontend service. See the [deployment architecture](docs/architecture.md#implemented-deployment-view) for networking and storage details.
+
+| Backend | Frontend | Data & delivery |
+|---|---|---|
+| Java 25 · Spring Boot · Spring Modulith | React · TypeScript · Vite | PostgreSQL · Flyway |
+| JUnit · API, contract & architecture checks | Vitest · Playwright browser checks | Docker · Compose · GitHub Actions |
+
 ## Project status and next phase
+
+**Current:** implemented delivery candidate; **I12 Awaiting review**. Client validation continues in parallel with the next increment identified by the [implementation plan](docs/implementation-plan.md#increments).
+
+<details>
+<summary>Architecture decisions, pending questions and phase history</summary>
 
 - **Current phase:** implemented delivery candidate; I12 Awaiting review. Requirements and client validation remain pending ([ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md)). *Changed on 2026-11-12 by delivery decision 13: previously “requirements specification v0.2 — draft awaiting client validation”.*
 - **Architecture:** modular monolith chosen by the project team on 2026-10-25 ([ADR-001](docs/adr/ADR-001-modular-monolith.md)); see [architecture definition](docs/architecture.md). On 2026-10-29 the team chose the technology stack ([ADR-003](docs/adr/ADR-003-technology-stack.md)), a REST API as the single entry point ([ADR-004](docs/adr/ADR-004-rest-api-single-entry-point.md)), signed access tokens ([ADR-005](docs/adr/ADR-005-authentication-with-jwt.md)), and how simultaneous changes are handled ([ADR-006](docs/adr/ADR-006-simultaneous-changes.md)). All are provisional until the MVP scope is approved (OQ-016). *Added on 2026-10-30 by team decision in the review of increment I1:* the backend is structured with domain-driven design inside the modules ([ADR-008](docs/adr/ADR-008-domain-driven-design.md)).
@@ -34,9 +85,18 @@ All features below are proposed Must priorities, subject to client approval; the
 
 *Next-phase wording reconciled on 2026-11-12 by delivery decision 13: the dynamic rule is retained; the former “since I4 … is Accepted” clause is a historical milestone, not the current review target.*
 
+</details>
+
+---
+
 <a id="run-matriz-locally"></a>
 
 ## Requirements
+
+| Choose your path | What you need | Start here |
+|---|---|---|
+| **Full application in containers** | Docker + Compose; Git and host curl for setup/readiness | [Docker Compose guide](#complete-application-with-docker-compose) |
+| **Run Java on your host** | JDK 25+, Docker + Compose and the shell tools below | [Installation](#installation), then [host-run guide](#host-run-application-with-postgresql-in-compose) |
 
 *Run guide completed on 2026-11-12 by the project team's delivery decisions 13 and 18, replacing the I1/I2 startup guide. Previously that guide started/migrated the database before enabling demonstration data; enable it **before the first application startup**, as the fixed per-database setting in [ADR-007](docs/adr/ADR-007-build-persistence-and-demonstration-data.md#10-demonstration-data) requires.*
 
@@ -50,7 +110,10 @@ All features below are proposed Must priorities, subject to client approval; the
 
 The application uses Spring Boot 4.1.2 and Spring Modulith 2.1.2; the frontend uses React 19.3.1, TypeScript 6.0.3, Vite 8.3.5 and Vitest 5.1.0. Exact direct pins are in [pom.xml](pom.xml) and [frontend/package.json](frontend/package.json); transitive versions are managed by Spring Boot/Modulith and the [npm lockfile](frontend/package-lock.json), not independently selected in this guide.
 
-On macOS with several JDKs, select the installed JDK for the current terminal:
+<details>
+<summary>macOS: select JDK 25 when several JDKs are installed</summary>
+
+Select the installed JDK for the current terminal:
 
 ```sh
 export JAVA_HOME="$(/usr/libexec/java_home -v 25)"
@@ -58,6 +121,8 @@ export PATH="$JAVA_HOME/bin:$PATH"
 java -version
 docker compose version
 ```
+
+</details>
 
 ## Installation
 
@@ -118,6 +183,9 @@ Expect overall `UP` and database `UP`, without component details. Only this Actu
 **Troubleshooting:** a port conflict needs a separate project and free host port, not stopping an unknown container. For a private-CA Maven download error (`PKIX path building failed`), use `export MAVEN_OPTS="-Djavax.net.ssl.trustStore=/path/to/truststore"` with an approved local trust store; never commit trust stores or registry settings.
 
 ### Complete application with Docker Compose
+
+> [!TIP]
+> This runs the UI and API together. Complete the private configuration below first; no host Java or Node installation is needed for the container build.
 
 Use the same [configuration](#configuration-and-first-start) and choose demonstration mode **before the first application startup**. The default Compose command above remains database-only; the `app` profile adds the one Spring Boot container serving both React and the API. No separate frontend runtime is needed.
 
@@ -196,6 +264,9 @@ The authoritative [OpenAPI document](openapi.yaml) is a repository file (OpenAPI
 
 **Sign-out limitation:** [ADR-009](docs/adr/ADR-009-identity-from-the-token.md) deliberately discards the in-memory token and shows “You have signed out” even when the server sign-out request fails. That confirms local discard, **not server revocation**: a separately retained token may remain usable until expiry. This approved policy is unchanged; session policy remains [Open OQ-027](docs/constraints.md#open-questions). *Clarified on 2026-11-12 by the project team's delivery decision 8.*
 
+<details>
+<summary>Try sign-in and sign-out with curl</summary>
+
 The same steps with curl, as Ana. The commands never show the password or the token, and keep the password out of the shell history and the list of processes; they need no other tool. They assume that the password contains no `"` or `\`. While curl runs, the token it sends is visible in the list of processes; this suits a local, single-person setup.
 
 ```sh
@@ -224,7 +295,12 @@ curl -si http://localhost:8080/api/session -H 'Content-Type: application/json' -
 unset PASSWORD TOKEN
 ```
 
+</details>
+
 ### Manage projects
+
+<details>
+<summary>Project operations, permissions and API reference</summary>
 
 *Added on 2026-11-02 with increments I3, I10 (project deletion only), and I11 (search by name only) ([A-031 and A-032](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* The Projects screen lists the projects of the signed-in person, with a search by name, a pager, and a “New project” form; opening a project shows the Project detail, where the Project Owner of an Active project edits or deletes it. Deleting asks for confirmation in the User interface. *Changed on 2026-11-09 with increment I13: previously “After signing in, “My projects” lists the projects of the signed-in person, …; opening a project shows its page, …”.* The [API contract](openapi.yaml) specifies each operation; in short:
 
@@ -239,7 +315,12 @@ unset PASSWORD TOKEN
 
 The name has 1 to 100 characters and the optional description at most 1000, counted after trimming; a name that is empty after trimming, or a value over a limit, gets 422 with field errors. A person who is not a member of the project, and a deleted or unknown project, get 404; a Project Participant who tries to edit or delete gets 403; a Completed project gets 409. The limits and the other rules are team decisions awaiting client validation ([A-031](docs/constraints.md#assumptions), [A-032](docs/constraints.md#assumptions)).
 
+</details>
+
 ### Manage tasks
+
+<details>
+<summary>Task operations, states, permissions and API reference</summary>
 
 *Added on 2026-11-05 with increments I4, I10 (task deletion only), and I11 (task filters only) ([A-033](docs/constraints.md#assumptions), [A-004, A-024, A-031, and A-032 as amended](docs/constraints.md#assumptions), [ADR-008](docs/adr/ADR-008-domain-driven-design.md)).* The Project detail has a “Tasks” section: filters by state and priority, the list with a count, the assignees of each task, and a pager, and a “New task” form. Each task opens the Task detail, where the Project Owner of an Active project edits the task, changes its state and priority, or deletes it after a confirmation. *Changed on 2026-11-09 with increment I13: previously “The project page has a “Tasks” section: filters by state and priority, the list with a count and a pager, a “New task” form, and a details panel where …”.* After each operation the page of tasks is fetched again, so the list and the count are current without reloading the page. A Project Participant who is an assignee can change the state; any Project Participant can assign or unassign themselves. *Updated on 2026-11-12 by delivery decision 13: the previous I4-only wording said participants could not change tasks until I7.*
 
@@ -254,7 +335,12 @@ The name has 1 to 100 characters and the optional description at most 1000, coun
 
 The title has 1 to 150 characters and the optional description at most 2000, counted after trimming; text that is empty after trimming gets 422 (for the description, it means none). Spaces, tabs, and the no-break spaces U+00A0, U+2007, and U+202F count as blank, for project and task texts. Only the Project Owner creates, edits details/priority, and deletes tasks; the Project Owner or an assignee changes state. An unassigned Project Participant gets 403 on a state change; a person who is not a member, and an unknown, deleted, or foreign task, get 404; a Completed project gets 409 for every change. Two simultaneous changes are applied one after the other, and the last prevails. The limits, the values, and the rules are team decisions awaiting client validation ([A-033](docs/constraints.md#assumptions), [OQ-030](docs/constraints.md#open-questions)).
 
+</details>
+
 ### Assignees and comments
+
+<details>
+<summary>Assignment and comment rules with API reference</summary>
 
 On Task detail, the Project Owner assigns/unassigns project members; a Project Participant can assign/unassign only themselves. Several assignees are allowed; assigning an existing assignee is idempotent. Assignment changes do not change state, and removing the last assignee is allowed. Only Active projects permit these changes ([Assumption A-035](docs/constraints.md#assumptions)).
 
@@ -269,7 +355,12 @@ Across forms, A-037 refuses NUL/unpaired-surrogate text rather than silently cha
 
 *Unassignment summary corrected during the final review on 2026-11-12: the previous README said 204, but the controller, tests and OpenAPI already specify 200 with a Task. No implementation or rule was changed.*
 
+</details>
+
 ### Manage members
+
+<details>
+<summary>Project membership, permissions and API reference</summary>
 
 *Added on 2026-11-09 with increment I6 ([A-009](docs/constraints.md#assumptions), [A-030](docs/constraints.md#assumptions), [EX-007](docs/user-stories.md#edge-cases-and-exceptions)).* The Members panel of the Project detail lists every member. The Project Owner of an Active project opens “Add participant”, searches people by name, and adds them; each Project Participant has “Remove”, which asks for confirmation and is unavailable while the person is assigned to tasks. The [API contract](openapi.yaml) specifies each operation; in short:
 
@@ -280,7 +371,20 @@ Across forms, A-037 refuses NUL/unpaired-surrogate text rather than silently cha
 | `addParticipant` | `POST /api/projects/{projectId}/members` with `personId` | 201 and a `Location` header | Only the Project Owner, only while the project is Active. An unknown person gets 422; a member gets 409. The person sees the project immediately. |
 | `removeParticipant` | `DELETE /api/projects/{projectId}/members/{personId}` | 204 | Only the Project Owner, only while the project is Active. The Project Owner, or a person assigned to a task of the project, gets 409; a person who is not a member gets 404. The person loses access immediately; their comments are kept. |
 
+</details>
+
+---
+
 ## Verification
+
+| Check | Coverage |
+|---|---|
+| **Compile** | Backend compilation, frontend typecheck and production assets |
+| **Backend unit tests** | Domain and focused utility behavior |
+| **Backend integration tests** | API, persistence, contract and architecture |
+| **Frontend unit tests** | Pure TypeScript modules with Vitest |
+| **End-to-end tests** | Integrated UI/API with Playwright Chromium |
+| **Docker image** | Build only after mandatory checks succeed; no publication |
 
 Docker must be running. Testcontainers creates its own databases; the tests do not use your local Compose volume or `.env` database. Only `DemoDataTests` enables seed data, on databases it owns.
 
@@ -312,6 +416,9 @@ through Playwright.
 The focused contract command is not a full HTTP/OpenAPI validator: API tests also assert schemas, statuses and headers. See [the recorded checks and limitations](docs/verification.md#contract-and-documentation-reconciliation), [I12](docs/evidence/I12-verification.md) and [the implementation plan](docs/implementation-plan.md#increments). No passing command accepts I12 or answers the client's open questions.
 
 ### Isolated clean-copy verification
+
+<details>
+<summary>Expand the isolated checkout, startup and persistence walkthrough</summary>
 
 *Originally approved by the project team on 2026-11-12, delivery decisions 18–19; updated for delivery preparation on 2026-11-15.* This Bash recipe tests the **committed** local `delivery-preparation` candidate without copying a developer `.env`, using the host-run startup sequence. Run it from the candidate's original checkout. JDK 25 and Docker must already be selected/running as above. The example uses free host ports **15439** (database) and **18089** (application); if occupied, choose two unused ports and change the JDBC/run/base URLs consistently. Never stop an unknown listener.
 
@@ -401,7 +508,12 @@ unset TOKEN
 
 The same identifiers/content and the valid token after restart prove persistence without reseeding. The full browser suite additionally checks the permission/error paths and UI reloads; this API smoke test alone is not a complete manual UI walkthrough.
 
+</details>
+
 ### Manual reset
+
+> [!WARNING]
+> A reset permanently deletes the selected project's database. It is not a normal shutdown or troubleshooting step. Exact-resource approval is required before an agent stops containers or deletes data.
 
 **Destructive and irreversible.** Reset only a database you own, after confirming the exact Compose project, container and volume and stopping your own backend. An agent must ask immediately before stopping any container or running `down -v`. Inspect first:
 
@@ -445,6 +557,9 @@ Use the requirement IDs (`FR-xxx`, `NFR-xxx`), story IDs (`US-xxx`), exceptional
 
 ## Review log (human-in-the-loop)
 
+<details>
+<summary>Historical review findings and human decisions (R-01–R-18)</summary>
+
 The AI reviewed the documentation for six categories (R-01–R-13). From R-14 onwards, the log records the recommendations of the phase 1 analysis of 2026-10-29 that the team rejected or altered; the team accepted the other recommendations ([ADR-002](docs/adr/ADR-002-phase-scope-and-implementation-authorization.md)). Each recommendation was decided by the team; none was applied automatically.
 
 | # | Category | AI finding | Decision | Rationale |
@@ -467,3 +582,5 @@ The AI reviewed the documentation for six categories (R-01–R-13). From R-14 on
 | R-16 | Inconsistency | Phase 1: refuse comments in Completed projects, as for every other change (A-011). | Rejected | Team allowed comments in Completed projects (A-023); no rationale recorded. |
 | R-17 | Security / privacy | Phase 1: only the Project Owner assigns and unassigns. | Altered | Team also lets a Project Participant assign or unassign themselves (A-020); no rationale recorded. The AI flagged that this lets any Project Participant change any task's state (OQ-025). |
 | R-18 | Ambiguity | Phase 1: Portuguese UI, keeping A-013. | Rejected | Team chose English (A-028); no rationale recorded. |
+
+</details>
