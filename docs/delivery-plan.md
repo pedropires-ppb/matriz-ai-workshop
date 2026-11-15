@@ -152,3 +152,13 @@ The OCI output is temporary and is not uploaded or published. Create `.env.deliv
 - Digest pinning requires deliberate base-image digest refreshes. Registries and build-time downloads remain external dependencies.
 - Multi-platform builds and local port availability must be verified in the actual CI/host environment; neither is asserted by this plan.
 - Compose env configuration can expose resolved values if printed. Use only fictitious test values for configuration checks and do not emit resolved configuration.
+
+## Exercise 4 approved refinement — CI visibility
+
+On 2026-11-15, the user approved replacing the single CI Maven verification step with separately named frontend and backend build/test steps, without reducing coverage or changing the ordinary `./mvnw -B verify` or Docker build behavior. This refines the earlier instruction to keep the verification job unchanged; the `verify` job ID and its role as the image-build prerequisite remain.
+
+CI installs the frontend toolchain through the existing Maven execution, then runs the existing npm scripts separately. A default-off `frontend.skip` Maven property prevents repeating those steps during backend compilation and final packaging. Backend tests run through Surefire with the existing Mockito agent: unit, contract, architecture, integration/persistence, and browser groups. The integration selector includes all remaining tests, rather than a fixed allowlist. Separate report directories and a completeness check detect omitted or duplicated Java suites.
+
+The summary lists frontend and backend suites separately, with actual test-case names and passed, failed/error, and skipped counts. It reads only JUnit result metadata, never captured application output or exception messages. It also runs after a failed step, and labels missing reports as unavailable rather than passing. Images and reports are not uploaded or published.
+
+The user reported a successful [baseline run](https://github.com/pedropires-ppb/matriz-ai-workshop/actions/runs/43718405348). This is user-provided evidence, not an independently inspected hosted result. The controlled-failure demonstration remains pending and is paused during this refinement; no deliberate failure has been introduced.

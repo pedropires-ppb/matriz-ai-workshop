@@ -11,24 +11,85 @@ permissions:
 
 jobs:
   verify:
+    name: Verify frontend and backend
     runs-on: ubuntu-latest
+    env:
+      UNIT_TESTS: '*DomainTests,*AccessRulesTests,CommentTextTests,EnvironmentVariablesTests,MigrationNamingTests'
+      CONTRACT_TESTS: 'ContractTextTests,RequestSchemaTests'
+      ARCHITECTURE_TESTS: 'LayeringTests,ModuleBoundaryTests'
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Java 25 and Maven cache
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
-      - name: Install the system libraries that Chromium needs
+      - name: Install pinned Node.js and npm
+        run: |
+          ./mvnw -B frontend:install-node-and-npm@install-node-and-npm
+          echo "$GITHUB_WORKSPACE/frontend/node" >> "$GITHUB_PATH"
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Run frontend unit tests
+        working-directory: frontend
+        run: npm test -- --reporter=default --reporter=junit --outputFile.junit=../target/test-results/frontend/junit.xml
+      - name: Build frontend assets
+        working-directory: frontend
+        run: npm run build
+      - name: Compile backend and tests
+        run: ./mvnw -B -Dfrontend.skip=true test-compile
+      - name: Run backend unit tests
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          "-Dtest=$UNIT_TESTS"
+          -Dtest.reportsDirectory=target/test-results/backend/unit
+      - name: Run backend contract tests
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          "-Dtest=$CONTRACT_TESTS"
+          -Dtest.reportsDirectory=target/test-results/backend/contract
+      - name: Run backend architecture tests
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          "-Dtest=$ARCHITECTURE_TESTS"
+          -Dtest.reportsDirectory=target/test-results/backend/architecture
+      - name: Run backend API and persistence integration tests
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          "-Dtest=*,!${UNIT_TESTS//,/,!},!${CONTRACT_TESTS//,/,!},!${ARCHITECTURE_TESTS//,/,!},!UserInterfaceTests"
+          -Dtest.reportsDirectory=target/test-results/backend/integration
+      - name: Install Chromium system libraries
         run: npx --yes playwright@1.64.0 install-deps chromium
-      - name: Build and test
-        run: ./mvnw -B verify
+      - name: Install pinned Playwright Chromium
+        run: ./mvnw -B exec:exec@install-playwright-chromium
+      - name: Run backend browser end-to-end tests
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          -Dtest=UserInterfaceTests
+          -Dtest.reportsDirectory=target/test-results/backend/browser
+      - name: Check test summary generator
+        run: python3 -m unittest discover -s .github/scripts -p 'test_test_summary.py'
+      - name: Check that every application test suite produced a report
+        run: python3 .github/scripts/test_summary.py --require-complete > /dev/null
+      - name: Package application
+        run: ./mvnw -B -Dfrontend.skip=true -DskipTests verify
+      - name: Summarize frontend and backend test results
+        if: always()
+        run: python3 .github/scripts/test_summary.py >> "$GITHUB_STEP_SUMMARY"
 
   image:
+    name: Build Docker image (amd64 + arm64, no publish)
     needs: verify
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
+      - name: Check out source
+        uses: actions/checkout@v7
       - name: Validate Compose profiles
         run: |
           env -i PATH="$PATH" HOME="$HOME" \

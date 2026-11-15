@@ -75,15 +75,57 @@ This record contains observed results for the six delivery-preparation exercises
 ## Exercise 4 — Continuous integration
 
 - **Date:** 2026-11-15
-- **Status:** Local workflow and Compose changes prepared; GitHub authentication is unavailable. No push, pull request, hosted run, or controlled-failure demonstration has occurred. The deliberate test failure is not present.
-- **Workflow:** The existing `verify` job, push and pull-request triggers, and `contents: read` permission remain unchanged. A new `image` job depends on `verify`; it validates Compose with fictitious configuration, then builds both target platforms to a runner-local OCI file without publishing or uploading it.
+- **Initial implementation (`abadacc`):** Workflow and Compose changes were committed locally while GitHub authentication was unavailable to the agent. The user subsequently pushed the branch and reported a successful [baseline run](https://github.com/pedropires-ppb/matriz-ai-workshop/actions/runs/43718405348). The agent could not independently inspect that run or its commit SHA; no PR reference has been supplied. The deliberate test failure is not present.
+- **Initial workflow:** The existing `verify` job, push and pull-request triggers, and `contents: read` permission were retained. A new `image` job depends on `verify`; it validates Compose with fictitious configuration, then builds both target platforms to a runner-local OCI file without publishing or uploading it.
 - **Compose compatibility:** Database-only configuration no longer requires the application's signing key during Compose interpolation. Application startup remains responsible for rejecting a missing or invalid key.
 - **Local checks:**
   - Before the correction, the new database-only `docker compose --env-file /dev/null -p matriz-ci config -q` check failed with the signing key missing. Afterward, that check and the `--profile app` check passed with isolated fictitious environment variables, and missing database credentials were rejected.
   - Ruby's YAML parser and structural assertions confirmed the workflow parses and retains both triggers, read-only contents permission, the Maven verify step, and `image`'s `needs: verify`. This is not a hosted GitHub Actions validation.
   - With the locally installed JDK 25, `./mvnw -B -Dtest=EnvironmentVariablesTests,CommentTextTests test` passed: 19 tests, no failures or errors. The environment tests exercise rejection of a blank signing key. Maven also ran the configured frontend build steps; this focused command is not full verification.
   - `git diff --check` passed. Docker Buildx is available locally, but the multi-platform build was not rerun; the Exercise 3 certificate failure remains unresolved.
-- **GitHub blocker:** `gh auth status` reported no authenticated GitHub host. No CI run or PR URL is available, and no passing CI status is claimed. The approved demonstration must not begin until a genuine baseline run passes; after authentication, record the baseline, deliberate-failure and recovery commit SHAs and run URLs, including the failed test and skipped image job.
+- **Initial GitHub blocker:** `gh auth status` reported no authenticated GitHub host. At the initial local commit, no CI run or PR URL was available, and no passing CI status was claimed. The subsequent baseline is user-reported above; deliberate-failure and recovery commit SHAs and run URLs, including the failed test and skipped image job, remain to be collected.
+
+### Approved refinement — Separate frontend and backend stages
+
+- **Approval:** The user approved separately named build/test steps, distinct frontend/backend reports, and the limited Maven build-property changes; see the [approved refinement](../delivery-plan.md#exercise-4-approved-refinement--ci-visibility).
+- **Files:** `.github/workflows/ci.yml`, `pom.xml`, `.github/scripts/test_summary.py`, its standard-library regression tests, the delivery plan, and this record. No application behavior, dependency versions, or test assertions were changed.
+- **Coverage:** CI runs the existing npm scripts and all Java test suites in complementary groups. The integration group selects all remaining tests, including future tests not assigned to a specific group. A report check rejects missing or duplicated Java suites. Frontend and backend reports remain distinct. The `verify` and `image` job IDs, triggers, read-only workflow permissions, and image dependency are retained; human-readable job names are improved. No branch protection was changed.
+- **Local commands:** Selected the already installed JDK 25 with `JAVA_HOME=$(/usr/libexec/java_home -v 25)`. Executed the workflow's shell steps in order, using the workflow's selectors and working directories, via Ruby's existing YAML parser and `bash -e -o pipefail`. Skipped only the Linux-specific Chromium system-library installation on macOS and the checkout/setup Actions; Chromium installation and all application verification/packaging commands ran.
+
+  ```sh
+  ./mvnw -B frontend:install-node-and-npm@install-node-and-npm
+  # With frontend/node on PATH, from frontend:
+  npm ci
+  npm run typecheck
+  npm test -- --reporter=default --reporter=junit --outputFile.junit=../target/test-results/frontend/junit.xml
+  npm run build
+  # From the repository root:
+  ./mvnw -B -Dfrontend.skip=true test-compile
+  # Each of the five backend groups uses its exact selector from ci.yml:
+  ./mvnw -B dependency:properties surefire:test "-Dtest=$UNIT_TESTS" \
+    -Dtest.reportsDirectory=target/test-results/backend/unit
+  # Contract, architecture, integration and browser invocations: see ci.yml.
+  ./mvnw -B exec:exec@install-playwright-chromium
+  python3 -m unittest discover -s .github/scripts -p 'test_test_summary.py'
+  python3 .github/scripts/test_summary.py --require-complete
+  ./mvnw -B -Dfrontend.skip=true -DskipTests verify
+  git diff --check
+  ```
+
+- **Observed application results:**
+
+  | Group | Suites | Passed | Failed/errors | Skipped |
+  |---|---:|---:|---:|---:|
+  | Frontend unit | 6 | 31 | 0 | 0 |
+  | Backend unit | 8 | 91 | 0 | 0 |
+  | Backend contract | 2 | 23 | 0 | 0 |
+  | Backend architecture | 2 | 9 | 0 | 0 |
+  | Backend API and persistence integration | 24 | 539 | 0 | 0 |
+  | Backend browser end-to-end | 1 | 46 | 0 | 0 |
+
+- **Additional results:** Typecheck, frontend asset build, backend compilation and executable JAR packaging passed. All 37 Java suites produced exactly one report. Five report-generator tests passed, including failure/skipped results, missing reports, omitted/duplicated suites, and ignoring non-test helpers. The helper regression check was first observed failing and then passing. YAML parsing, workflow trigger/permission/dependency assertions, and `bash -n` for every workflow command passed.
+- **Summary and confidentiality:** Suite counts and test-case names/statuses come from JUnit XML; captured logs, exception messages and environment properties are not copied into the summary or uploaded. Missing reports are explicitly marked unavailable, including after a failed pipeline step. Local raw reports and logs remain untracked/ignored or in the session workspace.
+- **Limitations:** These are local results, not a hosted run of the refined workflow. The agent's `gh run view` request remained unauthenticated, and unauthenticated web access returned 404 for the supplied run. The Docker job was not rerun locally. The controlled-failure demonstration remains pending and is paused during this refinement; no deliberate failure is present.
 
 ## Exercises 5–6
 
