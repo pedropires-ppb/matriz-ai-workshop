@@ -8,6 +8,21 @@ A shared workspace for teams to organize projects, manage tasks, and track work 
 
 **[Run with Docker Compose](#complete-application-with-docker-compose)** · **[Explore the features](#proposed-mvp-at-a-glance)** · **[Run checks](#verification)** · **[API contract](openapi.yaml)** · **[Documentation](#documentation-map)**
 
+## Matriz in 60 seconds
+
+| Topic | What to know |
+|---|---|
+| **Purpose** | Teams organize projects, manage tasks and track progress, with project membership, assignees and comments. |
+| **Technology** | React + TypeScript frontend; Java 25 + Spring Boot backend; PostgreSQL database with Flyway migrations. |
+| **Packaging** | Maven coordinates frontend and backend compilation into **one executable JAR**. Compose runs that JAR in **one application container**, with PostgreSQL in a separate container. React executes in the user's browser. |
+| **Communication** | The UI and REST API use the **same protocol, host and port**. This simplifies deployment; it does not replace authentication. |
+| **Authentication** | Sign-in checks a password against a **BCrypt hash** and issues a signed **JWT access token**. Other `/api/**` requests require a valid token; UI files and the health endpoint are public. The browser keeps the token in memory, not persistent storage. |
+| **Authorization** | The backend checks project membership and permissions for each operation. Being signed in does not grant access to every project or every action. |
+| **Configuration** | Database credentials and the signing key are supplied at runtime, not embedded in the image. No real demonstration passwords are published. |
+| **Verification & delivery** | GitHub Actions compiles the application and runs unit, integration, contract, architecture and browser checks before building the Docker image. It does **not** publish the image or deploy. |
+
+For details, see [architecture](#how-it-fits-together), [authentication and its limitations](#sign-in-use-the-api-and-sign-out), [configuration](#configuration-and-first-start) and [verification](#verification). The documented Compose setup uses local HTTP; production hosting and TLS termination remain [open decisions](docs/constraints.md#open-questions).
+
 > [!IMPORTANT]
 > **Delivery candidate, not client-approved.** I12 remains **Awaiting review**. Requirements and scope still await client validation; this repository does not claim production readiness.
 
