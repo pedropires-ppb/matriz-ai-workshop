@@ -170,3 +170,7 @@ The user subsequently requested separate jobs instead of steps inside the `verif
 Compilation runs first. Test jobs use the same compiled classes and frontend assets, then Docker depends on compilation and every test job. Backend matrix fail-fast is disabled so one failing group does not cancel the others. Docker's first steps aggregate test metadata and reject missing/duplicated Java suites before building the image.
 
 The user explicitly authorized temporary GitHub Actions artifacts for compiled output and sanitized reports, with one-day retention, replacing the earlier no-artifact-upload restriction for these files only. Artifacts contain `target/classes`, `target/test-classes`, or XML reconstructed from suite names, test-case names, and status; never raw reports, credentials, exception messages, logs, or images. Individual jobs retain distinct frontend/backend summaries. The image remains unpublished and still targets both approved processor architectures without highlighting them in the job name.
+
+### Push-only trigger approved on 2026-11-15
+
+The user explicitly selected CI on pushes to any branch only, removing the `pull_request` trigger to avoid duplicate runs for an open PR. This supersedes the earlier requirement to retain both triggers. Every push still executes the same compilation, test and Docker jobs; the workflow no longer separately checks GitHub's synthetic PR merge result. No branch protection or required-check configuration is changed.

@@ -137,6 +137,12 @@ This record contains observed results for the six delivery-preparation exercises
 - **Workflow validation:** YAML parsing, every shell command's `bash -n`, push/PR triggers, minimal permissions, Docker's complete dependency list, matrix fail-fast disabled, and the exact `Build Docker image` name were checked locally. Artifact transfer itself and the split-job workflow require a hosted run; no success is claimed for those unexecuted Actions.
 - **Remaining:** The controlled-failure demonstration is still pending; no deliberate failure was introduced. No branch protection or required-check configuration was changed. The ignored validation snapshot and its generated output were left in place rather than destructively cleaned up.
 
+### Approved refinement — Push-only execution
+
+- **Decision:** The user selected pushes to any branch only, with no separate pull-request event. Removed only the `pull_request` trigger; all jobs, test commands, image gating and non-publication behavior are unchanged. GitHub's synthetic PR merge result is no longer separately verified.
+- **Local verification:** Parsed the old and new YAML and compared them after removing the old pull-request trigger; the remaining workflow is identical. Verified that the sole event is an unrestricted `push`, and `git diff --check` passed. No application tests were rerun for this trigger-only change.
+- **Limitations:** No hosted result is claimed for this revision. No branch protection was changed, and no deliberate failure is present.
+
 ## Exercises 5–6
 
 No execution evidence yet. Add a dated section for each exercise only after it is requested and run; include exact non-secret commands, outcomes, limitations, and checks not executed.
