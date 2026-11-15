@@ -58,7 +58,7 @@ flowchart LR
     Browser["Browser"]
     App["Spring Boot application<br/>React assets + REST API"]
     DB[("PostgreSQL<br/>Persistent project volume")]
-    Browser -->|"HTTP: same origin"| App
+    Browser -->|"HTTP: same protocol, host and port"| App
     App -->|"JDBC"| DB
 ```
 
