@@ -170,4 +170,7 @@ This acceptance does not imply client approval of the MVP or production readines
 
 ## Exercise 6
 
-No execution evidence yet. Add a dated section only after it is requested and run; include exact non-secret commands, outcomes, limitations, and checks not executed.
+- **Plan approved:** 2026-11-15; execution began on 2026-11-16 UTC against committed source `f3f0e54a9059abe76407a260710ffa656dc86dc1`.
+- **Current status:** Local full Maven verification passed (708 Java + 31 frontend tests), and CI summary-generator guards passed (6 tests). Supplementary host-run JAR checks against isolated Compose PostgreSQL passed direct-API operations/permissions with three fictitious accounts, a real Chromium reload/sign-in smoke, and persistence after database-container recreation with the exact named volume retained. Full-app Docker results remain user-reported; final hosted CI inspection/PR update awaits authenticated access.
+- **Details:** The [final validation report](delivery-final-validation.md) records exact commands, isolation/resources, tested source SHA, checks, log observations, user-reported results and boundaries of unrun container/hosted-CI checks. It is not client acceptance or production-readiness approval.
+- **Safety:** No production code, runtime configuration, dependency or behavior correction; no cleanup, tag, release, merge or deployment. GitHub API access remains unavailable in the agent environment. The user's latest successful CI retry is user-reported, not independently inspected. The isolated database container/network/volume remain; the owned host application process was stopped.
