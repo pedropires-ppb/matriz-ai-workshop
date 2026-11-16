@@ -1,25 +1,213 @@
-# Continuous integration (ADR-007 decision 4): builds and tests everything on every push and pull
-# request. The tests start PostgreSQL with Testcontainers and need no secret.
+# Tests use isolated Testcontainers databases; no application secrets are needed.
 name: CI
 
 on:
   push:
-  pull_request:
 
 permissions:
   contents: read
 
+env:
+  UNIT_TESTS: '*DomainTests,*AccessRulesTests,CommentTextTests,EnvironmentVariablesTests,MigrationNamingTests'
+  CONTRACT_TESTS: 'ContractTextTests,RequestSchemaTests'
+  ARCHITECTURE_TESTS: 'LayeringTests,ModuleBoundaryTests'
+
 jobs:
-  verify:
+  compile:
+    name: Compile frontend and backend
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v7
-      - uses: actions/setup-java@v6
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Java 25 and Maven cache
+        uses: actions/setup-java@v6
         with:
           distribution: temurin
           java-version: '25'
           cache: maven
-      - name: Install the system libraries that Chromium needs
+      - name: Install pinned Node.js and npm
+        run: |
+          ./mvnw -B frontend:install-node-and-npm@install-node-and-npm
+          echo "$GITHUB_WORKSPACE/frontend/node" >> "$GITHUB_PATH"
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Typecheck frontend
+        working-directory: frontend
+        run: npm run typecheck
+      - name: Build frontend assets
+        working-directory: frontend
+        run: npm run build
+      - name: Compile backend and tests and package application
+        run: ./mvnw -B -Dfrontend.skip=true -DskipTests verify
+      - name: Share compiled classes and frontend assets
+        uses: actions/upload-artifact@v4
+        with:
+          name: compiled-application
+          path: |
+            target/classes/
+            target/test-classes/
+          if-no-files-found: error
+          retention-days: 1
+
+  frontend:
+    name: Frontend unit tests
+    needs: compile
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Java 25 and Maven cache
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Install pinned Node.js and npm
+        run: |
+          ./mvnw -B frontend:install-node-and-npm@install-node-and-npm
+          echo "$GITHUB_WORKSPACE/frontend/node" >> "$GITHUB_PATH"
+      - name: Install frontend dependencies
+        working-directory: frontend
+        run: npm ci
+      - name: Run frontend unit tests
+        working-directory: frontend
+        run: npm test -- --reporter=default --reporter=junit --outputFile.junit=../target/test-results/frontend/junit.xml
+      - name: Summarize and sanitize frontend results
+        if: always()
+        run: python3 .github/scripts/test_summary.py --group frontend --export "$RUNNER_TEMP/sanitized-results" >> "$GITHUB_STEP_SUMMARY"
+      - name: Share sanitized frontend results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-frontend
+          path: ${{ runner.temp }}/sanitized-results/
+          if-no-files-found: error
+          retention-days: 1
+
+  backend:
+    name: ${{ matrix.name }}
+    needs: compile
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - group: unit
+            name: Backend unit tests
+          - group: integration
+            name: Backend integration, contract and architecture tests
+          - group: browser
+            name: End-to-end tests
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Set up Java 25 and Maven cache
+        uses: actions/setup-java@v6
+        with:
+          distribution: temurin
+          java-version: '25'
+          cache: maven
+      - name: Restore compiled classes and frontend assets
+        uses: actions/download-artifact@v4
+        with:
+          name: compiled-application
+          path: target
+      - name: Run backend unit tests
+        if: matrix.group == 'unit'
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          "-Dtest=$UNIT_TESTS"
+          -Dtest.reportsDirectory=target/test-results/backend/unit
+      - name: Run backend contract tests
+        if: matrix.group == 'integration'
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          "-Dtest=$CONTRACT_TESTS"
+          -Dtest.reportsDirectory=target/test-results/backend/contract
+      - name: Run backend architecture tests
+        if: matrix.group == 'integration'
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          "-Dtest=$ARCHITECTURE_TESTS"
+          -Dtest.reportsDirectory=target/test-results/backend/architecture
+      - name: Run backend API and persistence integration tests
+        if: matrix.group == 'integration'
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          "-Dtest=*,!${UNIT_TESTS//,/,!},!${CONTRACT_TESTS//,/,!},!${ARCHITECTURE_TESTS//,/,!},!UserInterfaceTests"
+          -Dtest.reportsDirectory=target/test-results/backend/integration
+      - name: Install pinned Node.js and npm
+        if: matrix.group == 'browser'
+        run: |
+          ./mvnw -B frontend:install-node-and-npm@install-node-and-npm
+          echo "$GITHUB_WORKSPACE/frontend/node" >> "$GITHUB_PATH"
+      - name: Install Chromium system libraries
+        if: matrix.group == 'browser'
         run: npx --yes playwright@1.64.0 install-deps chromium
-      - name: Build and test
-        run: ./mvnw -B verify
+      - name: Install pinned Playwright Chromium
+        if: matrix.group == 'browser'
+        run: ./mvnw -B exec:exec@install-playwright-chromium
+      - name: Run browser end-to-end tests
+        if: matrix.group == 'browser'
+        run: >-
+          ./mvnw -B dependency:properties surefire:test
+          -Dtest=UserInterfaceTests
+          -Dtest.reportsDirectory=target/test-results/backend/browser
+      - name: Summarize and sanitize backend results
+        if: always()
+        env:
+          GROUP: ${{ matrix.group }}
+        run: |
+          groups=("--group" "backend/$GROUP")
+          if [ "$GROUP" = integration ]; then
+            groups+=("--group" "backend/contract" "--group" "backend/architecture")
+          fi
+          python3 .github/scripts/test_summary.py "${groups[@]}" \
+            --export "$RUNNER_TEMP/sanitized-results" >> "$GITHUB_STEP_SUMMARY"
+      - name: Share sanitized backend results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: results-backend-${{ matrix.group }}
+          path: ${{ runner.temp }}/sanitized-results/
+          if-no-files-found: error
+          retention-days: 1
+
+  image:
+    name: Build Docker image
+    needs: [compile, frontend, backend]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out source
+        uses: actions/checkout@v7
+      - name: Collect sanitized test reports
+        uses: actions/download-artifact@v4
+        with:
+          pattern: results-*
+          merge-multiple: true
+          path: target/test-results
+      - name: Check test summary generator
+        run: python3 -m unittest discover -s .github/scripts -p 'test_test_summary.py'
+      - name: Check complete test coverage and summarize results
+        run: python3 .github/scripts/test_summary.py --require-complete >> "$GITHUB_STEP_SUMMARY"
+      - name: Validate Compose profiles
+        run: |
+          env -i PATH="$PATH" HOME="$HOME" \
+            MATRIZ_DB_USER=fictitious MATRIZ_DB_PASSWORD=fictitious \
+            docker compose --env-file /dev/null -p matriz-ci config -q
+          env -i PATH="$PATH" HOME="$HOME" \
+            MATRIZ_DB_USER=fictitious MATRIZ_DB_PASSWORD=fictitious \
+            MATRIZ_JWT_SIGNING_KEY=fictitious \
+            docker compose --env-file /dev/null -p matriz-ci --profile app config -q
+          if env -i PATH="$PATH" HOME="$HOME" \
+            docker compose --env-file /dev/null -p matriz-ci config -q >/dev/null 2>&1; then
+            echo "Compose must reject missing database credentials"
+            exit 1
+          fi
+      - name: Build Docker image without publishing
+        run: |
+          docker buildx create --name matriz-ci --driver docker-container --use
+          docker buildx build --platform linux/amd64,linux/arm64 \
+            --output "type=oci,dest=$RUNNER_TEMP/matriz-candidate.oci.tar" \
+            --tag "matriz:0.1.0-SNAPSHOT-$GITHUB_SHA" .

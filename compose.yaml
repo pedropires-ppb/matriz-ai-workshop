@@ -20,5 +20,27 @@ services:
       timeout: 5s
       retries: 12
 
+  app:
+    profiles:
+      - app
+    build:
+      context: .
+      dockerfile: Dockerfile
+    environment:
+      MATRIZ_DB_URL: jdbc:postgresql://postgres:5432/matriz
+      MATRIZ_DB_USER: ${MATRIZ_DB_USER:?set MATRIZ_DB_USER in .env (see .env.example)}
+      MATRIZ_DB_PASSWORD: ${MATRIZ_DB_PASSWORD:?set MATRIZ_DB_PASSWORD in .env (see .env.example)}
+      MATRIZ_JWT_SIGNING_KEY: ${MATRIZ_JWT_SIGNING_KEY:-}
+      MATRIZ_DEMO_DATA: ${MATRIZ_DEMO_DATA:-false}
+      MATRIZ_DEMO_PASSWORD_ANA: ${MATRIZ_DEMO_PASSWORD_ANA:-}
+      MATRIZ_DEMO_PASSWORD_RUI: ${MATRIZ_DEMO_PASSWORD_RUI:-}
+      MATRIZ_DEMO_PASSWORD_EVA: ${MATRIZ_DEMO_PASSWORD_EVA:-}
+      MATRIZ_DEMO_PASSWORD_DANIEL: ${MATRIZ_DEMO_PASSWORD_DANIEL:-}
+    ports:
+      - "127.0.0.1:${MATRIZ_APP_PORT:-18089}:8080"
+    depends_on:
+      postgres:
+        condition: service_healthy
+
 volumes:
   matriz-db:

@@ -30,6 +30,9 @@
         <node.version>v24.22.2</node.version>
         <!-- Overridden by -DskipTests; also skips the Chromium installation. -->
         <skipTests>false</skipTests>
+        <!-- CI runs the frontend steps separately; ordinary Maven and Docker builds still run them. -->
+        <frontend.skip>false</frontend.skip>
+        <test.reportsDirectory>${project.build.directory}/surefire-reports</test.reportsDirectory>
         <!-- Empty unless another plugin sets it; Surefire adds Mockito's agent to it (ADR-007 decision 2). -->
         <argLine/>
     </properties>
@@ -169,6 +172,7 @@
                 <configuration>
                     <workingDirectory>frontend</workingDirectory>
                     <installDirectory>frontend</installDirectory>
+                    <skip>${frontend.skip}</skip>
                 </configuration>
                 <executions>
                     <execution>
@@ -271,6 +275,7 @@
                 <artifactId>maven-surefire-plugin</artifactId>
                 <configuration>
                     <argLine>@{argLine} -javaagent:${org.mockito:mockito-core:jar}</argLine>
+                    <reportsDirectory>${test.reportsDirectory}</reportsDirectory>
                 </configuration>
             </plugin>
 
